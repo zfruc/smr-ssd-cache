@@ -50,8 +50,7 @@ typedef enum
     MaxCold,
     MaxAll,
     AvgBandHot,
-    HotDivSize,
-    FourQuadrant
+    HotDivSize
 } SSDEvictionStrategy;
 
 extern size_t BNDSZ;
