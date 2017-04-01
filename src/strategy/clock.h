@@ -15,7 +15,7 @@ typedef struct
 SSDBufferDescForClock	*ssd_buffer_descriptors_for_clock;
 SSDBufferStrategyControlForClock *ssd_buffer_strategy_control_for_clock;
 
-extern unsigned long flush_fifo_times;
+extern unsigned long flush_times;
 
 extern void initSSDBufferForClock();
 extern SSDBufferDesc *getCLOCKBuffer();

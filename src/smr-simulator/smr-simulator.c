@@ -11,13 +11,13 @@
 
 static SSDDesc *getStrategySSD();
 static void    *freeStrategySSD();
-static volatile void *flushSSD(SSDDesc * ssd_hdr);
+static volatile void *flushSSD(SSDDesc * ssd_hdr,int smr_fd);
 
 /*
  * init inner ssd buffer hash table, strategy_control, buffer, work_mem
  */
 void
-initSSD()
+initFIFOCache()
 {
 	pthread_t	freessd_tid;
 	int		err;
@@ -189,7 +189,7 @@ freeStrategySSD()
 			interval_time = 0;
 			for (i = ssd_strategy_control->first_usedssd; i < ssd_strategy_control->first_usedssd + NSSDCLEAN; i++) {
 				if ((ssd_descriptors[i % NSSDs].ssd_flag & SSD_VALID) && (ssd_descriptors[i % NSSDs].ssd_flag & SSD_DIRTY)) {
-					flushSSD(&ssd_descriptors[i % NSSDs]);
+					flushSSD(&ssd_descriptors[i % NSSDs],hdd_fd);
 				}
 			}
 			ssd_strategy_control->first_usedssd = (ssd_strategy_control->first_usedssd + NSSDCLEAN) % NSSDs;
@@ -203,7 +203,7 @@ freeStrategySSD()
 }
 
 static volatile void *
-flushSSD(SSDDesc * ssd_hdr)
+flushSSD(SSDDesc * ssd_hdr,int smr_fd)
 {
 	long		i;
 	int		returnCode;

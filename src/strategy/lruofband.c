@@ -11,7 +11,7 @@ static volatile void *moveToLRUofBandHead(SSDBufferDescForLRUofBand * ssd_buf_hd
 static volatile void *addToBand(SSDBufferTag ssd_buf_tag, long freessd);
 static volatile void *getSSDBufferofBand(SSDBufferTag ssd_buf_tag);
 
-void 
+void
 initSSDBufferForLRUofBand()
 {
 	initBandTable(NBANDTables, &band_hashtable_for_lruofband);
@@ -21,23 +21,23 @@ initSSDBufferForLRUofBand()
 	ssd_buffer_strategy_control_for_lruofband->last_lru = -1;
 
 	SSDBufferDescForLRUofBand *ssd_buf_hdr_for_lruofband;
-	ssd_buffer_descriptors_for_lruofband = (SSDBufferDescForLRUofBand *) malloc(sizeof(SSDBufferDescForLRUofBand) * NSSDBuffers);
+	ssd_buffer_descriptors_for_lruofband = (SSDBufferDescForLRUofBand *) malloc(sizeof(SSDBufferDescForLRUofBand) * NBLOCK_SSD_CACHE);
 	long		i;
 	ssd_buf_hdr_for_lruofband = ssd_buffer_descriptors_for_lruofband;
-	for (i = 0; i < NSSDBuffers; ssd_buf_hdr_for_lruofband++, i++) {
+	for (i = 0; i < NBLOCK_SSD_CACHE; ssd_buf_hdr_for_lruofband++, i++) {
 		ssd_buf_hdr_for_lruofband->ssd_buf_id = i;
 		ssd_buf_hdr_for_lruofband->next_lru = -1;
 		ssd_buf_hdr_for_lruofband->last_lru = -1;
 		ssd_buf_hdr_for_lruofband->next_ssd_buf = -1;
 	}
 
-	flush_fifo_times = 0;
+	flush_times = 0;
 
-	band_descriptors = (BandDesc *) malloc(sizeof(BandDesc) * NSSDBuffers);
+	band_descriptors = (BandDesc *) malloc(sizeof(BandDesc) * NBLOCK_SSD_CACHE);
 	BandDesc       *temp_band_desc;
 	temp_band_desc = band_descriptors;
 
-	for (i = 0; i < NSSDBuffers; temp_band_desc++, i++) {
+	for (i = 0; i < NBLOCK_SSD_CACHE; temp_band_desc++, i++) {
 		band_descriptors[i].band_num = -1;
         band_descriptors[i].current_pages = 0;
 		band_descriptors[i].first_page = -1;
@@ -46,7 +46,7 @@ initSSDBufferForLRUofBand()
 	band_descriptors[i].next_free_band = -1;
 	band_control = (BandControl *) malloc(sizeof(BandControl));
 	band_control->first_freeband = 0;
-	band_control->last_freeband = NSSDBuffers - 1;
+	band_control->last_freeband = NBLOCK_SSD_CACHE - 1;
 	band_control->n_usedband = 0;
 
 }
@@ -161,7 +161,7 @@ getLRUofBandBuffer(SSDBufferTag ssd_buf_tag)
 	SSDBufferDesc  *ssd_buffer_hdr;
 	SSDBufferDescForLRUofBand *ssd_buf_hdr_for_lruofband;
 	if (ssd_buffer_strategy_control->first_freessd < 0) {
-		flush_fifo_times++;
+		flush_times++;
 		ssd_buffer_hdr = &ssd_buffer_descriptors[ssd_buffer_strategy_control_for_lruofband->last_lru];
 		getSSDBufferofBand(ssd_buffer_hdr->ssd_buf_tag);
 	}
@@ -186,7 +186,7 @@ moveToLRUofBandHead(SSDBufferDescForLRUofBand * ssd_buf_hdr_for_lruofband)
 	return NULL;
 }
 
-void 
+void
 hitInLRUofBandBuffer(SSDBufferDesc * ssd_buf_hdr)
 {
 	moveToLRUofBandHead(&ssd_buffer_descriptors_for_lruofband[ssd_buf_hdr->ssd_buf_id]);

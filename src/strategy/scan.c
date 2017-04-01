@@ -15,22 +15,22 @@ void initSSDBufferForSCAN()
 {
 	ssd_buffer_strategy_control_for_scan = (SSDBufferStrategyControlForSCAN *) malloc(sizeof(SSDBufferStrategyControlForSCAN));
 	ssd_buffer_strategy_control_for_scan->scan_ptr = -1;
-	ssd_buffer_strategy_control_for_scan->start= -1;  
+	ssd_buffer_strategy_control_for_scan->start= -1;
  // ssd_buffer_strategy_control_for_scan->last_scan = -1;
 
-	ssd_buffer_descriptors_for_scan = (SSDBufferDescForSCAN *) malloc(sizeof(SSDBufferDescForSCAN)*NSSDBuffers);
+	ssd_buffer_descriptors_for_scan = (SSDBufferDescForSCAN *) malloc(sizeof(SSDBufferDescForSCAN)*NBLOCK_SSD_CACHE);
 	SSDBufferDescForSCAN *ssd_buf_hdr_for_scan;
 	//ssd_buf_hdr_for_scan is a pointer
 	long i;
 	ssd_buf_hdr_for_scan = ssd_buffer_descriptors_for_scan;
-	
-	for (i = 0; i < NSSDBuffers; ssd_buf_hdr_for_scan++, i++) {
+
+	for (i = 0; i < NBLOCK_SSD_CACHE; ssd_buf_hdr_for_scan++, i++) {
 		ssd_buf_hdr_for_scan->ssd_buf_id = i;
         ssd_buf_hdr_for_scan->next_scan = -1;
         ssd_buf_hdr_for_scan->last_scan = -1;
 
 	}
-	flush_fifo_times = 0;
+	flush_times = 0;
 }
 
 static volatile void* addToSCANHead(SSDBufferDescForSCAN *ssd_buf_hdr_for_scan)
@@ -55,13 +55,13 @@ void output(){
 	//ssd_buf_hdr_for_scan is a pointer
 	long i, j;
 	ssd_buf_hdr_for_scan = ssd_buffer_descriptors_for_scan;
-	
-	for (i = 0; i < NSSDBuffers; ssd_buf_hdr_for_scan++, i++) {
+
+	for (i = 0; i < NBLOCK_SSD_CACHE; ssd_buf_hdr_for_scan++, i++) {
 	  printf("ssd_buf_id %ld",ssd_buf_hdr_for_scan->ssd_buf_id);
       	  printf("next_scan %ld",ssd_buf_hdr_for_scan->next_scan);
       	  printf("last_scan %ld\n",ssd_buf_hdr_for_scan->last_scan);
 	}
-	for(j = 0 ; j < NSSDBuffers; j++){
+	for(j = 0 ; j < NBLOCK_SSD_CACHE; j++){
 	 printf("ssd_buf_tag no.%d tag is %ld\n",j,ssd_buffer_descriptors[j].ssd_buf_tag.offset);
 	}
 	printf("scanptr %ld\n",ssd_buffer_strategy_control_for_scan->scan_ptr);
@@ -74,7 +74,7 @@ void insertByTag(SSDBufferTag ssd_buf_tag, long ssd_buf_id){
 	if(ssd_buffer_strategy_control_for_scan->start == -1){
 		ssd_buffer_strategy_control_for_scan->start = ssd_buf_id;
 		ssd_buffer_strategy_control_for_scan->scan_ptr = ssd_buf_id;
-//		printf("insert %ld",ssd_buffer_strategy_control_for_scan->start);	
+//		printf("insert %ld",ssd_buffer_strategy_control_for_scan->start);
 //		printf("check that should be -1 %ld\n",ssd_buffer_descriptors_for_scan[ssd_buf_id].next_scan);
 	}
 	else{
@@ -85,12 +85,12 @@ void insertByTag(SSDBufferTag ssd_buf_tag, long ssd_buf_id){
 		printf("ENTER HERE\n");
 		ssd_buffer_descriptors_for_scan[movePtr].last_scan = ssd_buf_id;
 		ssd_buffer_descriptors_for_scan[ssd_buf_id].next_scan = movePtr;
-		ssd_buffer_strategy_control_for_scan -> start = ssd_buf_id;	
+		ssd_buffer_strategy_control_for_scan -> start = ssd_buf_id;
 	}else{
 
 	while(ssd_buffer_descriptors[movePtr].ssd_buf_tag.offset <= ssd_buf_tag.offset){
 //		printf("%ld, %ld\n", ssd_buffer_descriptors[movePtr].ssd_buf_tag.offset,ssd_buf_tag.offset );
-		
+
 		if(ssd_buffer_descriptors_for_scan[movePtr].next_scan!=-1){
 //printf("movePtr before %ld\n",movePtr);
 		long next = ssd_buffer_descriptors_for_scan[movePtr].next_scan;
@@ -124,7 +124,7 @@ output();
 static volatile void* deleteFromSCAN(long ssd_buf_id)
 {
 	long last;
-	long next;	
+	long next;
 	last = ssd_buffer_descriptors_for_scan[ssd_buf_id].last_scan;
 	next = ssd_buffer_descriptors_for_scan[ssd_buf_id].next_scan;
 
@@ -162,13 +162,13 @@ SSDBufferDesc *getSCANBuffer(SSDBufferTag ssd_buf_tag)
 {
 	SSDBufferDesc *ssd_buf_hdr;
 	SSDBufferDescForSCAN *ssd_buf_hdr_for_scan;
-    
+
 	if(ssd_buffer_strategy_control->first_freessd <0){
-		flush_fifo_times++;
+		flush_times++;
 		ssd_buf_hdr = &ssd_buffer_descriptors[ssd_buffer_strategy_control_for_scan->scan_ptr];
 		if(ssd_buf_hdr->ssd_buf_id == ssd_buffer_strategy_control_for_scan->start){
-			ssd_buffer_strategy_control_for_scan->start = ssd_buffer_descriptors_for_scan[ssd_buffer_strategy_control_for_scan->scan_ptr].next_scan;	
-		}	
+			ssd_buffer_strategy_control_for_scan->start = ssd_buffer_descriptors_for_scan[ssd_buffer_strategy_control_for_scan->scan_ptr].next_scan;
+		}
 /*if the next is -1*/
 		if(ssd_buffer_descriptors_for_scan[ssd_buffer_strategy_control_for_scan->scan_ptr].next_scan != -1){
 			ssd_buffer_strategy_control_for_scan->scan_ptr = ssd_buffer_descriptors_for_scan[ssd_buffer_strategy_control_for_scan->scan_ptr].next_scan;
@@ -176,7 +176,7 @@ SSDBufferDesc *getSCANBuffer(SSDBufferTag ssd_buf_tag)
 	//		ssd_buffer_descriptors_for_scan[ssd_buffer_descriptors_for_scan[ssd_buffer_strategy_control_for_scan->scan_ptr].
 			ssd_buffer_strategy_control_for_scan->scan_ptr = ssd_buffer_strategy_control_for_scan->start;
 		}
-		
+
  		unsigned char   old_flag = ssd_buf_hdr->ssd_buf_flag;
         	SSDBufferTag    old_tag = ssd_buf_hdr->ssd_buf_tag;
         	if (DEBUG)
@@ -189,9 +189,9 @@ SSDBufferDesc *getSCANBuffer(SSDBufferTag ssd_buf_tag)
                 	ssdbuftableDelete(&old_tag, old_hash);
         	}
 		deleteFromSCAN(ssd_buf_hdr->ssd_buf_id);
-		ssd_buf_hdr->next_freessd = ssd_buffer_strategy_control->first_freessd; 
+		ssd_buf_hdr->next_freessd = ssd_buffer_strategy_control->first_freessd;
 		ssd_buffer_strategy_control->first_freessd = ssd_buf_hdr->ssd_buf_id;
-					
+
 	}
 
 

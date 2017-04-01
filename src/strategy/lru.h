@@ -14,10 +14,13 @@ typedef struct
     long        last_lru;           // Tail of list of LRU
 } SSDBufferStrategyControlForLRU;
 
-SSDBufferDescForLRU	*ssd_buffer_descriptors_for_lru;
+/********
+ ** SHM**
+ ********/
 SSDBufferStrategyControlForLRU *ssd_buffer_strategy_control_for_lru;
+SSDBufferDescForLRU	*ssd_buffer_descriptors_for_lru;
+extern unsigned long flush_times;
 
-extern unsigned long flush_fifo_times;
 
 extern void initSSDBufferForLRU();
 extern SSDBufferDesc *getLRUBuffer();

@@ -8,17 +8,17 @@
 static volatile void addToBand(SSDBufferTag ssd_buf_tag, long freessd);
 static volatile void deleteBand();
 
-void 
+void
 initSSDBufferForMost()
 {
 	initBandTable(NBANDTables, &band_hashtable_for_most);
 
 	SSDBufferDescForMost *ssd_buf_hdr_for_most;
 	BandDescForMost *band_hdr_for_most;
-	ssd_buffer_descriptors_for_most = (SSDBufferDescForMost *) malloc(sizeof(SSDBufferDescForMost) * NSSDBuffers);
+	ssd_buffer_descriptors_for_most = (SSDBufferDescForMost *) malloc(sizeof(SSDBufferDescForMost) * NBLOCK_SSD_CACHE);
 	long		i;
 	ssd_buf_hdr_for_most = ssd_buffer_descriptors_for_most;
-	for (i = 0; i < NSSDBuffers; ssd_buf_hdr_for_most++, i++) {
+	for (i = 0; i < NBLOCK_SSD_CACHE; ssd_buf_hdr_for_most++, i++) {
 		ssd_buf_hdr_for_most->ssd_buf_id = i;
 		ssd_buf_hdr_for_most->next_ssd_buf = -1;
 	}
@@ -35,7 +35,7 @@ initSSDBufferForMost()
 	ssd_buffer_strategy_control_for_most->nbands = 0;
 }
 
-void 
+void
 hitInMostBuffer()
 {
 	return;

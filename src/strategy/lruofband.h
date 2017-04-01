@@ -34,7 +34,7 @@ typedef struct {
 }		BandControl;
 
 extern unsigned long NBANDTables;
-extern unsigned long flush_fifo_times;
+extern unsigned long flush_times;
 
 SSDBufferDescForLRUofBand *ssd_buffer_descriptors_for_lruofband;
 BandDesc       *band_descriptors;

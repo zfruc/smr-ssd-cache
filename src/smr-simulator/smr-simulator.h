@@ -13,7 +13,7 @@ typedef struct
 typedef struct
 {
         SSDTag     ssd_tag;
-        long       ssd_id;			// ssd buffer location 
+        long       ssd_id;			// ssd buffer location
         unsigned   ssd_flag;
 //	long		usage_count;
 //	long		next_freessd;
@@ -74,11 +74,11 @@ extern unsigned long NSSDCLEAN;
 extern char     smr_device[100];
 extern char	inner_ssd_device[100];
 extern int 	inner_ssd_fd;
-extern int 	smr_fd;
+extern int 	hdd_fd;
 extern unsigned	long interval_time;
 extern pthread_mutex_t free_ssd_mutex;
 extern pthread_mutex_t inner_ssd_hdr_mutex;
 extern pthread_mutex_t inner_ssd_hash_mutex;
-extern void initSSD();
+extern void initFIFOCache();
 
 #endif

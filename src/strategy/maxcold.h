@@ -54,7 +54,7 @@ extern unsigned long NSMRBands;
 extern unsigned long PERIODTIMES;
 extern unsigned long NCOLDBAND;
 extern unsigned long run_times;
-extern unsigned long flush_fifo_times;
+extern unsigned long flush_times;
 
 SSDBufferHashBucket	*ssd_buffer_hashtable_history;
 

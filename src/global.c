@@ -3,8 +3,8 @@
 #include "main.h"
 
 
-unsigned long NSSDBuffers;
-unsigned long NSSDBufTables;
+unsigned long NBLOCK_SSD_CACHE;
+unsigned long NTABLE_SSD_CACHE;
 unsigned long SSD_BUFFER_SIZE;
 unsigned long NSMRBands = 19418000;		// 194180*(18MB+36MB)/2~5TB
 unsigned long NSMRBlocks = 2621952;		// 2621952*8KB~20GB
@@ -27,7 +27,7 @@ char inner_ssd_device[] = "/Users/wangchunling/Software/code/smr-test/smr-ssd-ca
 SSDEvictionStrategy EvictStrategy;
 int BandOrBlock;
 /*Block = 0, Band=1*/
-int 		    smr_fd;
+int 		    hdd_fd;
 int 		    ssd_fd;
 int 		    inner_ssd_fd;
 unsigned long	interval_time;
@@ -38,7 +38,7 @@ unsigned long flush_fifo_blocks;
 unsigned long flush_ssd_blocks;
 //unsigned long write-fifo-num;
 //unsigned long write-ssd-num;
-unsigned long flush_fifo_times;
+unsigned long flush_times;
 unsigned long run_times;
 unsigned long read_ssd_blocks;
 unsigned long read_fifo_blocks;
@@ -69,3 +69,7 @@ SSDStrategyControl	*ssd_strategy_control;
 SSDDesc		*ssd_descriptors;
 //char		*ssd_blocks;
 SSDHashBucket	*ssd_hashtable;
+
+/** Add for multi-user **/
+const char* SHM_SSDBUF_STRATEGY_CTL = "SHM_SSDBUF_STRATEGY_CTL";
+const char* SHM_SSDBUF_DESCS = "SHM_SSDBUF_DESCS";

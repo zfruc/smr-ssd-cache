@@ -7,7 +7,7 @@ static bool isSamebuf(SSDBufferTag *, SSDBufferTag *);
 
 void initSSDBufTable(size_t size)
 {
-	ssd_buffer_hashtable = (SSDBufferHashBucket *)malloc(sizeof(SSDBufferHashBucket)*size);
+	ssd_buffer_hashtable = (SSDBufferHashBucket *)SHMalloc(sizeof(SSDBufferHashBucket)*size);
 	size_t i;
 	SSDBufferHashBucket *ssd_buf_hash = ssd_buffer_hashtable;
 	for (i = 0; i < size; ssd_buf_hash++, i++){
@@ -19,10 +19,10 @@ void initSSDBufTable(size_t size)
 
 unsigned long ssdbuftableHashcode(SSDBufferTag *ssd_buf_tag)
 {
-	if(BandOrBlock == 1){ 
+	if(BandOrBlock == 1){
                 SSD_BUFFER_SIZE = BNDSZ;
         }
-	unsigned long ssd_buf_hash = (ssd_buf_tag->offset / SSD_BUFFER_SIZE) % NSSDBufTables;
+	unsigned long ssd_buf_hash = (ssd_buf_tag->offset / SSD_BUFFER_SIZE) % NTABLE_SSD_CACHE;
 	return ssd_buf_hash;
 }
 
@@ -53,7 +53,7 @@ long ssdbuftableInsert(SSDBufferTag *ssd_buf_tag, unsigned long hash_code, long 
 		nowbucket = nowbucket->next_item;
 	}
 	if (nowbucket != NULL) {
-		SSDBufferHashBucket *newitem = (SSDBufferHashBucket*)malloc(sizeof(SSDBufferHashBucket));
+		SSDBufferHashBucket *newitem = (SSDBufferHashBucket*)SHMalloc(sizeof(SSDBufferHashBucket));
 		newitem->hash_key = *ssd_buf_tag;
 		newitem->ssd_buf_id = ssd_buf_id;
 		newitem->next_item = NULL;

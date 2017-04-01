@@ -6,7 +6,7 @@
 #define off_t	unsigned long
 #define bool	unsigned char
 
-typedef struct 
+typedef struct
 {
 	off_t	offset;
 } SSDBufferTag;
@@ -42,7 +42,7 @@ typedef enum
     LRU,
 	LRUofBand,
 	Most,
-	Most_Dirty,	
+	Most_Dirty,
 	SCAN,
 	CMR,
 	SMR,
@@ -50,7 +50,10 @@ typedef enum
     MaxCold,
     MaxAll,
     AvgBandHot,
-    HotDivSize
+    HotDivSize,
+    /** add for multiuser **/
+    LRU_global,
+    LRU_peruser
 } SSDEvictionStrategy;
 
 extern size_t BNDSZ;
@@ -69,13 +72,13 @@ extern double time_begin_temp;
 extern double time_now_temp;
 extern unsigned long read_hit_num;
 //extern unsigned long write-ssd-num;
-//extern unsigned long flush_fifo_times;
+//extern unsigned long flush_times;
 
 #define GetSSDBufHashBucket(hash_code) ((SSDBufferHashBucket *) (ssd_buffer_hashtable + (unsigned) (hash_code)))
 
-extern void initSSDBuffer();
+extern void initSSD();
 extern void read_block(off_t offset, char* ssd_buffer);
-extern void write_block(off_t offset, char* ssd_buffer);
+extern void write_block(off_t offset,int blkcnt, char* ssd_buffer);
 extern void read_band(off_t offset, char* ssd_buffer);
 extern void write_band(off_t offset, char* ssd_buffer);
 
@@ -83,10 +86,13 @@ extern void write_band(off_t offset, char* ssd_buffer);
 //extern int write(unsigned offset);
 extern void* flushSSDBuffer(SSDBufferDesc *ssd_buf_hdr);
 
-extern unsigned long NSSDBuffers;
-extern unsigned long NSSDBufTables;
+extern unsigned long NBLOCK_SSD_CACHE;
+extern unsigned long NTABLE_SSD_CACHE;
 extern size_t SSD_BUFFER_SIZE;
 extern char	smr_device[100];
 extern int 	smr_fd;
 extern int 	ssd_fd;
 extern SSDEvictionStrategy EvictStrategy;
+
+extern const char* SHM_SSDBUF_STRATEGY_CTL;
+extern const char* SHM_SSDBUF_DESCS;

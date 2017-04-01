@@ -3,7 +3,7 @@
 #include "ssd-cache.h"
 #include "smr-simulator/smr-simulator.h"
 #include "lru.h"
-
+#include "shmlib.h"
 static volatile void *addToLRUHead(SSDBufferDescForLRU * ssd_buf_hdr_for_lru);
 static volatile void *deleteFromLRU(SSDBufferDescForLRU * ssd_buf_hdr_for_lru);
 static volatile void *moveToLRUHead(SSDBufferDescForLRU * ssd_buf_hdr_for_lru);
@@ -11,23 +11,24 @@ static volatile void *moveToLRUHead(SSDBufferDescForLRU * ssd_buf_hdr_for_lru);
 /*
  * init buffer hash table, strategy_control, buffer, work_mem
  */
-void 
+void
 initSSDBufferForLRU()
 {
-	ssd_buffer_strategy_control_for_lru = (SSDBufferStrategyControlForLRU *) malloc(sizeof(SSDBufferStrategyControlForLRU));
+
+	ssd_buffer_strategy_control_for_lru = (SSDBufferStrategyControlForLRU *)SHMalloc(SHM_SSDBUF_STRATEGY_CTL,sizeof(SSDBufferStrategyControlForLRU));
 	ssd_buffer_strategy_control_for_lru->first_lru = -1;
 	ssd_buffer_strategy_control_for_lru->last_lru = -1;
 
-	ssd_buffer_descriptors_for_lru = (SSDBufferDescForLRU *) malloc(sizeof(SSDBufferDescForLRU) * NSSDBuffers);
+	ssd_buffer_descriptors_for_lru = (SSDBufferDescForLRU *)SHMalloc(SHM_SSDBUF_DESCS,sizeof(SSDBufferDescForLRU) * NBLOCK_SSD_CACHE);
 	SSDBufferDescForLRU *ssd_buf_hdr_for_lru;
 	long		i;
 	ssd_buf_hdr_for_lru = ssd_buffer_descriptors_for_lru;
-	for (i = 0; i < NSSDBuffers; ssd_buf_hdr_for_lru++, i++) {
+	for (i = 0; i < NBLOCK_SSD_CACHE; ssd_buf_hdr_for_lru++, i++) {
 		ssd_buf_hdr_for_lru->ssd_buf_id = i;
 		ssd_buf_hdr_for_lru->next_lru = -1;
 		ssd_buf_hdr_for_lru->last_lru = -1;
 	}
-	flush_fifo_times = 0;
+	flush_times = 0;
 }
 
 static volatile void *
@@ -87,10 +88,14 @@ getLRUBuffer()
 		ssd_buffer_strategy_control->n_usedssd++;
 		return ssd_buf_hdr;
 	}
-	flush_fifo_times++;
-	ssd_buf_hdr = &ssd_buffer_descriptors[ssd_buffer_strategy_control_for_lru->last_lru];
-	ssd_buf_hdr_for_lru = &ssd_buffer_descriptors_for_lru[ssd_buffer_strategy_control_for_lru->last_lru];
-	moveToLRUHead(ssd_buf_hdr_for_lru);
+
+	/** When there is NO free SSD space for cache, then TODO flush **/
+	flush_times++;
+
+	long coldest_id = ssd_buffer_strategy_control_for_lru->last_lru;
+	ssd_buf_hdr = &ssd_buffer_descriptors[coldest_id];
+	ssd_buf_hdr_for_lru = &ssd_buffer_descriptors_for_lru[coldest_id];
+
 	unsigned char	old_flag = ssd_buf_hdr->ssd_buf_flag;
 	SSDBufferTag	old_tag = ssd_buf_hdr->ssd_buf_tag;
 	if (DEBUG)
@@ -102,6 +107,9 @@ getLRUBuffer()
 		unsigned long	old_hash = ssdbuftableHashcode(&old_tag);
 		ssdbuftableDelete(&old_tag, old_hash);
 	}
+
+    moveToLRUHead(ssd_buf_hdr_for_lru);
+
 	return ssd_buf_hdr;
 }
 

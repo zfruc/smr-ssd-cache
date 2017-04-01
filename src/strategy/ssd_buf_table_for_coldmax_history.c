@@ -21,7 +21,7 @@ void initSSDBufTableHistory(size_t size)
 
 unsigned long ssdbuftableHashcodeHistory(SSDBufferTag *ssd_buf_tag)
 {
-	unsigned long ssd_buf_hash = (ssd_buf_tag->offset / SSD_BUFFER_SIZE) % NSSDBufTables;
+	unsigned long ssd_buf_hash = (ssd_buf_tag->offset / SSD_BUFFER_SIZE) % NTABLE_SSD_CACHE;
 	return ssd_buf_hash;
 }
 
