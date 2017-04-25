@@ -13,7 +13,7 @@ int multiuser_access()
 //    int		returnCode = 0;
 //
 //    static SSDBufferTag ssd_buf_tag;
-//    static SSDBufferDesc *ssd_buf_hdr;
+//    static SSDBufDesp *ssd_buf_hdr;
 //
 //    ssd_buf_tag.offset = offset;
 //    if (DEBUG)

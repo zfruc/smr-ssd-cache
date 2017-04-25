@@ -5,7 +5,7 @@
 #include "most.h"
 #include "band_table.h"
 
-static volatile void addToBand(SSDBufferTag ssd_buf_tag, long freessd);
+static volatile void addToBand(SSDBufferTag *ssd_buf_tag, long freessd);
 static volatile void deleteBand();
 
 void
@@ -13,11 +13,11 @@ initSSDBufferForMost()
 {
 	initBandTable(NBANDTables, &band_hashtable_for_most);
 
-	SSDBufferDescForMost *ssd_buf_hdr_for_most;
+	SSDBufDespForMost *ssd_buf_hdr_for_most;
 	BandDescForMost *band_hdr_for_most;
-	ssd_buffer_descriptors_for_most = (SSDBufferDescForMost *) malloc(sizeof(SSDBufferDescForMost) * NBLOCK_SSD_CACHE);
+	ssd_buf_desps_for_most = (SSDBufDespForMost *) malloc(sizeof(SSDBufDespForMost) * NBLOCK_SSD_CACHE);
 	long		i;
-	ssd_buf_hdr_for_most = ssd_buffer_descriptors_for_most;
+	ssd_buf_hdr_for_most = ssd_buf_desps_for_most;
 	for (i = 0; i < NBLOCK_SSD_CACHE; ssd_buf_hdr_for_most++, i++) {
 		ssd_buf_hdr_for_most->ssd_buf_id = i;
 		ssd_buf_hdr_for_most->next_ssd_buf = -1;
@@ -31,8 +31,8 @@ initSSDBufferForMost()
 		band_hdr_for_most->first_page = -1;
 	}
 
-	ssd_buffer_strategy_control_for_most = (SSDBufferStrategyControlForMost *) malloc(sizeof(SSDBufferStrategyControlForMost));
-	ssd_buffer_strategy_control_for_most->nbands = 0;
+	ssd_buf_strategy_ctrl_for_most = (SSDBufferStrategyControlForMost *) malloc(sizeof(SSDBufferStrategyControlForMost));
+	ssd_buf_strategy_ctrl_for_most->nbands = 0;
 }
 
 void
@@ -48,11 +48,11 @@ deleteBand()
 	BandDescForMost	temp;
 
 	band_hdr_for_most = band_descriptors_for_most[0];
-	temp = band_descriptors_for_most[ssd_buffer_strategy_control_for_most->nbands - 1];
+	temp = band_descriptors_for_most[ssd_buf_strategy_ctrl_for_most->nbands - 1];
 	long		parent = 0;
 	long		child = parent * 2 + 1;
-	while (child < ssd_buffer_strategy_control_for_most->nbands) {
-		if (child < ssd_buffer_strategy_control_for_most->nbands && band_descriptors_for_most[child].current_pages < band_descriptors_for_most[child + 1].current_pages)
+	while (child < ssd_buf_strategy_ctrl_for_most->nbands) {
+		if (child < ssd_buf_strategy_ctrl_for_most->nbands && band_descriptors_for_most[child].current_pages < band_descriptors_for_most[child + 1].current_pages)
 			child++;
 		if (temp.current_pages >= band_descriptors_for_most[child].current_pages)
 			break;
@@ -66,10 +66,10 @@ deleteBand()
 		}
 	}
 	band_descriptors_for_most[parent] = temp;
-	band_descriptors_for_most[ssd_buffer_strategy_control_for_most->nbands - 1].band_num = -1;
-	band_descriptors_for_most[ssd_buffer_strategy_control_for_most->nbands - 1].current_pages = 0;
-	band_descriptors_for_most[ssd_buffer_strategy_control_for_most->nbands - 1].first_page = -1;
-	ssd_buffer_strategy_control_for_most->nbands--;
+	band_descriptors_for_most[ssd_buf_strategy_ctrl_for_most->nbands - 1].band_num = -1;
+	band_descriptors_for_most[ssd_buf_strategy_ctrl_for_most->nbands - 1].current_pages = 0;
+	band_descriptors_for_most[ssd_buf_strategy_ctrl_for_most->nbands - 1].first_page = -1;
+	ssd_buf_strategy_ctrl_for_most->nbands--;
 	long		band_hash = bandtableHashcode(temp.band_num);
 	bandtableDelete(temp.band_num, band_hash, &band_hashtable_for_most);
 	bandtableInsert(temp.band_num, band_hash, parent, &band_hashtable_for_most);
@@ -82,15 +82,15 @@ deleteBand()
 	SSDBufferTag	old_tag;
 	unsigned char	old_flag;
 	unsigned long	old_hash;
-	SSDBufferDesc  *ssd_buf_hdr;
+	SSDBufDesp  *ssd_buf_hdr;
 
 	while (first_page >= 0) {
-		ssd_buf_hdr = &ssd_buffer_descriptors[first_page];
+		ssd_buf_hdr = &ssd_buf_desps[first_page];
 
-		ssd_buf_hdr->next_freessd = ssd_buffer_strategy_control->first_freessd;
-		ssd_buffer_strategy_control->first_freessd = first_page;
-		first_page = ssd_buffer_descriptors_for_most[first_page].next_ssd_buf;
-		ssd_buffer_descriptors_for_most[ssd_buffer_strategy_control->first_freessd].next_ssd_buf = -1;
+		ssd_buf_hdr->next_freessd = ssd_buf_desp_ctrl->first_freessd;
+		ssd_buf_desp_ctrl->first_freessd = first_page;
+		first_page = ssd_buf_desps_for_most[first_page].next_ssd_buf;
+		ssd_buf_desps_for_most[ssd_buf_desp_ctrl->first_freessd].next_ssd_buf = -1;
 
 		old_flag = ssd_buf_hdr->ssd_buf_flag;
 		old_tag = ssd_buf_hdr->ssd_buf_tag;
@@ -101,27 +101,27 @@ deleteBand()
 			old_hash = ssdbuftableHashcode(&old_tag);
 			ssdbuftableDelete(&old_tag, old_hash);
 		}
-		ssd_buffer_strategy_control->n_usedssd--;
+		ssd_buf_desp_ctrl->n_usedssd--;
 	}
 	bandtableDelete(band_num, band_hash, &band_hashtable_for_most);
 }
 
 static volatile void
-addToBand(SSDBufferTag ssd_buf_tag, long first_freessd)
+addToBand(SSDBufferTag *ssd_buf_tag, long first_freessd)
 {
-	long		band_num = GetSMRBandNumFromSSD(ssd_buf_tag.offset);
+	long		band_num = GetSMRBandNumFromSSD(ssd_buf_tag->offset);
 	unsigned long	band_hash = bandtableHashcode(band_num);
 	long		band_id = bandtableLookup(band_num, band_hash, band_hashtable_for_most);
 
-	SSDBufferDescForMost *ssd_buf_for_most;
+	SSDBufDespForMost *ssd_buf_for_most;
 	BandDescForMost *band_hdr_for_most;
 
 	if (band_id >= 0) {
 		//printf("hit band %ld\n", band_num);
 		long		first_page = band_descriptors_for_most[band_id].first_page;
-		ssd_buf_for_most = &ssd_buffer_descriptors_for_most[first_page];
-		SSDBufferDescForMost *new_ssd_buf_for_most;
-		new_ssd_buf_for_most = &ssd_buffer_descriptors_for_most[first_freessd];
+		ssd_buf_for_most = &ssd_buf_desps_for_most[first_page];
+		SSDBufDespForMost *new_ssd_buf_for_most;
+		new_ssd_buf_for_most = &ssd_buf_desps_for_most[first_freessd];
 		new_ssd_buf_for_most->next_ssd_buf = ssd_buf_for_most->next_ssd_buf;
 		ssd_buf_for_most->next_ssd_buf = first_freessd;
 
@@ -143,32 +143,32 @@ addToBand(SSDBufferTag ssd_buf_tag, long first_freessd)
 			parent = (child - 1) / 2;
 		}
 	} else {
-		ssd_buffer_strategy_control_for_most->nbands++;
-		band_descriptors_for_most[ssd_buffer_strategy_control_for_most->nbands - 1].band_num = band_num;
-		band_descriptors_for_most[ssd_buffer_strategy_control_for_most->nbands - 1].current_pages = 1;
-		band_descriptors_for_most[ssd_buffer_strategy_control_for_most->nbands - 1].first_page = first_freessd;
-		bandtableInsert(band_num, band_hash, ssd_buffer_strategy_control_for_most->nbands - 1, &band_hashtable_for_most);
-		SSDBufferDescForMost *new_ssd_buf_for_most;
-		new_ssd_buf_for_most = &ssd_buffer_descriptors_for_most[first_freessd];
+		ssd_buf_strategy_ctrl_for_most->nbands++;
+		band_descriptors_for_most[ssd_buf_strategy_ctrl_for_most->nbands - 1].band_num = band_num;
+		band_descriptors_for_most[ssd_buf_strategy_ctrl_for_most->nbands - 1].current_pages = 1;
+		band_descriptors_for_most[ssd_buf_strategy_ctrl_for_most->nbands - 1].first_page = first_freessd;
+		bandtableInsert(band_num, band_hash, ssd_buf_strategy_ctrl_for_most->nbands - 1, &band_hashtable_for_most);
+		SSDBufDespForMost *new_ssd_buf_for_most;
+		new_ssd_buf_for_most = &ssd_buf_desps_for_most[first_freessd];
 		new_ssd_buf_for_most->next_ssd_buf = -1;
 	}
 }
 
-SSDBufferDesc  *
-getMostBuffer(SSDBufferTag ssd_buf_tag)
+SSDBufDesp  *
+getMostBuffer(SSDBufferTag *ssd_buf_tag)
 {
 	long		i;
-	SSDBufferDesc  *ssd_buffer_hdr;
-	long		first_freessd = ssd_buffer_strategy_control->first_freessd;
+	SSDBufDesp  *ssd_buffer_hdr;
+	long		first_freessd = ssd_buf_desp_ctrl->first_freessd;
 
 	if (first_freessd < 0) {
 		deleteBand();
-		first_freessd = ssd_buffer_strategy_control->first_freessd;
+		first_freessd = ssd_buf_desp_ctrl->first_freessd;
 	}
 	addToBand(ssd_buf_tag, first_freessd);
-	ssd_buffer_hdr = &ssd_buffer_descriptors[first_freessd];
-	ssd_buffer_strategy_control->first_freessd = ssd_buffer_hdr->next_freessd;
+	ssd_buffer_hdr = &ssd_buf_desps[first_freessd];
+	ssd_buf_desp_ctrl->first_freessd = ssd_buffer_hdr->next_freessd;
 	ssd_buffer_hdr->next_freessd = -1;
-	ssd_buffer_strategy_control->n_usedssd++;
+	ssd_buf_desp_ctrl->n_usedssd++;
 	return ssd_buffer_hdr;
 }

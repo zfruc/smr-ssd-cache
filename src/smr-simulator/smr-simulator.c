@@ -9,6 +9,8 @@
 #include "smr-simulator.h"
 #include "inner_ssd_buf_table.h"
 
+#ifdef SIMULATION
+
 static SSDDesc *getStrategySSD();
 static void    *freeStrategySSD();
 static volatile void *flushSSD(SSDDesc * ssd_hdr,int smr_fd);
@@ -277,6 +279,7 @@ flushSSD(SSDDesc * ssd_hdr,int smr_fd)
 	time_write_smr += time_now_temp - time_begin_temp;
 	free(band);
 }
+#endif
 
 unsigned long
 GetSMRActualBandSizeFromSSD(unsigned long offset)

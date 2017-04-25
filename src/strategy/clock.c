@@ -11,13 +11,13 @@ void
 initSSDBufferForClock()
 {
 
-	ssd_buffer_strategy_control_for_clock = (SSDBufferStrategyControlForClock *) malloc(sizeof(SSDBufferStrategyControlForClock));
-	ssd_buffer_strategy_control_for_clock->next_victimssd = 0;
+	ssd_buf_strategy_ctrl_for_clock = (SSDBufferStrategyControlForClock *) malloc(sizeof(SSDBufferStrategyControlForClock));
+	ssd_buf_strategy_ctrl_for_clock->next_victimssd = 0;
 
-	ssd_buffer_descriptors_for_clock = (SSDBufferDescForClock *) malloc(sizeof(SSDBufferDescForClock) * NBLOCK_SSD_CACHE);
-	SSDBufferDescForClock *ssd_buf_hdr_for_clock;
+	ssd_buf_desps_for_clock = (SSDBufDespForClock *) malloc(sizeof(SSDBufDespForClock) * NBLOCK_SSD_CACHE);
+	SSDBufDespForClock *ssd_buf_hdr_for_clock;
 	long		i;
-	ssd_buf_hdr_for_clock = ssd_buffer_descriptors_for_clock;
+	ssd_buf_hdr_for_clock = ssd_buf_desps_for_clock;
 	for (i = 0; i < NBLOCK_SSD_CACHE; ssd_buf_hdr_for_clock++, i++) {
 		ssd_buf_hdr_for_clock->ssd_buf_id = i;
 		ssd_buf_hdr_for_clock->usage_count = 0;
@@ -25,26 +25,26 @@ initSSDBufferForClock()
 	flush_times = 0;
 }
 
-SSDBufferDesc  *
+SSDBufDesp  *
 getCLOCKBuffer()
 {
-	SSDBufferDescForClock *ssd_buf_hdr_for_clock;
-	SSDBufferDesc  *ssd_buf_hdr;
+	SSDBufDespForClock *ssd_buf_hdr_for_clock;
+	SSDBufDesp  *ssd_buf_hdr;
 
-	if (ssd_buffer_strategy_control->first_freessd >= 0) {
-		ssd_buf_hdr = &ssd_buffer_descriptors[ssd_buffer_strategy_control->first_freessd];
-		ssd_buffer_strategy_control->first_freessd = ssd_buf_hdr->next_freessd;
+	if (ssd_buf_desp_ctrl->first_freessd >= 0) {
+		ssd_buf_hdr = &ssd_buf_desps[ssd_buf_desp_ctrl->first_freessd];
+		ssd_buf_desp_ctrl->first_freessd = ssd_buf_hdr->next_freessd;
 		ssd_buf_hdr->next_freessd = -1;
-		ssd_buffer_strategy_control->n_usedssd++;
+		ssd_buf_desp_ctrl->n_usedssd++;
 		return ssd_buf_hdr;
 	}
 	flush_times++;
 	for (;;) {
-		ssd_buf_hdr_for_clock = &ssd_buffer_descriptors_for_clock[ssd_buffer_strategy_control_for_clock->next_victimssd];
-		ssd_buf_hdr = &ssd_buffer_descriptors[ssd_buffer_strategy_control_for_clock->next_victimssd];
-		ssd_buffer_strategy_control_for_clock->next_victimssd++;
-		if (ssd_buffer_strategy_control_for_clock->next_victimssd >= NBLOCK_SSD_CACHE) {
-			ssd_buffer_strategy_control_for_clock->next_victimssd = 0;
+		ssd_buf_hdr_for_clock = &ssd_buf_desps_for_clock[ssd_buf_strategy_ctrl_for_clock->next_victimssd];
+		ssd_buf_hdr = &ssd_buf_desps[ssd_buf_strategy_ctrl_for_clock->next_victimssd];
+		ssd_buf_strategy_ctrl_for_clock->next_victimssd++;
+		if (ssd_buf_strategy_ctrl_for_clock->next_victimssd >= NBLOCK_SSD_CACHE) {
+			ssd_buf_strategy_ctrl_for_clock->next_victimssd = 0;
 		}
 		if (ssd_buf_hdr_for_clock->usage_count > 0) {
 			ssd_buf_hdr_for_clock->usage_count--;
@@ -69,10 +69,10 @@ getCLOCKBuffer()
 
 
 void           *
-hitInCLOCKBuffer(SSDBufferDesc * ssd_buf_hdr)
+hitInCLOCKBuffer(SSDBufDesp * ssd_buf_hdr)
 {
-	SSDBufferDescForClock *ssd_buf_hdr_for_clock;
-	ssd_buf_hdr_for_clock = &ssd_buffer_descriptors_for_clock[ssd_buf_hdr->ssd_buf_id];
+	SSDBufDespForClock *ssd_buf_hdr_for_clock;
+	ssd_buf_hdr_for_clock = &ssd_buf_desps_for_clock[ssd_buf_hdr->ssd_buf_id];
 	ssd_buf_hdr_for_clock->usage_count++;
 
 	return NULL;

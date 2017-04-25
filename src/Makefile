@@ -1,14 +1,14 @@
-CC = gcc -g
+CC = gcc -g -g
 
 ifndef SMR_SSD_CACHE_DIR
 SMR_SSD_CACHE_DIR = .
 endif
 
-CFLAGS += -Wall -pthread
+CFLAGS += -Wall -pthread -lrt
 CPPFLAGS += -I$(SMR_SSD_CACHE_DIR) -I$(SMR_SSD_CACHE_DIR)/smr-simulator -I$(SMR_SSD_CACHE_DIR)/strategy
 
 RM = rm -rf
-OBJS = global.o ssd_buf_table.o ssd-cache.o inner_ssd_buf_table.o smr-simulator.o trace2call.o main.o clock.o lru.o scan.o lruofband.o band_table.o most.o WA.o ssd_buf_table_for_coldmax_history.o maxcold.o
+OBJS = global.o shmlib.o ssd_buf_table.o ssd-cache.o inner_ssd_buf_table.o smr-simulator.o trace2call.o main.o clock.o lru.o scan.o lruofband.o band_table.o most.o WA.o ssd_buf_table_for_coldmax_history.o maxcold.o
 
 all: $(OBJS) smr-ssd-cache
 	@echo 'Successfully built smr-ssd-cache...'
@@ -17,6 +17,9 @@ smr-ssd-cache:
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(OBJS) -o $@
 
 global.o: global.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
+
+shmlib.o: shmlib.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
 
 ssd_buf_table.o: ssd_buf_table.c

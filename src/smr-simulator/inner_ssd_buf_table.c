@@ -1,3 +1,4 @@
+#ifdef SIMULATION
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -8,7 +9,7 @@ static bool isSamessd(SSDTag *, SSDTag *);
 
 void initSSDTable(size_t size)
 {
-	ssd_hashtable = (SSDHashBucket *)malloc(sizeof(SSDHashBucket)*size);
+	ssd_hashtable = (SSDHashBucket*)malloc(sizeof(SSDHashBucket)*size);
 	size_t i;
 	SSDHashBucket *ssd_hash = ssd_hashtable;
 	for (i = 0; i < size; ssd_hash++, i++){
@@ -111,3 +112,4 @@ static bool isSamessd(SSDTag *tag1, SSDTag *tag2)
 		return 0;
 	else return 1;
 }
+#endif

@@ -9,47 +9,50 @@
 #include "strategy/lru.h"
 #include "strategy/lruofband.h"
 #include "strategy/scan.h"
+#include "trace2call.h"
+#include "report.h"
+void            trace_to_iocall(char *trace_file_path);
+static void     reportCurInfo();
 
-char READ = '0';
-char WRITE = '1';
-multiuser_trace_call()
-{
-
-}
 void
 trace_to_iocall(char *trace_file_path)
 {
+    char		action;
+    off_t		offset;
+    size_t		size;
+    char       *ssd_buffer;
+    float		size_float;
+    int	        returnCode;
+
     FILE *trace;
     if ((trace = fopen(trace_file_path, "rt")) == NULL)
     {
-        printf("[ERROR] trace_to_iocall():--------Fail to open the trace file!");
+        error("Failed to open the trace file!\n");
         exit(1);
     }
 
-    char		action;
-    char		write_or_read[100];
-    off_t		offset;
-    size_t		size;
-    char           *ssd_buffer;
-    int		i;
-    float		size_float;
-
-    int	returnCode = posix_memalign(&ssd_buffer, 512, 16*sizeof(char) * BLCKSZ);
+    returnCode = posix_memalign(&ssd_buffer, 512, 16*sizeof(char) * BLCKSZ);
     if (returnCode < 0)
     {
-        printf("[ERROR] flushSSDBuffer():--------posix memalign\n");
+        error("posix memalign error\n");
         free(ssd_buffer);
         exit(-1);
     }
 
+    int i;
     for (i = 0; i < 16*BLCKSZ; i++)
+    {
         ssd_buffer[i] = '1';
+    }
+
     while (!feof(trace))
     {
-//        returnCode = fscanf(trace, "%c %d %lu\n", &action, &i, &offset);
-//        if (returnCode < 0)
-//            break;
-
+        returnCode = fscanf(trace, "%c %d %lu\n", &action, &i, &offset);
+        if (returnCode < 0)
+        {
+            error("error while reading trace file.");
+            break;
+        }
         size = 4096;
         offset = offset * BLCKSZ;
 
@@ -62,19 +65,27 @@ trace_to_iocall(char *trace_file_path)
 //			size = offset_end - offset;
 
 
-        if (action == WRITE)
+        if (action == ACT_WRITE)
         {
             if (DEBUG)
-                printf("[INFO] trace_to_iocall():--------wirte offset=%lu\n", offset);
+                printf("[INFO] trace_to_iocall():wirte offset=%lu\n", offset);
             write_block(offset,1, ssd_buffer);
         }
-        else if (action == READ)
+        else if (action == ACT_READ)
         {
             if (DEBUG)
-                printf("[INFO] trace_to_iocall():--------read offset=%lu\n", offset);
+                printf("[INFO] trace_to_iocall():read offset=%lu\n", offset);
+            read_block(offset,ssd_buffer);
         }
-            }
-    printf("read_hit_num:%lu  hit num:%lu   read_ssd_blocks:%lu  flush_ssd_blocks:%lu flush_times:%lu read_fifo_blocks:%lu   flush_fifo_blocks:%lu  read_smr_blocks:%lu   read_smr_bands:%lu   flush_bands:%lu flush_band_size=%lu\n ", read_hit_num, hit_num, read_ssd_blocks, flush_ssd_blocks, flush_times, read_fifo_blocks, flush_fifo_blocks, read_smr_blocks, read_smr_bands, flush_bands, flush_band_size);
+    }
+    reportCurInfo();
     free(ssd_buffer);
     fclose(trace);
+}
+
+static void reportCurInfo()
+{
+        printf(" read_hit_num:%lu\n hit num:%lu\n read_ssd_blocks:%lu\n flush_ssd_blocks:%lu\n read_fifo_blocks:%lu\n flush_fifo_blocks:%lu\n read_smr_blocks:%lu\n read_smr_bands:%lu\n flush_bands:%lu\n flush_band_size=%lu\n",
+                 read_hit_num, hit_num, read_ssd_blocks, flush_ssd_blocks, read_fifo_blocks, flush_fifo_blocks, read_smr_blocks, read_smr_bands, flush_bands, flush_band_size);
+
 }

@@ -9,9 +9,9 @@ static bool isSamebuf(SSDBufferTag *, SSDBufferTag *);
 
 void initSSDBufTableHistory(size_t size)
 {
-	ssd_buffer_hashtable_history = (SSDBufferHashBucket *)malloc(sizeof(SSDBufferHashBucket)*size);
+	ssd_buf_hashtable_history = (SSDBufHashBucket *)malloc(sizeof(SSDBufHashBucket)*size);
 	size_t i;
-	SSDBufferHashBucket *ssd_buf_hash = ssd_buffer_hashtable_history;
+	SSDBufHashBucket *ssd_buf_hash = ssd_buf_hashtable_history;
 	for (i = 0; i < size; ssd_buf_hash++, i++){
 		ssd_buf_hash->ssd_buf_id = -1;
 		ssd_buf_hash->hash_key.offset = -1;
@@ -29,7 +29,7 @@ size_t ssdbuftableLookupHistory(SSDBufferTag *ssd_buf_tag, unsigned long hash_co
 {
 	if (DEBUG)
 		printf("[INFO] Lookup ssd_buf_tag: %lu\n",ssd_buf_tag->offset);
-	SSDBufferHashBucket *nowbucket = GetSSDBufHashBucketForColdMaxHistory(hash_code);
+	SSDBufHashBucket *nowbucket = GetSSDBufHashBucketForColdMaxHistory(hash_code);
 	while (nowbucket != NULL) {
 		if (isSamebuf(&nowbucket->hash_key, ssd_buf_tag)) {
 			return nowbucket->ssd_buf_id;
@@ -44,7 +44,7 @@ long ssdbuftableInsertHistory(SSDBufferTag *ssd_buf_tag, unsigned long hash_code
 {
 	if (DEBUG)
 		printf("[INFO] Insert buf_tag: %lu\n",ssd_buf_tag->offset);
-	SSDBufferHashBucket *nowbucket = GetSSDBufHashBucketForColdMaxHistory(hash_code);
+	SSDBufHashBucket *nowbucket = GetSSDBufHashBucketForColdMaxHistory(hash_code);
 	while (nowbucket->next_item != NULL && nowbucket != NULL) {
 		if (isSamebuf(&nowbucket->hash_key, ssd_buf_tag)) {
 			return nowbucket->ssd_buf_id;
@@ -52,7 +52,7 @@ long ssdbuftableInsertHistory(SSDBufferTag *ssd_buf_tag, unsigned long hash_code
 		nowbucket = nowbucket->next_item;
 	}
 	if (nowbucket != NULL) {
-		SSDBufferHashBucket *newitem = (SSDBufferHashBucket*)malloc(sizeof(SSDBufferHashBucket));
+		SSDBufHashBucket *newitem = (SSDBufHashBucket*)malloc(sizeof(SSDBufHashBucket));
 		newitem->hash_key = *ssd_buf_tag;
 		newitem->ssd_buf_id = ssd_buf_id;
 		newitem->next_item = NULL;
@@ -71,9 +71,9 @@ long ssdbuftableDeleteHistory(SSDBufferTag *ssd_buf_tag, unsigned long hash_code
 {
 	if (DEBUG)
 		printf("[INFO] Delete buf_tag: %lu\n",ssd_buf_tag->offset);
-	SSDBufferHashBucket *nowbucket = GetSSDBufHashBucketForColdMaxHistory(hash_code);
+	SSDBufHashBucket *nowbucket = GetSSDBufHashBucketForColdMaxHistory(hash_code);
 	long del_id;
-	SSDBufferHashBucket *delitem;
+	SSDBufHashBucket *delitem;
 	nowbucket->next_item;
 	while (nowbucket->next_item != NULL && nowbucket != NULL) {
 		if (isSamebuf(&nowbucket->next_item->hash_key, ssd_buf_tag)) {

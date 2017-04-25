@@ -5,5 +5,5 @@
 extern unsigned long WRITEAMPLIFICATION;
 
 void initSSDBufferForWA();
-SSDBufferDesc *getWABuffer(SSDBufferTag);
+SSDBufDesp *getWABuffer(SSDBufferTag*);
 void hitInMostBuffer();

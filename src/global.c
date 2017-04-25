@@ -21,8 +21,8 @@ unsigned long NSSDCLEAN = 1;
 unsigned long WRITEAMPLIFICATION = 100;
 unsigned long NCOLDBAND = 1;
 unsigned long PERIODTIMES;
-char smr_device[] = "/Users/wangchunling/Software/code/smr-test/smr-ssd-cache/src/smr";
-char ssd_device[] = "/Users/wangchunling/Software/code/smr-test/smr-ssd-cache/src/ssd";
+char smr_device[] = "/home/ly/iotest/hdd";
+char ssd_device[] = "/home/ly/iotest/ssd";
 char inner_ssd_device[] = "/Users/wangchunling/Software/code/smr-test/smr-ssd-cache/src/inner_ssd";
 SSDEvictionStrategy EvictStrategy;
 int BandOrBlock;
@@ -53,23 +53,35 @@ double time_read_fifo;
 double time_read_smr;
 double time_write_fifo;
 double time_write_smr;
-double time_begin_temp;
-double time_now_temp;
+
+unsigned long miss_hashitem_num;
 
 pthread_mutex_t free_ssd_mutex;
 pthread_mutex_t inner_ssd_hdr_mutex;
 pthread_mutex_t inner_ssd_hash_mutex;
 
-SSDBufferDesc	*ssd_buffer_descriptors;
-SSDBufferStrategyControl	*ssd_buffer_strategy_control;
-SSDBufferHashBucket	        *ssd_buffer_hashtable;
+pthread_mutex_t *lock_process_req;
+SSDBufDespCtrl	*ssd_buf_desp_ctrl;
+SSDBufDesp	    *ssd_buf_desps;
 
+SSDBufHashCtrl   *ssd_buf_hash_ctrl;
+SSDBufHashBucket *ssd_buf_hashtable;
+SSDBufHashBucket *ssd_buf_hashdesps;
+
+#ifdef SIMULATION
 SSDStrategyControl	*ssd_strategy_control;
-
 SSDDesc		*ssd_descriptors;
-//char		*ssd_blocks;
 SSDHashBucket	*ssd_hashtable;
+#endif // SIMULATION
 
-/** Add for multi-user **/
-const char* SHM_SSDBUF_STRATEGY_CTL = "SHM_SSDBUF_STRATEGY_CTL";
-const char* SHM_SSDBUF_DESCS = "SHM_SSDBUF_DESCS";
+/** Shared memory variable names **/
+const char* SHM_SSDBUF_STRATEGY_CTRL = "SHM_SSDBUF_STRATEGY_CTRL";
+const char* SHM_SSDBUF_STRATEGY_DESP = "SHM_SSDBUF_STRATEGY_DESP";
+
+const char* SHM_SSDBUF_DESP_CTRL = "SHM_SSDBUF_DESP_CTRL";
+const char* SHM_SSDBUF_DESPS = "SHM_SSDBUF_DESPS";
+
+const char* SHM_SSDBUF_HASHTABLE_CTRL = "SHM_SSDBUF_HASHTABLE_CTRL";
+const char* SHM_SSDBUF_HASHTABLE = "SHM_SSDBUF_HASHTABLE";
+const char* SHM_SSDBUF_HASHDESPS =  "SHM_SSDBUF_HASHDESPS";
+const char* SHM_PROCESS_REQ_LOCK = "SHM_PROCESS_REQ_LOCK";
