@@ -14,7 +14,6 @@
 #include "strategy/WA.h"
 #include "strategy/maxcold.h"
 #include <shmlib.h>
-
 void CopySSDBufTag(SSDBufferTag* objectTag, SSDBufferTag* sourceTag);
 static SSDBufDesp *SSDBufferAlloc(SSDBufferTag *ssd_buf_tag, bool * found);
 
@@ -23,8 +22,6 @@ static SSDBufDesp *getSSDStrategyBuffer(SSDBufferTag *ssd_buf_tag, SSDEvictionSt
 static void    *hitInSSDBuffer(SSDBufDesp * ssd_buf_hdr, SSDEvictionStrategy strategy);
 static int init_SSDDescriptorBuffer();
 static int init_StatisticObj();
-
-static void report_ontime();
 
 /* stopwatch */
 static double time_begin_temp;
@@ -38,6 +35,7 @@ static double lastTimerinterval();
 /* Device I/O operation with Timer */
 static int dev_pread    (int fd, void* buf,size_t nbytes,off_t offset);
 static int dev_pwrite   (int fd, void* buf,size_t nbytes,off_t offset);
+static char *ssd_buffer;
 
 
 /*
@@ -51,6 +49,15 @@ initSSD()
     int r_initdesp          =   init_SSDDescriptorBuffer();
     int r_initstt           =   init_StatisticObj();
     printf("init_Strategy: %d, init_table: %d, init_desp: %d, inti_Stt: %d\n",r_initstrategybuf, r_initbuftb, r_initdesp, r_initstt);
+
+    int returnCode;
+    returnCode = posix_memalign(&ssd_buffer, 512, sizeof(char) * BLCKSZ);
+    if (returnCode < 0)
+    {
+        printf("[ERROR] flushSSDBuffer():--------posix memalign\n");
+        free(ssd_buffer);
+        exit(-1);
+    }
 }
 
 static int init_SSDDescriptorBuffer()
@@ -112,41 +119,21 @@ static int init_StatisticObj()
 void           *
 flushSSDBuffer(SSDBufDesp * ssd_buf_hdr)
 {
-    char    *ssd_buffer;
     int		returnCode;
-
-
     if (BandOrBlock == 1)
     {
         SSD_BUFFER_SIZE = BNDSZ;
         BLCKSZ = BNDSZ;
     }
-    returnCode = posix_memalign(&ssd_buffer, 512, sizeof(char) * BLCKSZ);
-    if (returnCode < 0)
-    {
-        printf("[ERROR] flushSSDBuffer():--------posix memalign\n");
-        free(ssd_buffer);
-        exit(-1);
-    }
-    gettimeofday(&tv_begin_temp, &tz_begin_temp);
-    time_begin_temp = tv_begin_temp.tv_sec + tv_begin_temp.tv_usec / 1000000.0;
-    returnCode = pread(ssd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_id * SSD_BUFFER_SIZE);
-    if (returnCode < 0)
-    {
-        printf("[ERROR] flushSSDBuffer():-------read from ssd: fd=%d, errorcode=%d, offset=%lu\n", ssd_fd, returnCode, ssd_buf_hdr->ssd_buf_id * SSD_BUFFER_SIZE);
-        exit(-1);
-    }
-    gettimeofday(&tv_now_temp, &tz_now_temp);
-    time_now_temp = tv_now_temp.tv_sec + tv_now_temp.tv_usec / 1000000.0;
-    time_read_ssd += time_now_temp - time_begin_temp;
-    //returnCode = smrwrite(hdd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_tag.offset);
-    returnCode = pwrite(hdd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_tag.offset);
-    if (returnCode < 0)
-    {
-        printf("[ERROR] flushSSDBuffer():-------write to smr: fd=%d, errorcode=%d, offset=%lu\n", ssd_fd, returnCode, ssd_buf_hdr->ssd_buf_tag.offset);
-        exit(-1);
-    }
-    free(ssd_buffer);
+
+
+    dev_pread(ssd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_id * SSD_BUFFER_SIZE);
+    time_read_ssd += lastTimerinterval();
+    read_ssd_blocks++;
+
+    dev_pwrite(hdd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_tag.offset);
+    time_write_smr += lastTimerinterval();
+    flush_fifo_blocks++;
     return NULL;
 }
 
@@ -158,11 +145,10 @@ SSDBufferAlloc(SSDBufferTag *ssd_buf_tag, bool * found)
     long            ssd_buf_id = ssdbuftableLookup(ssd_buf_tag, ssd_buf_hash);
 
     /** lock **/
-    SHM_mutex_lock(lock_process_req);
     if (ssd_buf_id >= 0)    // when cache hit
     {
         ssd_buf_hdr = &ssd_buf_desps[ssd_buf_id];
-        if(ssd_buf_hdr->ssd_buf_tag.offset == ssd_buf_tag->offset)
+        if(isSamebuf(&ssd_buf_hdr->ssd_buf_tag,ssd_buf_tag))
         {
             hitInSSDBuffer(ssd_buf_hdr, EvictStrategy); //need lock
             hit_num++;
@@ -181,8 +167,6 @@ SSDBufferAlloc(SSDBufferTag *ssd_buf_tag, bool * found)
     *found = 0;
 
     ssd_buf_hdr = getSSDStrategyBuffer(ssd_buf_tag, EvictStrategy); //need look
-    SHM_mutex_unlock(lock_process_req);
-
     ssdbuftableInsert(ssd_buf_tag, ssd_buf_hash, ssd_buf_hdr->ssd_buf_id);
     ssd_buf_hdr->ssd_buf_flag &= ~(SSD_BUF_VALID | SSD_BUF_DIRTY);
     CopySSDBufTag(&ssd_buf_hdr->ssd_buf_tag,ssd_buf_tag);
@@ -196,8 +180,6 @@ initStrategySSDBuffer(SSDEvictionStrategy strategy)
     /** Add for multi-user **/
     if (strategy == LRU_global)
         return initSSDBufferForLRU();
-    else if (strategy == LRU_peruser)
-        initSSDCacheForLRU_UserDiff();
     else if (strategy == CLOCK)
         initSSDBufferForClock();
     else if (strategy == LRU)
@@ -320,11 +302,13 @@ read_block(off_t offset, char *ssd_buffer)
         read_hit_num++;
         dev_pread(ssd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_id * SSD_BUFFER_SIZE);
         time_read_ssd += lastTimerinterval();
+        read_ssd_blocks++;
     }
     else
     {
         dev_pread(hdd_fd, ssd_buffer, SSD_BUFFER_SIZE, offset);
         time_read_smr += lastTimerinterval();
+        read_smr_blocks++;
 
         dev_pwrite(ssd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_id * SSD_BUFFER_SIZE);
         time_write_ssd += lastTimerinterval();
@@ -381,8 +365,7 @@ write_block(off_t offset,int blkcnt, char *ssd_buffer)
 
     ssd_buf_hdr = SSDBufferAlloc(&ssd_buf_tag, &found);
 
-    if (flush_ssd_blocks % 10000 == 0)
-        report_ontime();
+
 
     dev_pwrite(ssd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_id * SSD_BUFFER_SIZE);
     time_write_ssd += lastTimerinterval();
@@ -486,8 +469,7 @@ write_band(off_t offset, char *ssd_buffer)
     }
     ssd_buf_hdr = SSDBufferAlloc(&hdr_tag, &found);
     flush_ssd_blocks++;
-    if (flush_ssd_blocks % 10000 == 0)
-        report_ontime();
+
     if (found)
     {
         returnCode = pwrite(ssd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_id * BNDSZ + new_offset);
@@ -511,10 +493,6 @@ write_band(off_t offset, char *ssd_buffer)
 /******************
 **** Utilities*****
 *******************/
-static void report_ontime()
-{
-    printf("hit num:%lu   flush_ssd_blocks:%lu flush_times:%lu flush_fifo_blocks:%lu  flusd_bands:%lu\n ", hit_num, flush_ssd_blocks, flush_times, flush_fifo_blocks, flush_bands);
-}
 
 static int dev_pread(int fd, void* buf,size_t nbytes,off_t offset)
 {
@@ -562,4 +540,12 @@ static double lastTimerinterval()
 void CopySSDBufTag(SSDBufferTag* objectTag, SSDBufferTag* sourceTag)
 {
     objectTag->offset = sourceTag->offset;
+}
+
+
+bool isSamebuf(SSDBufferTag *tag1, SSDBufferTag *tag2)
+{
+	if (tag1->offset != tag2->offset)
+		return 0;
+	else return 1;
 }

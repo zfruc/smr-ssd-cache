@@ -96,6 +96,7 @@ extern void read_block(off_t offset, char* ssd_buffer);
 extern void write_block(off_t offset,int blkcnt, char* ssd_buffer);
 extern void read_band(off_t offset, char* ssd_buffer);
 extern void write_band(off_t offset, char* ssd_buffer);
+extern bool isSamebuf(SSDBufferTag *, SSDBufferTag *);
 
 extern void CopySSDBufTag(SSDBufferTag* objectTag, SSDBufferTag* sourceTag);
 

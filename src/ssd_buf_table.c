@@ -3,8 +3,6 @@
 #include <shmlib.h>
 #include "ssd-cache.h"
 
-static bool isSamebuf(SSDBufferTag *, SSDBufferTag *);
-
 int initSSDBufTable(size_t size)
 {
     ssd_buf_hashtable = (SSDBufHashBucket*)malloc(sizeof(SSDBufHashBucket)*size);
@@ -132,9 +130,4 @@ long ssdbuftableDelete(SSDBufferTag *ssd_buf_tag, unsigned long hash_code)
     return -1;
 }
 
-static bool isSamebuf(SSDBufferTag *tag1, SSDBufferTag *tag2)
-{
-    if (tag1->offset != tag2->offset)
-        return 0;
-    else return 1;
-}
+

@@ -3,12 +3,11 @@
 #include "ssd-cache.h"
 #include "smr-simulator/smr-simulator.h"
 #include "lru.h"
-#include <shmlib.h>
+#include "shmlib.h"
 
 static volatile void *addToLRUHead(SSDBufDespForLRU * ssd_buf_hdr_for_lru);
 static volatile void *deleteFromLRU(SSDBufDespForLRU * ssd_buf_hdr_for_lru);
 static volatile void *moveToLRUHead(SSDBufDespForLRU * ssd_buf_hdr_for_lru);
-
 /*
  * init buffer hash table, strategy_control, buffer, work_mem
  */
@@ -101,7 +100,7 @@ getLRUBuffer()
     SSDBufDespForLRU *ssd_buf_hdr_for_lru;
 
     if (ssd_buf_desp_ctrl->first_freessd >= 0)
-    {
+    {	
         ssd_buf_hdr = &ssd_buf_desps[ssd_buf_desp_ctrl->first_freessd];
         ssd_buf_hdr_for_lru = &ssd_buf_desp_for_lru[ssd_buf_desp_ctrl->first_freessd];
         ssd_buf_desp_ctrl->first_freessd = ssd_buf_hdr->next_freessd;

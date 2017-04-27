@@ -13,17 +13,23 @@
 #include "report.h"
 void            trace_to_iocall(char *trace_file_path);
 static void     reportCurInfo();
+static void report_ontime();
+static void resetStatics();
+
+static double time_begin, time_now;
+static struct timeval  tv_begin, tv_now;
+static struct timezone tz_begin, tz_now;
+unsigned long totalreq_cnt = 0;
 
 void
 trace_to_iocall(char *trace_file_path)
 {
     char		action;
     off_t		offset;
-    size_t		size;
     char       *ssd_buffer;
     float		size_float;
     int	        returnCode;
-
+    int         isFullSSDcache = 0;
     FILE *trace;
     if ((trace = fopen(trace_file_path, "rt")) == NULL)
     {
@@ -38,13 +44,14 @@ trace_to_iocall(char *trace_file_path)
         free(ssd_buffer);
         exit(-1);
     }
-
     int i;
     for (i = 0; i < 16*BLCKSZ; i++)
     {
         ssd_buffer[i] = '1';
     }
 
+    gettimeofday(&tv_begin, &tz_begin);
+    time_begin = tv_begin.tv_sec + tv_begin.tv_usec / 1000000.0;
     while (!feof(trace))
     {
         returnCode = fscanf(trace, "%c %d %lu\n", &action, &i, &offset);
@@ -53,22 +60,23 @@ trace_to_iocall(char *trace_file_path)
             error("error while reading trace file.");
             break;
         }
-        size = 4096;
         offset = offset * BLCKSZ;
 
-//		unsigned long	offset_end = offset + size;
-//		if (offset % 4096 != 0)
-//			offset = offset / 4096 * 4096;
-//		if (offset_end % 4096 != 0)
-//			size = offset_end / 4096 * 4096 - offset + 4096;
-//		else
-//			size = offset_end - offset;
+        if(!isFullSSDcache && flush_fifo_blocks > 0)
+        {
+            reportCurInfo();
+            resetStatics();        // Because we do not care about the statistic while the process of filling SSD cache.
+            isFullSSDcache = 1;
+        }
 
-
+        SHM_mutex_lock(lock_process_req);
+        totalreq_cnt++;
         if (action == ACT_WRITE)
         {
             if (DEBUG)
                 printf("[INFO] trace_to_iocall():wirte offset=%lu\n", offset);
+            if(totalreq_cnt==55)
+                totalreq_cnt =55;
             write_block(offset,1, ssd_buffer);
         }
         else if (action == ACT_READ)
@@ -77,6 +85,11 @@ trace_to_iocall(char *trace_file_path)
                 printf("[INFO] trace_to_iocall():read offset=%lu\n", offset);
             read_block(offset,ssd_buffer);
         }
+        SHM_mutex_unlock(lock_process_req);
+
+        if (totalreq_cnt % 10000 == 0)
+            report_ontime();
+
     }
     reportCurInfo();
     free(ssd_buffer);
@@ -85,7 +98,38 @@ trace_to_iocall(char *trace_file_path)
 
 static void reportCurInfo()
 {
-        printf(" read_hit_num:%lu\n hit num:%lu\n read_ssd_blocks:%lu\n flush_ssd_blocks:%lu\n read_fifo_blocks:%lu\n flush_fifo_blocks:%lu\n read_smr_blocks:%lu\n read_smr_bands:%lu\n flush_bands:%lu\n flush_band_size=%lu\n",
-                 read_hit_num, hit_num, read_ssd_blocks, flush_ssd_blocks, read_fifo_blocks, flush_fifo_blocks, read_smr_blocks, read_smr_bands, flush_bands, flush_band_size);
+    gettimeofday(&tv_now, &tz_now);
+    time_now = tv_now.tv_sec + tv_now.tv_usec / 1000000.0;
+    printf(" totalreqNum:%u\n read_hit_num:%lu\n hit num:%lu\n read_ssd_blocks:%lu\n flush_ssd_blocks:%lu\n flush_fifo_blocks:%lu\n read_smr_blocks:%lu\n hash_miss:%lu\n",
+           totalreq_cnt, read_hit_num, hit_num, read_ssd_blocks, flush_ssd_blocks, flush_fifo_blocks, read_smr_blocks, miss_hashitem_num);
+    printf(" total run time (s) = %lf\ntime_read_ssd = %lf\n time_write_ssd = %lf\ntime_read_smr = %lf\ntime_write_smr = %lf\n",
+           time_now - time_begin, time_read_ssd, time_write_ssd, time_read_smr, time_write_smr);
+}
 
+static void resetStatics()
+{
+	hit_num = 0;
+	flush_bands = 0;
+	flush_band_size = 0;
+	flush_fifo_blocks = 0;
+	flush_ssd_blocks = 0;
+	read_ssd_blocks = 0;
+	read_fifo_blocks = 0;
+	read_smr_blocks = 0;
+	read_hit_num = 0;
+	read_smr_bands = 0;
+	time_read_cmr = 0;
+	time_write_cmr = 0;
+	time_read_ssd = 0;
+	time_write_ssd = 0;
+	time_read_fifo = 0;
+	time_read_smr = 0;
+	time_write_fifo = 0;
+	time_write_smr = 0;
+	totalreq_cnt = 0;
+}
+
+static void report_ontime()
+{
+    printf("totalreqNum:%u, hit num:%lu   flush_ssd_blocks:%lu flush_fifo_blocks:%lu, hashmiss:%lu\n",totalreq_cnt, hit_num, flush_ssd_blocks, flush_fifo_blocks, miss_hashitem_num);
 }

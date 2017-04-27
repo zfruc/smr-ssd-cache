@@ -58,11 +58,19 @@ unsigned int INIT_PROCESS = 0;
 int
 main(int argc, char **argv)
 {
+    if(argc == 2)
+    {
+        NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = atoi(argv[1]);
+    }
+    else{
+        printf("parameters are wrong %d\n", argc);
+		exit(-1);
+    }
     #ifdef SIMULATION
     initFIFOCache();
     inner_ssd_fd = open(inner_ssd_device, O_RDWR | O_DIRECT);
 	#endif
-    NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = 50000; // 200MB
+    //NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = 500000;//280M //50000; // 200MB
     SSD_BUFFER_SIZE = 4096;
     EvictStrategy = LRU;
 
@@ -70,7 +78,8 @@ main(int argc, char **argv)
 	hdd_fd = open(smr_device, O_RDWR | O_DIRECT);
 	ssd_fd = open(ssd_device, O_RDWR | O_DIRECT);
 
-	trace_to_iocall("/home/ly/git/smr-ssd-cache/trace");
+	trace_to_iocall("/smr-ssd-cache/trace/src1_2.csv.req");
+	//trace_to_iocall("/smr-ssd-cache/trace/wdev_0.csv.req");
 	close(hdd_fd);
 	close(ssd_fd);
 

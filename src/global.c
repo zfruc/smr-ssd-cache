@@ -2,7 +2,6 @@
 #include "smr-simulator/smr-simulator.h"
 #include "main.h"
 
-
 unsigned long NBLOCK_SSD_CACHE;
 unsigned long NTABLE_SSD_CACHE;
 unsigned long SSD_BUFFER_SIZE;
@@ -21,8 +20,8 @@ unsigned long NSSDCLEAN = 1;
 unsigned long WRITEAMPLIFICATION = 100;
 unsigned long NCOLDBAND = 1;
 unsigned long PERIODTIMES;
-char smr_device[] = "/home/ly/iotest/hdd";
-char ssd_device[] = "/home/ly/iotest/ssd";
+char smr_device[] = "/dev/sdb";
+char ssd_device[] = "/dev/memdiska";
 char inner_ssd_device[] = "/Users/wangchunling/Software/code/smr-test/smr-ssd-cache/src/inner_ssd";
 SSDEvictionStrategy EvictStrategy;
 int BandOrBlock;

@@ -5,8 +5,6 @@
 #include "maxcold.h"
 #include "ssd_buf_table_for_coldmax_history.h"
 
-static bool isSamebuf(SSDBufferTag *, SSDBufferTag *);
-
 void initSSDBufTableHistory(size_t size)
 {
 	ssd_buf_hashtable_history = (SSDBufHashBucket *)malloc(sizeof(SSDBufHashBucket)*size);
@@ -101,11 +99,4 @@ long ssdbuftableDeleteHistory(SSDBufferTag *ssd_buf_tag, unsigned long hash_code
 	}
 
 	return -1;
-}
-
-static bool isSamebuf(SSDBufferTag *tag1, SSDBufferTag *tag2)
-{
-	if (tag1->offset != tag2->offset)
-		return 0;
-	else return 1;
 }
