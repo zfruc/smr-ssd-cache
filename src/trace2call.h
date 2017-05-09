@@ -8,5 +8,5 @@
 
 #endif // TRACETOCALL
 
-extern void trace_to_iocall(char* trace_file_path);
+extern void trace_to_iocall(char *trace_file_path, int isWriteOnly);
 extern int BandOrBlock;

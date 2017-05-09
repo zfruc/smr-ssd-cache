@@ -15,7 +15,7 @@
 #include "strategy/maxcold.h"
 #include <shmlib.h>
 void CopySSDBufTag(SSDBufferTag* objectTag, SSDBufferTag* sourceTag);
-static SSDBufDesp *SSDBufferAlloc(SSDBufferTag *ssd_buf_tag, bool * found);
+static SSDBufDesp *SSDBufferAlloc(SSDBufferTag *ssd_buf_tag, bool * found, int alloc4What);
 
 static int initStrategySSDBuffer(SSDEvictionStrategy strategy);
 static SSDBufDesp *getSSDStrategyBuffer(SSDBufferTag *ssd_buf_tag, SSDEvictionStrategy strategy);
@@ -110,7 +110,9 @@ static int init_StatisticObj()
         time_read_ssd = 0.0;
         time_write_ssd = 0.0;
         miss_hashitem_num = 0;
-        read_hit_num = 0;
+	read_hashmiss = 0;
+	write_hashmiss = 0;
+	read_hit_num = 0;
     }
     SHM_unlock("GLOBALSTATISTIC");
     return stat;
@@ -138,7 +140,7 @@ flushSSDBuffer(SSDBufDesp * ssd_buf_hdr)
 }
 
 static SSDBufDesp *
-SSDBufferAlloc(SSDBufferTag *ssd_buf_tag, bool * found)
+SSDBufferAlloc(SSDBufferTag *ssd_buf_tag, bool * found, int alloc4What)
 {
     SSDBufDesp      *ssd_buf_hdr;
     unsigned long   ssd_buf_hash = ssdbuftableHashcode(ssd_buf_tag);
@@ -160,6 +162,10 @@ SSDBufferAlloc(SSDBufferTag *ssd_buf_tag, bool * found)
             /** passive delete hash item, which corresponding cache buf has been evicted early **/
             ssdbuftableDelete(ssd_buf_tag,ssd_buf_hash);
             miss_hashitem_num++;
+	    if(alloc4What == 1)	// alloc for write
+	        write_hashmiss++;
+	    else		//alloc for read
+		read_hashmiss++;
         }
     }
 
@@ -260,10 +266,7 @@ hitInSSDBuffer(SSDBufDesp * ssd_buf_hdr, SSDEvictionStrategy strategy)
 void
 read_block(off_t offset, char *ssd_buffer)
 {
-    void           *ssd_buf_block;
-    bool		found = 0;
-    int		returnCode;
-
+    bool found = 0;
     static SSDBufferTag ssd_buf_tag;
     static SSDBufDesp *ssd_buf_hdr;
 
@@ -296,7 +299,7 @@ read_block(off_t offset, char *ssd_buffer)
 //    }
 //    else //LRU ...
 //    {
-    ssd_buf_hdr = SSDBufferAlloc(&ssd_buf_tag, &found);
+    ssd_buf_hdr = SSDBufferAlloc(&ssd_buf_tag, &found, 0);
     if (found)
     {
         read_hit_num++;
@@ -326,7 +329,6 @@ void
 write_block(off_t offset,int blkcnt, char *ssd_buffer)
 {
     bool	found;
-    int		returnCode = 0;
 
     static SSDBufferTag ssd_buf_tag;
     static SSDBufDesp   *ssd_buf_hdr;
@@ -363,7 +365,7 @@ write_block(off_t offset,int blkcnt, char *ssd_buffer)
 //    else    //LRU ...
 //    {
 
-    ssd_buf_hdr = SSDBufferAlloc(&ssd_buf_tag, &found);
+    ssd_buf_hdr = SSDBufferAlloc(&ssd_buf_tag, &found, 1);
 
 
 
@@ -406,7 +408,7 @@ read_band(off_t offset, char *ssd_buffer)
     printf("readband_tag%ld\n", band_tag.offset);
     if (DEBUG)
         printf("[INFO] read():-------offset=%lu\n", offset);
-    ssd_buf_hdr = SSDBufferAlloc(&hdr_tag, &found);
+    ssd_buf_hdr = SSDBufferAlloc(&hdr_tag, &found, 0);
     if (found)
     {
         returnCode = pread(ssd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_id * SSD_BUFFER_SIZE + new_offset);
@@ -467,7 +469,7 @@ write_band(off_t offset, char *ssd_buffer)
         printf("[ERROR] write_band():-------posix_memalign\n");
         exit(-1);
     }
-    ssd_buf_hdr = SSDBufferAlloc(&hdr_tag, &found);
+    ssd_buf_hdr = SSDBufferAlloc(&hdr_tag, &found, 1);
     flush_ssd_blocks++;
 
     if (found)

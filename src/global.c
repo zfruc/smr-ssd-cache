@@ -20,8 +20,8 @@ unsigned long NSSDCLEAN = 1;
 unsigned long WRITEAMPLIFICATION = 100;
 unsigned long NCOLDBAND = 1;
 unsigned long PERIODTIMES;
-char smr_device[] = "/dev/sdb";
-char ssd_device[] = "/dev/memdiska";
+char smr_device[] = "/dev/sdc";
+char ssd_device[] = "/dev/sdd";
 char inner_ssd_device[] = "/Users/wangchunling/Software/code/smr-test/smr-ssd-cache/src/inner_ssd";
 SSDEvictionStrategy EvictStrategy;
 int BandOrBlock;
@@ -54,6 +54,8 @@ double time_write_fifo;
 double time_write_smr;
 
 unsigned long miss_hashitem_num;
+unsigned long read_hashmiss;
+unsigned long write_hashmiss;
 
 pthread_mutex_t free_ssd_mutex;
 pthread_mutex_t inner_ssd_hdr_mutex;

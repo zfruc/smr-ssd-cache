@@ -58,9 +58,13 @@ unsigned int INIT_PROCESS = 0;
 int
 main(int argc, char **argv)
 {
-    if(argc == 2)
+    int isWriteOnly;
+    int traceID;
+    if(argc == 4)
     {
         NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = atoi(argv[1]);
+        isWriteOnly = atoi(argv[2]);
+        traceID = atoi(argv[3]);
     }
     else{
         printf("parameters are wrong %d\n", argc);
@@ -78,8 +82,8 @@ main(int argc, char **argv)
 	hdd_fd = open(smr_device, O_RDWR | O_DIRECT);
 	ssd_fd = open(ssd_device, O_RDWR | O_DIRECT);
 
-	trace_to_iocall("/smr-ssd-cache/trace/src1_2.csv.req");
-	//trace_to_iocall("/smr-ssd-cache/trace/wdev_0.csv.req");
+	char* tracefile[] = {"/smr-ssd-cache/trace/src1_2.csv.req","/smr-ssd-cache/trace/wdev_0.csv.req"};
+	trace_to_iocall(tracefile[traceID],isWriteOnly);
 	close(hdd_fd);
 	close(ssd_fd);
 

@@ -79,7 +79,11 @@ extern pthread_mutex_t  *lock_process_req;
 extern unsigned long hit_num;
 extern unsigned long flush_ssd_blocks;
 extern unsigned long read_ssd_blocks;
+
 extern unsigned long miss_hashitem_num;
+extern unsigned long read_hashmiss;
+extern unsigned long write_hashmiss;
+
 extern double time_read_cmr;
 extern double time_write_cmr;
 extern double time_read_ssd;
