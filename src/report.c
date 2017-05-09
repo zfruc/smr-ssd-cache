@@ -1,4 +1,3 @@
-#include "report.h"
 void* info(char* str)
 {
     printf("process [%d]: %s\n",getpid(),str);

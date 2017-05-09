@@ -1,5 +1,7 @@
-#ifndef SSDBUFTABLE_H
-#define SSDBUFTABLE_H
+#ifndef _SSDBUFTABLE_H
+#define _SSDBUFTABLE_H 1
+
+#include "ssd-cache.h"
 
 extern int initSSDBufTable(size_t size);
 extern unsigned long ssdbuftableHashcode(SSDBufferTag *ssd_buf_tag);

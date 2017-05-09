@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <shmlib.h>
+#include "shmlib.h"
 #include "ssd-cache.h"
 
 int initSSDBufTable(size_t size)

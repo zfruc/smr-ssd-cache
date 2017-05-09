@@ -4,13 +4,10 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include "ssd-cache.h"
-#include "smr-simulator/smr-simulator.h"
-#include "strategy/clock.h"
 #include "strategy/lru.h"
-#include "strategy/lruofband.h"
-#include "strategy/scan.h"
 #include "trace2call.h"
 #include "report.h"
+
 void        trace_to_iocall(char *trace_file_path, int isWriteOnly);
 static void reportCurInfo();
 static void report_ontime();
@@ -62,7 +59,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly)
         }
         offset = offset * BLCKSZ;
 
-        if(!isFullSSDcache && flush_fifo_blocks > 0)
+        if(!isFullSSDcache && flush_hdd_blocks > 0)
         {
             reportCurInfo();
             resetStatics();        // Because we do not care about the statistic while the process of filling SSD cache.
@@ -101,39 +98,31 @@ static void reportCurInfo()
 {
     gettimeofday(&tv_now, &tz_now);
     time_now = tv_now.tv_sec + tv_now.tv_usec / 1000000.0;
-    printf(" totalreqNum:%lu\n read_hit_num:%lu\n hit num:%lu\n read_ssd_blocks:%lu\n flush_ssd_blocks:%lu\n flush_fifo_blocks:%lu\n read_smr_blocks:%lu\n hash_miss:%lu\n read_hashmiss:%lu\n write_hashmiss:%lu\n",
-           totalreq_cnt, read_hit_num, hit_num, read_ssd_blocks, flush_ssd_blocks, flush_fifo_blocks, read_smr_blocks, miss_hashitem_num, read_hashmiss, write_hashmiss);
+    printf(" totalreqNum:%lu\n read_hit_num:%lu\n hit num:%lu\n read_ssd_blocks:%lu\n flush_ssd_blocks:%lu\n flush_fifo_blocks:%lu\n read_smr_blocks:%lu\n hash_miss:%lu\n hashmiss_read:%lu\n hashmiss_write:%lu\n",
+           totalreq_cnt, read_hit_num, hit_num, load_ssd_blocks, flush_ssd_blocks, flush_hdd_blocks, load_hdd_blocks, hashmiss_sum, hashmiss_read, hashmiss_write);
     printf(" total run time (s) : %lf\n time_read_ssd : %lf\n time_write_ssd : %lf\n time_read_smr : %lf\n time_write_smr : %lf\n",
-           time_now - time_begin, time_read_ssd, time_write_ssd, time_read_smr, time_write_smr);
+           time_now - time_begin, time_read_ssd, time_write_ssd, time_read_hdd, time_write_hdd);
 }
 
 static void resetStatics()
 {
-	hit_num = 0;
-	flush_bands = 0;
-	flush_band_size = 0;
-	flush_fifo_blocks = 0;
-	flush_ssd_blocks = 0;
-	read_ssd_blocks = 0;
-	read_fifo_blocks = 0;
-	read_smr_blocks = 0;
-	read_hit_num = 0;
-	read_smr_bands = 0;
-	time_read_cmr = 0;
-	time_write_cmr = 0;
-	time_read_ssd = 0;
-	time_write_ssd = 0;
-	time_read_fifo = 0;
-	time_read_smr = 0;
-	time_write_fifo = 0;
-	time_write_smr = 0;
-	totalreq_cnt = 0;
-	miss_hashitem_num = 0;
-	read_hashmiss = 0;
-	write_hashmiss = 0;
+    hit_num = 0;
+    load_ssd_blocks = 0;
+    load_hdd_blocks = 0;
+    flush_ssd_blocks = 0;
+    flush_hdd_blocks = 0;
+    read_hit_num = 0;
+    time_read_hdd = 0;
+    time_write_hdd = 0;
+    time_read_ssd = 0;
+    time_write_ssd = 0;
+    totalreq_cnt = 0;
+    hashmiss_sum = 0;
+    hashmiss_read = 0;
+    hashmiss_write = 0;
 }
 
 static void report_ontime()
 {
-    printf("totalreqNum:%lu, hit num:%lu   flush_ssd_blocks:%lu flush_fifo_blocks:%lu, hashmiss:%lu\n",totalreq_cnt, hit_num, flush_ssd_blocks, flush_fifo_blocks, miss_hashitem_num);
+    printf("totalreqNum:%lu, hit num:%lu   flush_ssd_blocks:%lu flush_fifo_blocks:%lu, hashmiss:%lu\n",totalreq_cnt, hit_num, flush_ssd_blocks, flush_hdd_blocks, hashmiss_sum);
 }

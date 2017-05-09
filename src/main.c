@@ -11,9 +11,9 @@
 #include <unistd.h>
 #include <getopt.h>
 
-#include "main.h"
+#include "global.h"
 #include "ssd-cache.h"
-#include "smr-simulator/smr-simulator.h"
+//#include "smr-simulator/smr-simulator.h"
 #include "trace2call.h"
 
 unsigned int INIT_PROCESS = 0;
@@ -66,31 +66,32 @@ main(int argc, char **argv)
         isWriteOnly = atoi(argv[2]);
         traceID = atoi(argv[3]);
     }
-    else{
+    else
+    {
         printf("parameters are wrong %d\n", argc);
-		exit(-1);
+        exit(-1);
     }
-    #ifdef SIMULATION
+#ifdef SIMULATION
     initFIFOCache();
     inner_ssd_fd = open(inner_ssd_device, O_RDWR | O_DIRECT);
-	#endif
+#endif
     //NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = 500000;//280M //50000; // 200MB
     SSD_BUFFER_SIZE = 4096;
     EvictStrategy = LRU;
 
     initSSD();
-	hdd_fd = open(smr_device, O_RDWR | O_DIRECT);
-	ssd_fd = open(ssd_device, O_RDWR | O_DIRECT);
+    hdd_fd = open(smr_device, O_RDWR | O_DIRECT);
+    ssd_fd = open(ssd_device, O_RDWR | O_DIRECT);
 
-	char* tracefile[] = {"/smr-ssd-cache/trace/src1_2.csv.req","/smr-ssd-cache/trace/wdev_0.csv.req"};
-	trace_to_iocall(tracefile[traceID],isWriteOnly);
-	close(hdd_fd);
-	close(ssd_fd);
+    char* tracefile[] = {"/smr-ssd-cache/trace/src1_2.csv.req","/smr-ssd-cache/trace/wdev_0.csv.req"};
+    trace_to_iocall(tracefile[traceID],isWriteOnly);
+    close(hdd_fd);
+    close(ssd_fd);
 
-	#ifdef SIMULATION
-	close(inner_ssd_fd);
-	#endif
-	return 0;
+#ifdef SIMULATION
+    close(inner_ssd_fd);
+#endif
+    return 0;
 //	void
 //parse_args(int argc, char ** argv, param_t * cmd_params)
 //{
