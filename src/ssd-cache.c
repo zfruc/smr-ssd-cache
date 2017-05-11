@@ -9,15 +9,21 @@
 #include "strategy/lru.h"
 #include "shmlib.h"
 
-void CopySSDBufTag(SSDBufferTag* objectTag, SSDBufferTag* sourceTag);
-static SSDBufDesp *SSDBufferAlloc(SSDBufferTag *ssd_buf_tag, bool * found, int alloc4What);
+static int          init_SSDDescriptorBuffer();
+static int          init_StatisticObj();
 
-static int initStrategySSDBuffer(SSDEvictionStrategy strategy);
-static SSDBufDesp *getSSDStrategyBuffer(SSDBufferTag *ssd_buf_tag, SSDEvictionStrategy strategy);
-static void    *hitInSSDBuffer(SSDBufDesp * ssd_buf_hdr, SSDEvictionStrategy strategy);
-static int init_SSDDescriptorBuffer();
-static int init_StatisticObj();
+static SSDBufDesp*  allocSSDBuf(SSDBufferTag *ssd_buf_tag, bool * found, int alloc4What);
+static SSDBufDesp*  getAFreeSSDBuf();
 
+static int          initStrategySSDBuffer(SSDEvictionStrategy strategy);
+static SSDBufDesp*  Strategy_GetUnloadBufID(SSDBufferTag *ssd_buf_tag, SSDEvictionStrategy strategy);
+static void*        Strategy_HitIn(long serial_id, SSDEvictionStrategy strategy);
+static void*        Strategy_AddBufID(long serial_id);
+
+void                CopySSDBufTag(SSDBufferTag* objectTag, SSDBufferTag* sourceTag);
+
+void         _LOCK(pthread_mutex_t* lock);
+void         _UNLOCK(pthread_mutex_t* lock);
 /* stopwatch */
 static double time_begin_temp;
 static double time_now_temp;
@@ -28,9 +34,9 @@ static void stopTimer();
 static double lastTimerinterval();
 
 /* Device I/O operation with Timer */
-static int dev_pread    (int fd, void* buf,size_t nbytes,off_t offset);
-static int dev_pwrite   (int fd, void* buf,size_t nbytes,off_t offset);
-static char *ssd_buffer;
+static int dev_pread(int fd, void* buf,size_t nbytes,off_t offset);
+static int dev_pwrite(int fd, void* buf,size_t nbytes,off_t offset);
+static char* ssd_buffer;
 
 
 /*
@@ -40,7 +46,7 @@ void
 initSSD()
 {
     int r_initstrategybuf   =   initStrategySSDBuffer(EvictStrategy);
-    int r_initbuftb         =   initSSDBufTable(NTABLE_SSD_CACHE);
+    int r_initbuftb         =   HashTab_Init();
     int r_initdesp          =   init_SSDDescriptorBuffer();
     int r_initstt           =   init_StatisticObj();
     printf("init_Strategy: %d, init_table: %d, init_desp: %d, inti_Stt: %d\n",r_initstrategybuf, r_initbuftb, r_initdesp, r_initstt);
@@ -55,12 +61,13 @@ initSSD()
     }
 }
 
-static int init_SSDDescriptorBuffer()
+static int
+init_SSDDescriptorBuffer()
 {
     int stat = SHM_lock_n_check("LOCK_SSDBUF_DESP");
     if(stat == 0)
     {
-        ssd_buf_desp_ctrl = (SSDBufDespCtrl *)SHM_alloc(SHM_SSDBUF_DESP_CTRL,sizeof(SSDBufDespCtrl));
+        ssd_buf_desp_ctrl = (SSDBufDespCtrl*)SHM_alloc(SHM_SSDBUF_DESP_CTRL,sizeof(SSDBufDespCtrl));
         ssd_buf_desps = (SSDBufDesp *)SHM_alloc(SHM_SSDBUF_DESPS,sizeof(SSDBufDesp) * NBLOCK_SSD_CACHE);
 
         ssd_buf_desp_ctrl->n_usedssd = 0;
@@ -72,27 +79,27 @@ static int init_SSDDescriptorBuffer()
         SSDBufDesp  *ssd_buf_hdr = ssd_buf_desps;
         for (i = 0; i < NBLOCK_SSD_CACHE; ssd_buf_hdr++, i++)
         {
-            ssd_buf_hdr->ssd_buf_flag = 0;
+            ssd_buf_hdr->serial_id = i;
             ssd_buf_hdr->ssd_buf_id = i;
+            ssd_buf_hdr->ssd_buf_flag = 0;
             ssd_buf_hdr->next_freessd = i + 1;
+            SHM_mutex_init(&ssd_buf_hdr->lock);
         }
         ssd_buf_desps[NBLOCK_SSD_CACHE - 1].next_freessd = -1;
 
         lock_process_req = (pthread_mutex_t*)SHM_alloc(SHM_PROCESS_REQ_LOCK,sizeof(pthread_mutex_t));
-        SHM_mutex_init(lock_process_req);
     }
     else
     {
         ssd_buf_desp_ctrl = (SSDBufDespCtrl *)SHM_get(SHM_SSDBUF_DESP_CTRL,sizeof(SSDBufDespCtrl));
         ssd_buf_desps = (SSDBufDesp *)SHM_get(SHM_SSDBUF_DESPS,sizeof(SSDBufDesp) * NBLOCK_SSD_CACHE);
-
-        lock_process_req = (pthread_mutex_t*)SHM_get(SHM_PROCESS_REQ_LOCK,sizeof(pthread_mutex_t));
     }
     SHM_unlock("LOCK_SSDBUF_DESP");
     return stat;
 }
 
-static int init_StatisticObj()
+static int
+init_StatisticObj()
 {
     int stat = SHM_lock_n_check("GLOBALSTATISTIC");
     if(stat == 0)
@@ -115,7 +122,7 @@ static int init_StatisticObj()
     return stat;
 }
 
-void           *
+void*
 flushSSDBuffer(SSDBufDesp * ssd_buf_hdr)
 {
     int		returnCode;
@@ -136,28 +143,31 @@ flushSSDBuffer(SSDBufDesp * ssd_buf_hdr)
     return NULL;
 }
 
-static SSDBufDesp *
-SSDBufferAlloc(SSDBufferTag *ssd_buf_tag, bool * found, int alloc4What)
+static SSDBufDesp*
+allocSSDBuf(SSDBufferTag *ssd_buf_tag, bool * found, int alloc4What)
 {
+    /* Lookup if already cached. */
     SSDBufDesp      *ssd_buf_hdr;
-    unsigned long   ssd_buf_hash = ssdbuftableHashcode(ssd_buf_tag);
-    long            ssd_buf_id = ssdbuftableLookup(ssd_buf_tag, ssd_buf_hash);
+    unsigned long   ssd_buf_hash = HashTab_GetHashCode(ssd_buf_tag);
+    long            ssd_buf_id = HashTab_Lookup(ssd_buf_tag, ssd_buf_hash);
 
-    /** lock **/
-    if (ssd_buf_id >= 0)    // when cache hit
+    /* Cache HIT IN */
+    if (ssd_buf_id >= 0)
     {
         ssd_buf_hdr = &ssd_buf_desps[ssd_buf_id];
+        _LOCK(&ssd_buf_hdr->lock);
         if(isSamebuf(&ssd_buf_hdr->ssd_buf_tag,ssd_buf_tag))
         {
-            hitInSSDBuffer(ssd_buf_hdr, EvictStrategy); //need lock
+            Strategy_HitIn(ssd_buf_hdr, EvictStrategy); //need lock
             hit_num++;
             *found = 1;
             return ssd_buf_hdr;
         }
         else
         {
+            _UNLOCK(&ssd_buf_hdr->lock);
             /** passive delete hash item, which corresponding cache buf has been evicted early **/
-            ssdbuftableDelete(ssd_buf_tag,ssd_buf_hash);
+            HashTab_Delete(ssd_buf_tag,ssd_buf_hash);
             hashmiss_sum++;
             if(alloc4What == 1)	// alloc for write
                 hashmiss_write++;
@@ -166,14 +176,39 @@ SSDBufferAlloc(SSDBufferTag *ssd_buf_tag, bool * found, int alloc4What)
         }
     }
 
-    /* when cache miss */
+    /* Cache MISS */
     *found = 0;
 
-    ssd_buf_hdr = getSSDStrategyBuffer(ssd_buf_tag, EvictStrategy); //need look
-    ssdbuftableInsert(ssd_buf_tag, ssd_buf_hash, ssd_buf_hdr->ssd_buf_id);
+    _LOCK(&ssd_buf_desp_ctrl->lock);
+    ssd_buf_hdr = getAFreeSSDBuf();
+    _UNLOCK(&ssd_buf_desp_ctrl->lock);
+
+    if (ssd_buf_hdr != NULL)
+    {
+        _LOCK(&ssd_buf_hdr->lock);
+        // if there is free SSD buffer.
+        Strategy_AddBufID(ssd_buf_hdr->serial_id);
+    }
+    else
+    {
+        /** When there is NO free SSD space for cache, TODO flush **/
+        long renew_buf = Strategy_GetUnloadBufID(ssd_buf_tag, EvictStrategy); //need look
+        ssd_buf_hdr = &ssd_buf_desps[renew_buf];
+        _LOCK(&ssd_buf_hdr->lock);
+
+        unsigned char	old_flag = ssd_buf_hdr->ssd_buf_flag;
+        if ((old_flag & SSD_BUF_DIRTY) != 0)
+        {
+            flushSSDBuffer(ssd_buf_hdr);
+        }
+
+        Strategy_AddBufID(ssd_buf_hdr->serial_id);
+    }
+
     ssd_buf_hdr->ssd_buf_flag &= ~(SSD_BUF_VALID | SSD_BUF_DIRTY);
     CopySSDBufTag(&ssd_buf_hdr->ssd_buf_tag,ssd_buf_tag);
 
+    HashTab_Insert(ssd_buf_tag, ssd_buf_hash, ssd_buf_hdr->serial_id);
     return ssd_buf_hdr;
 }
 
@@ -186,23 +221,29 @@ initStrategySSDBuffer(SSDEvictionStrategy strategy)
     return -1;
 }
 
-static SSDBufDesp *
-getSSDStrategyBuffer(SSDBufferTag *ssd_buf_tag, SSDEvictionStrategy strategy)
+static SSDBufDesp*
+Strategy_GetUnloadBufID(SSDBufferTag *ssd_buf_tag, SSDEvictionStrategy strategy)
 {
 
     if (strategy == LRU)
-        return getLRUBuffer();
+        return Unload_LRUBuf();
     return NULL;
 }
 
 static void*
-hitInSSDBuffer(SSDBufDesp * ssd_buf_hdr, SSDEvictionStrategy strategy)
+Strategy_HitIn(long serial_id, SSDEvictionStrategy strategy)
 {
     if (strategy == LRU)
-        return hitInLRUBuffer(ssd_buf_hdr);
+        return hitInLRUBuffer(serial_id);
     return NULL;
 }
 
+static void*
+Strategy_AddBufID(long serial_id)
+{
+    if(EvictStrategy == LRU)
+        return insertLRUBuffer(serial_id);
+}
 /*
  * read--return the buf_id of buffer according to buf_tag
  */
@@ -212,13 +253,14 @@ read_block(off_t offset, char *ssd_buffer)
 {
     bool found = 0;
     static SSDBufferTag ssd_buf_tag;
-    static SSDBufDesp *ssd_buf_hdr;
+    static SSDBufDesp* ssd_buf_hdr;
 
     ssd_buf_tag.offset = offset;
     if (DEBUG)
         printf("[INFO] read():-------offset=%lu\n", offset);
 
-    ssd_buf_hdr = SSDBufferAlloc(&ssd_buf_tag, &found, 0);
+    ssd_buf_hdr = allocSSDBuf(&ssd_buf_tag, &found, 0);
+
     if (found)
     {
         read_hit_num++;
@@ -238,6 +280,8 @@ read_block(off_t offset, char *ssd_buffer)
     }
     ssd_buf_hdr->ssd_buf_flag &= ~SSD_BUF_DIRTY;
     ssd_buf_hdr->ssd_buf_flag |= SSD_BUF_VALID;
+
+    _UNLOCK(ssd_buf_hdr);
 }
 
 /*
@@ -255,13 +299,15 @@ write_block(off_t offset,int blkcnt, char *ssd_buffer)
     if (DEBUG)
         printf("[INFO] write():-------offset=%lu\n", offset);
 
-    ssd_buf_hdr = SSDBufferAlloc(&ssd_buf_tag, &found, 1);
+    ssd_buf_hdr = allocSSDBuf(&ssd_buf_tag, &found, 1);
 
     dev_pwrite(ssd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_id * SSD_BUFFER_SIZE);
     time_write_ssd += lastTimerinterval();
     flush_ssd_blocks++;
 
     ssd_buf_hdr->ssd_buf_flag |= SSD_BUF_VALID | SSD_BUF_DIRTY;
+    _UNLOCK(ssd_buf_hdr);
+
 }
 
 /******************
@@ -316,10 +362,34 @@ void CopySSDBufTag(SSDBufferTag* objectTag, SSDBufferTag* sourceTag)
     objectTag->offset = sourceTag->offset;
 }
 
-
 bool isSamebuf(SSDBufferTag *tag1, SSDBufferTag *tag2)
 {
     if (tag1->offset != tag2->offset)
         return 0;
     else return 1;
+}
+
+static SSDBufDesp*
+getAFreeSSDBuf()
+{
+    if(ssd_buf_desp_ctrl->first_freessd < 0)
+        return NULL;
+
+    SSDBufDesp* ssd_buf_hdr = &ssd_buf_desps[ssd_buf_desp_ctrl->first_freessd];
+    ssd_buf_desp_ctrl->first_freessd = ssd_buf_hdr->next_freessd;
+    ssd_buf_hdr->next_freessd = -1;
+    ssd_buf_desp_ctrl->n_usedssd++;
+    return ssd_buf_hdr;
+}
+
+void
+_LOCK(pthread_mutex_t* lock)
+{
+    SHM_mutex_lock(lock);
+}
+
+void
+_UNLOCK(pthread_mutex_t* lock)
+{
+    SHM_mutex_unlock(lock);
 }

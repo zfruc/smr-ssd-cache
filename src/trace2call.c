@@ -24,7 +24,6 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly)
     char		action;
     off_t		offset;
     char       *ssd_buffer;
-    float		size_float;
     int	        returnCode;
     int         isFullSSDcache = 0;
     FILE *trace;
@@ -66,7 +65,6 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly)
             isFullSSDcache = 1;
         }
 
-        SHM_mutex_lock(lock_process_req);
         if (action == ACT_WRITE)
         {
             totalreq_cnt++;
@@ -83,7 +81,6 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly)
                 printf("[INFO] trace_to_iocall():read offset=%lu\n", offset);
             read_block(offset,ssd_buffer);
         }
-        SHM_mutex_unlock(lock_process_req);
 
         if (totalreq_cnt % 10000 == 0)
             report_ontime();

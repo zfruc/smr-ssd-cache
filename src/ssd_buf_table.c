@@ -3,9 +3,9 @@
 #include "shmlib.h"
 #include "ssd-cache.h"
 
-int initSSDBufTable(size_t size)
+int HashTab_Init()
 {
-    ssd_buf_hashtable = (SSDBufHashBucket*)malloc(sizeof(SSDBufHashBucket)*size);
+    ssd_buf_hashtable = (SSDBufHashBucket*)malloc(sizeof(SSDBufHashBucket)*NTABLE_SSD_CACHE);
     if(ssd_buf_hashtable == NULL)
         return -1;
 
@@ -13,7 +13,7 @@ int initSSDBufTable(size_t size)
     size_t i = 0;
     for(i = 0; i < NBLOCK_SSD_CACHE; bucket++, i++)
     {
-        bucket->ssd_buf_id = -1;
+        bucket->desp_serial_id = -1;
         bucket->hash_key.offset = -1;
         bucket->next_item = NULL;
     }
@@ -54,7 +54,7 @@ int initSSDBufTable(size_t size)
 //    return stat;
 }
 
-unsigned long ssdbuftableHashcode(SSDBufferTag *ssd_buf_tag)
+unsigned long HashTab_GetHashCode(SSDBufferTag *ssd_buf_tag)
 {
     if(BandOrBlock == 1)
     {
@@ -64,7 +64,7 @@ unsigned long ssdbuftableHashcode(SSDBufferTag *ssd_buf_tag)
     return hashcode;
 }
 
-long ssdbuftableLookup(SSDBufferTag *ssd_buf_tag, unsigned long hash_code)
+long HashTab_Lookup(SSDBufferTag *ssd_buf_tag, unsigned long hash_code)
 {
     if (DEBUG)
         printf("[INFO] Lookup ssd_buf_tag: %lu\n",ssd_buf_tag->offset);
@@ -73,7 +73,7 @@ long ssdbuftableLookup(SSDBufferTag *ssd_buf_tag, unsigned long hash_code)
     {
         if (isSamebuf(&nowbucket->hash_key, ssd_buf_tag))
         {
-            return nowbucket->ssd_buf_id;
+            return nowbucket->desp_serial_id;
         }
         nowbucket = nowbucket->next_item;
     }
@@ -81,7 +81,7 @@ long ssdbuftableLookup(SSDBufferTag *ssd_buf_tag, unsigned long hash_code)
     return -1;
 }
 
-long ssdbuftableInsert(SSDBufferTag *ssd_buf_tag, unsigned long hash_code, long ssd_buf_id)
+long HashTab_Insert(SSDBufferTag *ssd_buf_tag, unsigned long hash_code, long desp_serial_id)
 {
     if (DEBUG)
         printf("[INFO] Insert buf_tag: %lu\n",ssd_buf_tag->offset);
@@ -99,14 +99,14 @@ long ssdbuftableInsert(SSDBufferTag *ssd_buf_tag, unsigned long hash_code, long 
 
     SSDBufHashBucket *newitem = (SSDBufHashBucket*)malloc(sizeof(SSDBufHashBucket));
     newitem->hash_key = *ssd_buf_tag;
-    newitem->ssd_buf_id = ssd_buf_id;
+    newitem->desp_serial_id = desp_serial_id;
     newitem->next_item = NULL;
 
     nowbucket->next_item = newitem;
     return 0;
 }
 
-long ssdbuftableDelete(SSDBufferTag *ssd_buf_tag, unsigned long hash_code)
+long HashTab_Delete(SSDBufferTag *ssd_buf_tag, unsigned long hash_code)
 {
     if (DEBUG)
         printf("[INFO] Delete buf_tag: %lu\n",ssd_buf_tag->offset);
@@ -120,7 +120,7 @@ long ssdbuftableDelete(SSDBufferTag *ssd_buf_tag, unsigned long hash_code)
         if (isSamebuf(&nowbucket->next_item->hash_key, ssd_buf_tag))
         {
             delitem = nowbucket->next_item;
-            del_id = nowbucket->next_item->ssd_buf_id;
+            del_id = nowbucket->next_item->desp_serial_id;
             nowbucket->next_item = delitem->next_item;
             free(delitem);
             return del_id;

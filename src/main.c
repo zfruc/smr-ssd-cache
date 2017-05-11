@@ -56,7 +56,7 @@ unsigned int INIT_PROCESS = 0;
 //}
 
 int
-main(int argc, char **argv)
+main(int argc, char** argv)
 {
     int isWriteOnly;
     int traceID;

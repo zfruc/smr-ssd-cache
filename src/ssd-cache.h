@@ -15,10 +15,12 @@ typedef struct
 
 typedef struct
 {
-    SSDBufferTag 	ssd_buf_tag;
-    long 		ssd_buf_id;				// ssd buffer location in shared buffer
+    long        serial_id;              // the serial number of the descriptor corresponding to SSD buffer.
+    long 		ssd_buf_id;				// SSD buffer location in shared buffer
     unsigned 	ssd_buf_flag;
-    long		next_freessd;           // to link free ssd
+    long		next_freessd;           // to link the desp serial number of free SSD buffer
+    SSDBufferTag 	ssd_buf_tag;
+    pthread_mutex_t lock;               // For the fine grain size
 } SSDBufDesp;
 
 #define SSD_BUF_VALID 0x01
@@ -32,7 +34,7 @@ typedef struct SSDBufHashCtrl
 typedef struct SSDBufHashBucket
 {
     SSDBufferTag 			hash_key;
-    long    				ssd_buf_id;
+    long    				desp_serial_id;
     struct SSDBufHashBucket 	*next_item;
 } SSDBufHashBucket;
 
@@ -109,6 +111,9 @@ extern bool isSamebuf(SSDBufferTag *, SSDBufferTag *);
 extern void CopySSDBufTag(SSDBufferTag* objectTag, SSDBufferTag* sourceTag);
 
 extern void* flushSSDBuffer(SSDBufDesp *ssd_buf_hdr);
+
+extern void         _LOCK(pthread_mutex_t* lock);
+extern void         _UNLOCK(pthread_mutex_t* lock);
 
 extern unsigned long NBLOCK_SSD_CACHE;
 extern unsigned long NTABLE_SSD_CACHE;

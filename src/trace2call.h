@@ -1,7 +1,7 @@
 #define DEBUG 0
 /* ---------------------------trace 2 call---------------------------- */
-#ifndef TRACETOCALL
-#define TRACETOCALL 1
+#ifndef _TRACETOCALL_H
+#define _TRACETOCALL_H 1
 
 #define ACT_READ '0'
 #define ACT_WRITE '1'

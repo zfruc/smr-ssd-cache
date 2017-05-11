@@ -180,13 +180,13 @@ SSDBufDesp *getSCANBuffer(SSDBufferTag *ssd_buf_tag)
  		unsigned char   old_flag = ssd_buf_hdr->ssd_buf_flag;
         	SSDBufferTag    old_tag = ssd_buf_hdr->ssd_buf_tag;
         	if (DEBUG)
-                	printf("[INFO] SSDBufferAlloc(): old_flag&SSD_BUF_DIRTY=%d\n", old_flag & SSD_BUF_DIRTY);
+                	printf("[INFO] allocSSDBuf(): old_flag&SSD_BUF_DIRTY=%d\n", old_flag & SSD_BUF_DIRTY);
         	if ((old_flag & SSD_BUF_DIRTY) != 0) {
                 	flushSSDBuffer(ssd_buf_hdr);
        		}
         	if ((old_flag & SSD_BUF_VALID) != 0) {
-                	unsigned long   old_hash = ssdbuftableHashcode(&old_tag);
-                	ssdbuftableDelete(&old_tag, old_hash);
+                	unsigned long   old_hash = HashTab_GetHashCode(&old_tag);
+                	HashTab_Delete(&old_tag, old_hash);
         	}
 		deleteFromSCAN(ssd_buf_hdr->ssd_buf_id);
 		ssd_buf_hdr->next_freessd = ssd_buf_desp_ctrl->first_freessd;

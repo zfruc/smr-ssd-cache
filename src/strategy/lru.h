@@ -3,9 +3,10 @@
 
 typedef struct
 {
-	long 		ssd_buf_id;				// ssd buffer location in shared buffer
-    long        next_lru;               // to link used ssd as LRU
-    long        last_lru;               // to link used ssd as LRU
+	long 		serial_id;			// the corresponding descriptor serial number.
+    long        next_lru;               // to link used SSD as LRU
+    long        last_lru;               // to link used SSD as LRU
+    pthread_mutex_t lock;
 } SSDBufDespForLRU;
 
 typedef struct
@@ -24,5 +25,6 @@ extern unsigned long flush_times;
 
 
 extern int initSSDBufferForLRU();
-extern SSDBufDesp *getLRUBuffer();
-extern void *hitInLRUBuffer(SSDBufDesp *);
+extern long Unload_LRUBuf();
+extern int hitInLRUBuffer(long serial_id);
+extern void *insertLRUBuffer(long serial_id);

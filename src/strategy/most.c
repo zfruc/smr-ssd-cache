@@ -98,8 +98,8 @@ deleteBand()
 			flushSSDBuffer(ssd_buf_hdr);
 		}
 		if ((old_flag & SSD_BUF_VALID) != 0) {
-			old_hash = ssdbuftableHashcode(&old_tag);
-			ssdbuftableDelete(&old_tag, old_hash);
+			old_hash = HashTab_GetHashCode(&old_tag);
+			HashTab_Delete(&old_tag, old_hash);
 		}
 		ssd_buf_desp_ctrl->n_usedssd--;
 	}
