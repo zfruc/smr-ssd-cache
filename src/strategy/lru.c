@@ -49,7 +49,6 @@ initSSDBufferForLRU()
 static volatile void *
 addToLRUHead(SSDBufDespForLRU* ssd_buf_hdr_for_lru)
 {
-    _LOCK(&ssd_buf_strategy_ctrl_lru->lock);
     if (ssd_buf_desp_ctrl->n_usedssd == 0)
     {
         ssd_buf_strategy_ctrl_lru->first_lru = ssd_buf_hdr_for_lru->serial_id;
@@ -62,16 +61,12 @@ addToLRUHead(SSDBufDespForLRU* ssd_buf_hdr_for_lru)
         ssd_buf_desp_for_lru[ssd_buf_strategy_ctrl_lru->first_lru].last_lru = ssd_buf_hdr_for_lru->serial_id;
         ssd_buf_strategy_ctrl_lru->first_lru = ssd_buf_hdr_for_lru->serial_id;
     }
-    _UNLOCK(&ssd_buf_strategy_ctrl_lru->lock);
-
     return NULL;
 }
 
 static volatile void *
 deleteFromLRU(SSDBufDespForLRU * ssd_buf_hdr_for_lru)
 {
-    _LOCK(&ssd_buf_strategy_ctrl_lru->lock);
-
     if (ssd_buf_hdr_for_lru->last_lru >= 0)
     {
         ssd_buf_desp_for_lru[ssd_buf_hdr_for_lru->last_lru].next_lru = ssd_buf_hdr_for_lru->next_lru;
@@ -90,8 +85,6 @@ deleteFromLRU(SSDBufDespForLRU * ssd_buf_hdr_for_lru)
     }
 
     ssd_buf_hdr_for_lru->last_lru = ssd_buf_hdr_for_lru->next_lru = -1;
-
-    _UNLOCK(&ssd_buf_strategy_ctrl_lru->lock);
 
     return NULL;
 }
@@ -125,18 +118,28 @@ Unload_LRUBuf()
 int
 hitInLRUBuffer(long serial_id)
 {
+    _LOCK(&ssd_buf_strategy_ctrl_lru->lock);
+
     SSDBufDespForLRU* ssd_buf_hdr_for_lru = &ssd_buf_desp_for_lru[serial_id];
     if(hasBeenDeleted(ssd_buf_hdr_for_lru))
+    {
+        _UNLOCK(&ssd_buf_strategy_ctrl_lru->lock);
         return -1;
-
+    }
     moveToLRUHead(ssd_buf_hdr_for_lru);
+    _UNLOCK(&ssd_buf_strategy_ctrl_lru->lock);
+
     return 0;
 }
 
 void*
 insertLRUBuffer(long serial_id)
 {
+    _LOCK(&ssd_buf_strategy_ctrl_lru->lock);
+
     addToLRUHead(&ssd_buf_desp_for_lru[serial_id]);
+
+    _UNLOCK(&ssd_buf_strategy_ctrl_lru->lock);
     return 0;
 }
 

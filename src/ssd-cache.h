@@ -110,8 +110,6 @@ extern bool isSamebuf(SSDBufferTag *, SSDBufferTag *);
 
 extern void CopySSDBufTag(SSDBufferTag* objectTag, SSDBufferTag* sourceTag);
 
-extern void* flushSSDBuffer(SSDBufDesp *ssd_buf_hdr);
-
 extern void         _LOCK(pthread_mutex_t* lock);
 extern void         _UNLOCK(pthread_mutex_t* lock);
 

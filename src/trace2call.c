@@ -17,7 +17,7 @@ static double time_begin, time_now;
 static struct timeval  tv_begin, tv_now;
 static struct timezone tz_begin, tz_now;
 unsigned long totalreq_cnt = 0;
-
+unsigned long readreq_cnt = 0;
 void
 trace_to_iocall(char *trace_file_path, int isWriteOnly)
 {
@@ -77,6 +77,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly)
         else if (!isWriteOnly && action == ACT_READ)
         {
             totalreq_cnt++;
+            readreq_cnt++;
             if (DEBUG)
                 printf("[INFO] trace_to_iocall():read offset=%lu\n", offset);
             read_block(offset,ssd_buffer);
@@ -114,6 +115,7 @@ static void resetStatics()
     time_read_ssd = 0;
     time_write_ssd = 0;
     totalreq_cnt = 0;
+    readreq_cnt = 0;
     hashmiss_sum = 0;
     hashmiss_read = 0;
     hashmiss_write = 0;
@@ -121,5 +123,5 @@ static void resetStatics()
 
 static void report_ontime()
 {
-    printf("totalreqNum:%lu, hit num:%lu   flush_ssd_blocks:%lu flush_fifo_blocks:%lu, hashmiss:%lu\n",totalreq_cnt, hit_num, flush_ssd_blocks, flush_hdd_blocks, hashmiss_sum);
-}
+    printf("totalreqNum:%lu, readreqNum:%lu, hit num:%lu, readhit:%lu, flush_ssd_blocks:%lu flush_hdd_blocks:%lu, hashmiss:%lu, readhassmiss:%lu writehassmiss:%lu\n",
+           totalreq_cnt,readreq_cnt, hit_num, read_hit_num, flush_ssd_blocks, flush_hdd_blocks, hashmiss_sum, hashmiss_read, hashmiss_write);}
