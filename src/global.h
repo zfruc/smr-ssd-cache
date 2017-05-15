@@ -20,7 +20,7 @@ unsigned long WRITEAMPLIFICATION = 100;
 unsigned long NCOLDBAND = 1;
 unsigned long PERIODTIMES;
 char smr_device[] = "/dev/sdc";
-char ssd_device[] = "/dev/sdd";
+char ssd_device[] = "/mnt/ssd/ssd";
 
 SSDEvictionStrategy EvictStrategy;
 int BandOrBlock;
@@ -49,13 +49,12 @@ unsigned long hashmiss_sum;
 unsigned long hashmiss_read;
 unsigned long hashmiss_write;
 
-pthread_mutex_t *lock_process_req;
 SSDBufDespCtrl	*ssd_buf_desp_ctrl;
 SSDBufDesp	    *ssd_buf_desps;
 
-SSDBufHashCtrl   *ssd_buf_hash_ctrl;
+//SSDBufHashCtrl   *ssd_buf_hash_ctrl;
 SSDBufHashBucket *ssd_buf_hashtable;
-SSDBufHashBucket *ssd_buf_hashdesps;
+//SSDBufHashBucket *ssd_buf_hashdesps;
 
 #ifdef SIMULATION
 int 		    inner_ssd_fd;

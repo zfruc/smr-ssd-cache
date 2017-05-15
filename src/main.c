@@ -60,11 +60,13 @@ main(int argc, char** argv)
 {
     int isWriteOnly;
     int traceID;
-    if(argc == 4)
+    off_t startLBA;
+    if(argc == 5)
     {
         NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = atoi(argv[1]);
         isWriteOnly = atoi(argv[2]);
         traceID = atoi(argv[3]);
+        startLBA = atol(argv[4]);
     }
     else
     {
@@ -84,7 +86,7 @@ main(int argc, char** argv)
     ssd_fd = open(ssd_device, O_RDWR | O_DIRECT);
 
     char* tracefile[] = {"/smr-ssd-cache/trace/src1_2.csv.req","/smr-ssd-cache/trace/wdev_0.csv.req"};
-    trace_to_iocall(tracefile[traceID],isWriteOnly);
+    trace_to_iocall(tracefile[traceID],isWriteOnly,startLBA);
     close(hdd_fd);
     close(ssd_fd);
 

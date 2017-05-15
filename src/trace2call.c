@@ -8,7 +8,6 @@
 #include "trace2call.h"
 #include "report.h"
 
-void        trace_to_iocall(char *trace_file_path, int isWriteOnly);
 static void reportCurInfo();
 static void report_ontime();
 static void resetStatics();
@@ -19,7 +18,7 @@ static struct timezone tz_begin, tz_now;
 unsigned long totalreq_cnt = 0;
 unsigned long readreq_cnt = 0;
 void
-trace_to_iocall(char *trace_file_path, int isWriteOnly)
+trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
 {
     char		action;
     off_t		offset;
@@ -56,7 +55,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly)
             error("error while reading trace file.");
             break;
         }
-        offset = offset * BLCKSZ;
+        offset = (offset + startLBA) * BLCKSZ;
 
         if(!isFullSSDcache && flush_hdd_blocks > 0)
         {
@@ -70,8 +69,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly)
             totalreq_cnt++;
             if (DEBUG)
                 printf("[INFO] trace_to_iocall():wirte offset=%lu\n", offset);
-            if(totalreq_cnt==55)
-                totalreq_cnt =55;
+
             write_block(offset,1, ssd_buffer);
         }
         else if (!isWriteOnly && action == ACT_READ)

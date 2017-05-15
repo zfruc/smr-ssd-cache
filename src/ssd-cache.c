@@ -86,8 +86,6 @@ init_SSDDescriptorBuffer()
             SHM_mutex_init(&ssd_buf_hdr->lock);
         }
         ssd_buf_desps[NBLOCK_SSD_CACHE - 1].next_freessd = -1;
-
-        lock_process_req = (pthread_mutex_t*)SHM_alloc(SHM_PROCESS_REQ_LOCK,sizeof(pthread_mutex_t));
     }
     else
     {
