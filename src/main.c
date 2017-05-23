@@ -73,6 +73,11 @@ main(int argc, char** argv)
         printf("parameters are wrong %d\n", argc);
         exit(-1);
     }
+
+//        NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = 50000;
+//        isWriteOnly = 0;
+//        traceID = 1;
+//        startLBA = 0;
 #ifdef SIMULATION
     initFIFOCache();
     inner_ssd_fd = open(inner_ssd_device, O_RDWR | O_DIRECT);
@@ -85,7 +90,7 @@ main(int argc, char** argv)
     hdd_fd = open(smr_device, O_RDWR | O_DIRECT);
     ssd_fd = open(ssd_device, O_RDWR | O_DIRECT);
 
-    char* tracefile[] = {"/smr-ssd-cache/trace/src1_2.csv.req","/smr-ssd-cache/trace/wdev_0.csv.req"};
+    char* tracefile[] = {"/home/trace/src1_2.csv.req","/home/trace/wdev_0.csv.req"};
     trace_to_iocall(tracefile[traceID],isWriteOnly,startLBA);
     close(hdd_fd);
     close(ssd_fd);

@@ -186,11 +186,13 @@ allocSSDBuf(SSDBufferTag *ssd_buf_tag, bool * found, int alloc4What)
     }
     else
     {
-        /** When there is NO free SSD space for cache, TODO flush **/
+        /** When there is NO free SSD space for cache **/
+        // TODO Choose a buffer by strategy/
         long renew_buf = Strategy_GetUnloadBufID(ssd_buf_tag, EvictStrategy); //need look
         ssd_buf_hdr = &ssd_buf_desps[renew_buf];
         _LOCK(&ssd_buf_hdr->lock);
 
+        // TODO Flush
         unsigned char	old_flag = ssd_buf_hdr->ssd_buf_flag;
         if ((old_flag & SSD_BUF_DIRTY) != 0)
         {

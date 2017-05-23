@@ -49,7 +49,7 @@ initSSDBufferForLRU()
 static volatile void *
 addToLRUHead(SSDBufDespForLRU* ssd_buf_hdr_for_lru)
 {
-    if (ssd_buf_desp_ctrl->n_usedssd == 0)
+    if (ssd_buf_strategy_ctrl_lru->last_lru < 0)
     {
         ssd_buf_strategy_ctrl_lru->first_lru = ssd_buf_hdr_for_lru->serial_id;
         ssd_buf_strategy_ctrl_lru->last_lru = ssd_buf_hdr_for_lru->serial_id;
