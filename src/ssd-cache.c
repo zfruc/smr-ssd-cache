@@ -11,7 +11,7 @@
 
 static int          init_SSDDescriptorBuffer();
 static int          init_StatisticObj();
-static void flushSSDBuffer(SSDBufDesp * ssd_buf_hdr);
+static void         flushSSDBuffer(SSDBufDesp * ssd_buf_hdr);
 static SSDBufDesp*  allocSSDBuf(SSDBufferTag *ssd_buf_tag, bool * found, int alloc4What);
 static SSDBufDesp*  getAFreeSSDBuf();
 
@@ -22,8 +22,9 @@ static void*        Strategy_AddBufID(long serial_id);
 
 void                CopySSDBufTag(SSDBufferTag* objectTag, SSDBufferTag* sourceTag);
 
-void         _LOCK(pthread_mutex_t* lock);
-void         _UNLOCK(pthread_mutex_t* lock);
+void                _LOCK(pthread_mutex_t* lock);
+void                _UNLOCK(pthread_mutex_t* lock);
+
 /* stopwatch */
 static double time_begin_temp;
 static double time_now_temp;
@@ -331,7 +332,7 @@ static int dev_pwrite(int fd, void* buf,size_t nbytes,off_t offset)
     stopTimer();
     if (w < 0)
     {
-        printf("[ERROR] read():-------read from device: fd=%d, errorcode=%d, offset=%lu\n", fd, w, offset);
+        printf("[ERROR] read():-------write to device: fd=%d, errorcode=%d, offset=%lu\n", fd, w, offset);
         exit(-1);
     }
     return w;

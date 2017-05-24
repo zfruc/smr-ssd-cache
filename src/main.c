@@ -90,6 +90,7 @@ main(int argc, char** argv)
     hdd_fd = open(smr_device, O_RDWR | O_DIRECT);
     ssd_fd = open(ssd_device, O_RDWR | O_DIRECT);
 
+    printf("Device ID: hdd=%d, ssd=%d\n",hdd_fd,ssd_fd);
     char* tracefile[] = {"/home/trace/src1_2.csv.req","/home/trace/wdev_0.csv.req"};
     trace_to_iocall(tracefile[traceID],isWriteOnly,startLBA);
     close(hdd_fd);
