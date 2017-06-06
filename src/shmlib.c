@@ -3,7 +3,6 @@
     This file provides utilities for share memory operation based on POSIX Share Memory.
     To untilize without error, you might add "-lrt" option onto the linker.
 */
-#include "report.h"
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -11,6 +10,7 @@
 #include <fcntl.h>
 #include <pthread.h>
 #include <errno.h>
+#include "report.h"
 #include "shmlib.h"
 /*
     Only call this func one time, otherwise it may cause content confused.

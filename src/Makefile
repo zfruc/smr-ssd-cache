@@ -8,7 +8,8 @@ CFLAGS += -Wall -pthread
 CPPFLAGS += -I$(SMR_SSD_CACHE_DIR) -I$(SMR_SSD_CACHE_DIR)/smr-simulator -I$(SMR_SSD_CACHE_DIR)/strategy
 
 RM = rm -rf
-OBJS = report.o shmlib.o ssd_buf_table.o ssd-cache.o inner_ssd_buf_table.o smr-simulator.o trace2call.o main.o lru.o
+RMSHM = rm -f /dev/shm/*
+OBJS = report.o timerUtils.o shmlib.o ssd_buf_table.o ssd-cache.o inner_ssd_buf_table.o smr-simulator.o trace2call.o main.o lru.o
 
 all: $(OBJS) smr-ssd-cache
 	@echo 'Successfully built smr-ssd-cache...'
@@ -20,6 +21,9 @@ report.o: report.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
 
 shmlib.o: shmlib.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
+
+timerUtils.o: timerUtils.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
 
 ssd_buf_table.o: ssd_buf_table.c
@@ -71,3 +75,4 @@ maxcold.o: strategy/maxcold.c
 clean:
 	$(RM) *.o
 	$(RM) $(SMR_SSD_CACHE_DIR)/smr-ssd-cache
+	$(RMSHM)

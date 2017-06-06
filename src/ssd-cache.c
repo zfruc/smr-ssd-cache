@@ -1,10 +1,10 @@
-#include <sys/time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <memory.h>
 #include <unistd.h>
+
+#include "timerUtils.h"
 #include "ssd-cache.h"
-//#include "smr-simulator/smr-simulator.h"
 #include "ssd_buf_table.h"
 #include "strategy/lru.h"
 #include "shmlib.h"
@@ -26,19 +26,14 @@ void                _LOCK(pthread_mutex_t* lock);
 void                _UNLOCK(pthread_mutex_t* lock);
 
 /* stopwatch */
-static double time_begin_temp;
-static double time_now_temp;
-static struct timeval   tv;
-static struct timezone	tz;
-static void startTimer();
-static void stopTimer();
-static double lastTimerinterval();
+static timeval tv_start, tv_stop;
+int IsHit;
+microsecond_t msec_r_hdd,msec_w_hdd,msec_r_ssd,msec_w_ssd;
 
 /* Device I/O operation with Timer */
 static int dev_pread(int fd, void* buf,size_t nbytes,off_t offset);
 static int dev_pwrite(int fd, void* buf,size_t nbytes,off_t offset);
 static char* ssd_buffer;
-
 
 /*
  * init buffer hash table, strategy_control, buffer, work_mem
@@ -46,9 +41,9 @@ static char* ssd_buffer;
 void
 initSSD()
 {
+    int r_initdesp          =   init_SSDDescriptorBuffer();
     int r_initstrategybuf   =   initStrategySSDBuffer(EvictStrategy);
     int r_initbuftb         =   HashTab_Init();
-    int r_initdesp          =   init_SSDDescriptorBuffer();
     int r_initstt           =   init_StatisticObj();
     printf("init_Strategy: %d, init_table: %d, init_desp: %d, inti_Stt: %d\n",r_initstrategybuf, r_initbuftb, r_initdesp, r_initstt);
 
@@ -100,42 +95,42 @@ init_SSDDescriptorBuffer()
 static int
 init_StatisticObj()
 {
-    int stat = SHM_lock_n_check("GLOBALSTATISTIC");
-    if(stat == 0)
-    {
-        hit_num = 0;
-        load_ssd_blocks = 0;
-        flush_ssd_blocks = 0;
-        load_hdd_blocks = 0;
-        flush_hdd_blocks = 0;
-        time_read_hdd = 0.0;
-        time_write_hdd = 0.0;
-        time_read_ssd = 0.0;
-        time_write_ssd = 0.0;
-        hashmiss_sum = 0;
-        hashmiss_read = 0;
-        hashmiss_write = 0;
-        read_hit_num = 0;
-    }
-    SHM_unlock("GLOBALSTATISTIC");
-    return stat;
+    hit_num = 0;
+    read_hit_num = 0;
+    write_hit_num = 0;
+    load_ssd_blocks = 0;
+    flush_ssd_blocks = 0;
+    load_hdd_blocks = 0;
+    flush_hdd_blocks = 0;
+    flush_clean_blocks = 0;
+
+    time_read_hdd = 0.0;
+    time_write_hdd = 0.0;
+    time_read_ssd = 0.0;
+    time_write_ssd = 0.0;
+    hashmiss_sum = 0;
+    hashmiss_read = 0;
+    hashmiss_write = 0;
+    return 0;
 }
 
 static void
 flushSSDBuffer(SSDBufDesp * ssd_buf_hdr)
 {
-//    if (BandOrBlock == 1)
-//    {
-//        SSD_BUFFER_SIZE = BNDSZ;
-//        BLCKSZ = BNDSZ;
-//    }
-//
+    if ((ssd_buf_hdr->ssd_buf_flag & SSD_BUF_DIRTY) == 0)
+    {
+        flush_clean_blocks++;
+        return;
+    }
+
     dev_pread(ssd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_id * SSD_BUFFER_SIZE);
-    time_read_ssd += lastTimerinterval();
+    msec_r_ssd = GetTimerInterval(&tv_start,&tv_stop);
+    time_read_ssd += Mirco2Sec(msec_r_ssd);
     load_ssd_blocks++;
 
     dev_pwrite(hdd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_tag.offset);
-    time_write_hdd += lastTimerinterval();
+    msec_w_hdd = GetTimerInterval(&tv_start,&tv_stop);
+    time_write_hdd += Mirco2Sec(msec_w_hdd);
     flush_hdd_blocks++;
 }
 
@@ -194,11 +189,7 @@ allocSSDBuf(SSDBufferTag *ssd_buf_tag, bool * found, int alloc4What)
         _LOCK(&ssd_buf_hdr->lock);
 
         // TODO Flush
-        unsigned char	old_flag = ssd_buf_hdr->ssd_buf_flag;
-        if ((old_flag & SSD_BUF_DIRTY) != 0)
-        {
-            flushSSDBuffer(ssd_buf_hdr);
-        }
+        flushSSDBuffer(ssd_buf_hdr);
 
         Strategy_AddBufID(ssd_buf_hdr->serial_id);
     }
@@ -259,21 +250,26 @@ read_block(off_t offset, char *ssd_buffer)
 
     ssd_buf_hdr = allocSSDBuf(&ssd_buf_tag, &found, 0);
 
+    IsHit = found;
     if (found)
     {
-        read_hit_num++;
         dev_pread(ssd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_id * SSD_BUFFER_SIZE);
-        time_read_ssd += lastTimerinterval();
+
+        read_hit_num++;
+        msec_r_ssd = GetTimerInterval(&tv_start,&tv_stop);
+        time_read_ssd += Mirco2Sec(msec_r_ssd);
         load_ssd_blocks++;
     }
     else
     {
         dev_pread(hdd_fd, ssd_buffer, SSD_BUFFER_SIZE, offset);
-        time_read_hdd += lastTimerinterval();
+        msec_r_hdd = GetTimerInterval(&tv_start,&tv_stop);
+        time_read_hdd += Mirco2Sec(msec_r_hdd);
         load_hdd_blocks++;
 
         dev_pwrite(ssd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_id * SSD_BUFFER_SIZE);
-        time_write_ssd += lastTimerinterval();
+        msec_w_ssd = GetTimerInterval(&tv_start,&tv_stop);;
+        time_write_ssd += Mirco2Sec(msec_w_ssd);
         flush_ssd_blocks++;
     }
     ssd_buf_hdr->ssd_buf_flag &= ~SSD_BUF_DIRTY;
@@ -286,7 +282,7 @@ read_block(off_t offset, char *ssd_buffer)
  * write--return the buf_id of buffer according to buf_tag
  */
 void
-write_block(off_t offset,int blkcnt, char *ssd_buffer)
+write_block(off_t offset, char *ssd_buffer)
 {
     bool	found;
 
@@ -299,9 +295,13 @@ write_block(off_t offset,int blkcnt, char *ssd_buffer)
 
     ssd_buf_hdr = allocSSDBuf(&ssd_buf_tag, &found, 1);
 
+    IsHit = found;
+    write_hit_num += found;
+
     dev_pwrite(ssd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_id * SSD_BUFFER_SIZE);
-    time_write_ssd += lastTimerinterval();
-    flush_ssd_blocks++;
+    msec_w_ssd = GetTimerInterval(&tv_start,&tv_stop);
+    time_write_ssd += Mirco2Sec(msec_w_ssd);
+    flush_ssd_blocks++ ;
 
     ssd_buf_hdr->ssd_buf_flag |= SSD_BUF_VALID | SSD_BUF_DIRTY;
     _UNLOCK(&ssd_buf_hdr->lock);
@@ -314,9 +314,9 @@ write_block(off_t offset,int blkcnt, char *ssd_buffer)
 
 static int dev_pread(int fd, void* buf,size_t nbytes,off_t offset)
 {
-    startTimer();
+    TimerStart(&tv_start);
     int r = pread(fd,buf,nbytes,offset);
-    stopTimer();
+    TimerStop(&tv_stop);
     if (r < 0)
     {
         printf("[ERROR] read():-------read from device: fd=%d, errorcode=%d, offset=%lu\n", fd, r, offset);
@@ -327,32 +327,15 @@ static int dev_pread(int fd, void* buf,size_t nbytes,off_t offset)
 
 static int dev_pwrite(int fd, void* buf,size_t nbytes,off_t offset)
 {
-    startTimer();
+    TimerStart(&tv_start);
     int w = pwrite(fd,buf,nbytes,offset);
-    stopTimer();
+    TimerStop(&tv_stop);
     if (w < 0)
     {
         printf("[ERROR] read():-------write to device: fd=%d, errorcode=%d, offset=%lu\n", fd, w, offset);
         exit(-1);
     }
     return w;
-}
-
-static void startTimer()
-{
-    gettimeofday(&tv, &tz);
-    time_begin_temp = tv.tv_sec + tv.tv_usec / 1000000.0;
-}
-
-static void stopTimer()
-{
-    gettimeofday(&tv, &tz);
-    time_now_temp = tv.tv_sec + tv.tv_usec / 1000000.0;
-}
-
-static double lastTimerinterval()
-{
-    return time_now_temp - time_begin_temp;
 }
 
 void CopySSDBufTag(SSDBufferTag* objectTag, SSDBufferTag* sourceTag)

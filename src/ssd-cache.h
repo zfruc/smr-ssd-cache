@@ -4,6 +4,7 @@
 #define _SSD_CACHE_H 1
 
 #include <pthread.h>
+#include "timerUtils.h"
 
 #define off_t	unsigned long
 #define bool	unsigned char
@@ -85,8 +86,12 @@ extern SSDBufDesp	*ssd_buf_desps;
 extern pthread_mutex_t  *lock_process_req;
 
 extern unsigned long hit_num;
+extern unsigned long read_hit_num;
+extern unsigned long write_hit_num;
+
 extern unsigned long load_ssd_blocks;
 extern unsigned long load_hdd_blocks;
+extern unsigned long flush_clean_blocks;
 extern unsigned long flush_hdd_blocks;
 extern unsigned long flush_ssd_blocks;
 
@@ -99,11 +104,13 @@ extern double time_write_hdd;
 extern double time_read_ssd;
 extern double time_write_ssd;
 
-extern unsigned long read_hit_num;
+extern int IsHit;
+extern microsecond_t msec_r_hdd,msec_w_hdd,msec_r_ssd,msec_w_ssd;
+
 
 extern void initSSD();
 extern void read_block(off_t offset, char* ssd_buffer);
-extern void write_block(off_t offset,int blkcnt, char* ssd_buffer);
+extern void write_block(off_t offset, char* ssd_buffer);
 extern void read_band(off_t offset, char* ssd_buffer);
 extern void write_band(off_t offset, char* ssd_buffer);
 extern bool isSamebuf(SSDBufferTag *, SSDBufferTag *);

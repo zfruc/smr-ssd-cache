@@ -20,7 +20,7 @@ unsigned long WRITEAMPLIFICATION = 100;
 unsigned long NCOLDBAND = 1;
 unsigned long PERIODTIMES;
 char smr_device[] = "/dev/sdc";
-char ssd_device[] = "/mnt/ssd/ssd";
+char ssd_device[] = "/mnt/ramdisk/ssd";
 
 SSDEvictionStrategy EvictStrategy;
 int BandOrBlock;
@@ -31,6 +31,7 @@ int ssd_fd;
 
 unsigned long hit_num;
 unsigned long read_hit_num;
+unsigned long write_hit_num;
 
 unsigned long run_times;
 unsigned long flush_times;
@@ -39,6 +40,7 @@ unsigned long load_ssd_blocks;
 unsigned long load_hdd_blocks;
 unsigned long flush_hdd_blocks;
 unsigned long flush_ssd_blocks;
+unsigned long flush_clean_blocks;
 
 double time_read_ssd;
 double time_read_hdd;

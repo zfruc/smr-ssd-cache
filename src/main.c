@@ -10,7 +10,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <unistd.h>
 
+#include "report.h"
 #include "global.h"
 #include "ssd-cache.h"
 //#include "smr-simulator/smr-simulator.h"
@@ -55,18 +57,45 @@ unsigned int INIT_PROCESS = 0;
 //
 //}
 
+void ramdisk_iotest()
+{
+    int fdram = open("/mnt/ramdisk/ramdisk",O_RDWR | O_DIRECT);
+    printf("fdram=%d\n",fdram);
+
+    char* buf;
+    int returncode = posix_memalign(&buf, 512, 4096);
+    size_t count = 512;
+    off_t offset = 0;
+
+    int r;
+    while(1)
+    {
+        r = pwrite(fdram,buf,count,offset);
+        if(r<=0)
+        {
+            printf("write ramdisk error:%d\n",r);
+            exit(1);
+        }
+    }
+}
+
 int
 main(int argc, char** argv)
 {
+//    ramdisk_iotest();
     int isWriteOnly;
-    int traceID;
+    int traceId;
     off_t startLBA;
-    if(argc == 5)
+    int batchId;
+    int usrId;
+    if(argc == 7)
     {
         NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = atoi(argv[1]);
         isWriteOnly = atoi(argv[2]);
-        traceID = atoi(argv[3]);
+        traceId = atoi(argv[3]);
         startLBA = atol(argv[4]);
+        batchId = atoi(argv[5]);
+        usrId = atoi(argv[6]);
     }
     else
     {
@@ -76,7 +105,7 @@ main(int argc, char** argv)
 
 //        NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = 50000;
 //        isWriteOnly = 0;
-//        traceID = 1;
+//        traceId = 1;
 //        startLBA = 0;
 #ifdef SIMULATION
     initFIFOCache();
@@ -85,16 +114,31 @@ main(int argc, char** argv)
     //NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = 500000;//280M //50000; // 200MB
     SSD_BUFFER_SIZE = 4096;
     EvictStrategy = LRU;
+    char logpath[50];
+    sprintf(logpath,"/home/outputs/logs/b=%d_uid=%d_tid=%d",batchId,usrId,traceId);
 
     initSSD();
     hdd_fd = open(smr_device, O_RDWR | O_DIRECT);
     ssd_fd = open(ssd_device, O_RDWR | O_DIRECT);
+    if(OpenLogFile(logpath) < 0)
+        error("open log file failure.\n");
 
     printf("Device ID: hdd=%d, ssd=%d\n",hdd_fd,ssd_fd);
-    char* tracefile[] = {"/home/trace/src1_2.csv.req","/home/trace/wdev_0.csv.req"};
-    trace_to_iocall(tracefile[traceID],isWriteOnly,startLBA);
+    char* tracefile[] = {"/home/trace/src1_2.csv.req",
+                         "/home/trace/wdev_0.csv.req",
+                         "/home/trace/hm_0.csv.req",
+                         "/home/trace/mds_0.csv.req",
+                         "/home/trace/prn_0.csv.req",
+                         "/home/trace/rsrch_0.csv.req",
+                         "/home/trace/stg_0.csv.req",
+                         "/home/trace/ts_0.csv.req",
+                         "/home/trace/usr_0.csv.req",
+                         "/home/trace/web_0.csv.req"
+                        };
+    trace_to_iocall(tracefile[traceId],isWriteOnly,startLBA);
     close(hdd_fd);
     close(ssd_fd);
+    CloseLogFile();
 
 #ifdef SIMULATION
     close(inner_ssd_fd);
