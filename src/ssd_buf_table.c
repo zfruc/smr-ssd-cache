@@ -2,6 +2,13 @@
 #include <stdlib.h>
 #include "shmlib.h"
 #include "ssd-cache.h"
+#include "ssd_buf_table.h"
+#include "global.h"
+
+extern void _LOCK(pthread_mutex_t* lock);
+extern void _UNLOCK(pthread_mutex_t* lock);
+
+SSDBufHashBucket*   ssd_buf_hashtable;
 
 int HashTab_Init()
 {

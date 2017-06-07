@@ -1,61 +1,106 @@
 #ifndef _GLOBAL_H
 #define _GLOBAL_H 1
-#include "ssd-cache.h"
-unsigned long NBLOCK_SSD_CACHE;
-unsigned long NTABLE_SSD_CACHE;
-unsigned long SSD_BUFFER_SIZE;
-unsigned long NSMRBands = 19418000;		// 194180*(18MB+36MB)/2~5TB
-unsigned long NSMRBlocks = 2621952;		// 2621952*8KB~20GB
-unsigned long NSSDs;
-unsigned long NSSDTables;
-unsigned long NBANDTables = 2621952;
-size_t SSD_SIZE = 4096;
-size_t BLCKSZ = 4096;
-size_t BNDSZ = 36*1024*1024;
-size_t ZONESZ;
-unsigned long INTERVALTIMELIMIT = 100000000;
-unsigned long NSSDLIMIT;
-unsigned long NSSDCLEAN = 1;
-unsigned long WRITEAMPLIFICATION = 100;
-unsigned long NCOLDBAND = 1;
-unsigned long PERIODTIMES;
-char smr_device[] = "/dev/sdc";
-char ssd_device[] = "/mnt/ramdisk/ssd";
+#include <sys/types.h>
+typedef unsigned long size_t;
 
-SSDEvictionStrategy EvictStrategy;
-int BandOrBlock;
+struct RuntimeSTAT
+{
+    unsigned int batchId;
+    unsigned int userId;
+    unsigned int traceId;
+    unsigned int startLBA;
+    unsigned int isWriteOnly;
+
+    unsigned long reqcnt_s;
+    unsigned long reqcnt_r;
+    unsigned long reqcnt_w;
+
+    unsigned long hitnum_s;
+    unsigned long hitnum_r;
+    unsigned long hitnum_w;
+
+    unsigned long load_ssd_blocks;
+    unsigned long load_hdd_blocks;
+    unsigned long flush_hdd_blocks;
+    unsigned long flush_ssd_blocks;
+    unsigned long flush_clean_blocks;
+
+    double time_read_ssd;
+    double time_read_hdd;
+    double time_write_ssd;
+    double time_write_hdd;
+
+    unsigned long hashmiss_sum;
+    unsigned long hashmiss_read;
+    unsigned long hashmiss_write;
+};
+
+struct InitUsrInfo
+{
+    int isWriteOnly;
+    int traceId;
+    off_t startLBA;
+    int batchId;
+    int usrId;
+};
+
+typedef enum
+{
+    CLOCK = 0,
+    LRU,
+    LRUofBand,
+    Most,
+    Most_Dirty,
+    SCAN,
+    CMR,
+    SMR,
+    WA,
+    MaxCold,
+    MaxAll,
+    AvgBandHot,
+    HotDivSize,
+    /** add for multiuser **/
+    LRU_global,
+    LRU_peruser
+} SSDEvictionStrategy;
+
+
+extern unsigned long NBLOCK_SSD_CACHE;
+extern unsigned long NTABLE_SSD_CACHE;
+extern unsigned long SSD_BUFFER_SIZE;
+extern unsigned long NSMRBands;		// 194180*(18MB+36MB)/2~5TB
+extern unsigned long NSMRBlocks;		// 2621952*8KB~20GB
+extern unsigned long NSSDs;
+extern unsigned long NSSDTables;
+extern unsigned long NBANDTables;
+extern size_t SSD_SIZE;
+extern size_t BLCKSZ;
+extern size_t BNDSZ;
+extern size_t ZONESZ;
+extern unsigned long INTERVALTIMELIMIT;
+extern unsigned long NSSDLIMIT;
+extern unsigned long NSSDCLEAN;
+extern unsigned long WRITEAMPLIFICATION;
+extern unsigned long NCOLDBAND;
+extern unsigned long PERIODTIMES;
+extern char smr_device[];
+extern char ssd_device[];
+
+extern SSDEvictionStrategy EvictStrategy;
+extern int BandOrBlock;
 
 /*Block = 0, Band=1*/
-int hdd_fd;
-int ssd_fd;
+extern int hdd_fd;
+extern int ssd_fd;
 
-unsigned long hit_num;
-unsigned long read_hit_num;
-unsigned long write_hit_num;
+extern struct RuntimeSTAT* STT;
+extern struct InitUsrInfo UsrInfo;
 
-unsigned long run_times;
-unsigned long flush_times;
-
-unsigned long load_ssd_blocks;
-unsigned long load_hdd_blocks;
-unsigned long flush_hdd_blocks;
-unsigned long flush_ssd_blocks;
-unsigned long flush_clean_blocks;
-
-double time_read_ssd;
-double time_read_hdd;
-double time_write_ssd;
-double time_write_hdd;
-
-unsigned long hashmiss_sum;
-unsigned long hashmiss_read;
-unsigned long hashmiss_write;
-
-SSDBufDespCtrl	*ssd_buf_desp_ctrl;
-SSDBufDesp	    *ssd_buf_desps;
+//extern SSDBufDespCtrl	*ssd_buf_desp_ctrl;
+//extern SSDBufDesp	    *ssd_buf_desps;
 
 //SSDBufHashCtrl   *ssd_buf_hash_ctrl;
-SSDBufHashBucket *ssd_buf_hashtable;
+//extern SSDBufHashBucket *ssd_buf_hashtable;
 //SSDBufHashBucket *ssd_buf_hashdesps;
 
 #ifdef SIMULATION
@@ -74,15 +119,16 @@ pthread_mutex_t inner_ssd_hash_mutex;
 #endif // SIMULATION
 
 /** Shared memory variable names **/
-const char* SHM_SSDBUF_STRATEGY_CTRL = "SHM_SSDBUF_STRATEGY_CTRL";
-const char* SHM_SSDBUF_STRATEGY_DESP = "SHM_SSDBUF_STRATEGY_DESP";
+extern const char* SHM_SSDBUF_STRATEGY_CTRL;
+extern const char* SHM_SSDBUF_STRATEGY_DESP;
 
-const char* SHM_SSDBUF_DESP_CTRL = "SHM_SSDBUF_DESP_CTRL";
-const char* SHM_SSDBUF_DESPS = "SHM_SSDBUF_DESPS";
+extern const char* SHM_SSDBUF_DESP_CTRL;
+extern const char* SHM_SSDBUF_DESPS;
 
-const char* SHM_SSDBUF_HASHTABLE_CTRL = "SHM_SSDBUF_HASHTABLE_CTRL";
-const char* SHM_SSDBUF_HASHTABLE = "SHM_SSDBUF_HASHTABLE";
-const char* SHM_SSDBUF_HASHDESPS =  "SHM_SSDBUF_HASHDESPS";
-const char* SHM_PROCESS_REQ_LOCK = "SHM_PROCESS_REQ_LOCK";
+extern const char* SHM_SSDBUF_HASHTABLE_CTRL;
+extern const char* SHM_SSDBUF_HASHTABLE;
+extern const char* SHM_SSDBUF_HASHDESPS;
+extern const char* SHM_PROCESS_REQ_LOCK;
 
+extern const char* PATH_LOG;
 #endif

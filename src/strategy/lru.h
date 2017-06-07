@@ -21,8 +21,6 @@ typedef struct
  ********/
 SSDBufferStrategyControlForLRU *ssd_buf_strategy_ctrl_lru;
 SSDBufDespForLRU	*ssd_buf_desp_for_lru;
-extern unsigned long flush_times;
-
 
 extern int initSSDBufferForLRU();
 extern long Unload_LRUBuf();

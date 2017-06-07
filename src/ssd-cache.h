@@ -4,10 +4,10 @@
 #define _SSD_CACHE_H 1
 
 #include <pthread.h>
+#include "global.h"
 #include "timerUtils.h"
 
-#define off_t	unsigned long
-#define bool	unsigned char
+#define bool    unsigned char
 
 typedef struct
 {
@@ -27,17 +27,6 @@ typedef struct
 #define SSD_BUF_VALID 0x01
 #define SSD_BUF_DIRTY 0x02
 
-typedef struct SSDBufHashCtrl
-{
-    pthread_mutex_t lock;
-} SSDBufHashCtrl;
-
-typedef struct SSDBufHashBucket
-{
-    SSDBufferTag 			hash_key;
-    long    				desp_serial_id;
-    struct SSDBufHashBucket 	*next_item;
-} SSDBufHashBucket;
 
 typedef struct
 {
@@ -47,66 +36,8 @@ typedef struct
     pthread_mutex_t lock;
 } SSDBufDespCtrl;
 
-typedef enum
-{
-    CLOCK = 0,
-    LRU,
-    LRUofBand,
-    Most,
-    Most_Dirty,
-    SCAN,
-    CMR,
-    SMR,
-    WA,
-    MaxCold,
-    MaxAll,
-    AvgBandHot,
-    HotDivSize,
-    /** add for multiuser **/
-    LRU_global,
-    LRU_peruser
-} SSDEvictionStrategy;
-
-#define GetSSDBufHashBucket(hash_code) ((SSDBufHashBucket *) (ssd_buf_hashtable + (unsigned) (hash_code)))
-
-extern int hdd_fd;
-extern int ssd_fd;
-
-extern size_t BLCKSZ;
-extern size_t BNDSZ;
-extern int BandOrBlock;
-
-extern SSDBufHashCtrl   *ssd_buf_hash_ctrl;
-extern SSDBufHashBucket	*ssd_buf_hashtable;
-extern SSDBufHashBucket *ssd_buf_hashdesps;
-
-extern SSDBufDespCtrl *ssd_buf_desp_ctrl;
-extern SSDBufDesp	*ssd_buf_desps;
-
-extern pthread_mutex_t  *lock_process_req;
-
-extern unsigned long hit_num;
-extern unsigned long read_hit_num;
-extern unsigned long write_hit_num;
-
-extern unsigned long load_ssd_blocks;
-extern unsigned long load_hdd_blocks;
-extern unsigned long flush_clean_blocks;
-extern unsigned long flush_hdd_blocks;
-extern unsigned long flush_ssd_blocks;
-
-extern unsigned long hashmiss_sum;
-extern unsigned long hashmiss_read;
-extern unsigned long hashmiss_write;
-
-extern double time_read_hdd;
-extern double time_write_hdd;
-extern double time_read_ssd;
-extern double time_write_ssd;
-
 extern int IsHit;
 extern microsecond_t msec_r_hdd,msec_w_hdd,msec_r_ssd,msec_w_ssd;
-
 
 extern void initSSD();
 extern void read_block(off_t offset, char* ssd_buffer);
@@ -117,24 +48,7 @@ extern bool isSamebuf(SSDBufferTag *, SSDBufferTag *);
 
 extern void CopySSDBufTag(SSDBufferTag* objectTag, SSDBufferTag* sourceTag);
 
-extern void         _LOCK(pthread_mutex_t* lock);
-extern void         _UNLOCK(pthread_mutex_t* lock);
-
-extern unsigned long NBLOCK_SSD_CACHE;
-extern unsigned long NTABLE_SSD_CACHE;
-extern size_t SSD_BUFFER_SIZE;
-extern char	smr_device[100];
-extern int 	smr_fd;
-extern int 	ssd_fd;
-extern SSDEvictionStrategy EvictStrategy;
-
-extern const char* SHM_SSDBUF_STRATEGY_CTRL;
-extern const char* SHM_SSDBUF_STRATEGY_DESP;
-extern const char* SHM_SSDBUF_DESP_CTRL;
-extern const char* SHM_SSDBUF_DESPS;
-extern const char* SHM_SSDBUF_HASHTABLE_CTRL;
-extern const char* SHM_SSDBUF_HASHTABLE;
-extern const char* SHM_SSDBUF_HASHDESPS;
-extern const char* SHM_PROCESS_REQ_LOCK;
+extern void _LOCK(pthread_mutex_t* lock);
+extern void _UNLOCK(pthread_mutex_t* lock);
 
 #endif

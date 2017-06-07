@@ -1,10 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "ssd-cache.h"
-#include "smr-simulator/smr-simulator.h"
+
+#include "global.h"
 #include "lru.h"
 #include "shmlib.h"
-
 static volatile void *addToLRUHead(SSDBufDespForLRU * ssd_buf_hdr_for_lru);
 static volatile void *deleteFromLRU(SSDBufDespForLRU * ssd_buf_hdr_for_lru);
 static volatile void *moveToLRUHead(SSDBufDespForLRU * ssd_buf_hdr_for_lru);

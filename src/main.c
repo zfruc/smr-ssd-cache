@@ -13,6 +13,7 @@
 #include <unistd.h>
 
 #include "report.h"
+#include "shmlib.h"
 #include "global.h"
 #include "ssd-cache.h"
 //#include "smr-simulator/smr-simulator.h"
@@ -57,37 +58,50 @@ unsigned int INIT_PROCESS = 0;
 //
 //}
 
-void ramdisk_iotest()
-{
-    int fdram = open("/mnt/ramdisk/ramdisk",O_RDWR | O_DIRECT);
-    printf("fdram=%d\n",fdram);
-
-    char* buf;
-    int returncode = posix_memalign(&buf, 512, 4096);
-    size_t count = 512;
-    off_t offset = 0;
-
-    int r;
-    while(1)
-    {
-        r = pwrite(fdram,buf,count,offset);
-        if(r<=0)
-        {
-            printf("write ramdisk error:%d\n",r);
-            exit(1);
-        }
-    }
-}
+//void ramdisk_iotest()
+//{
+//    int fdram = open("/mnt/ramdisk/ramdisk",O_RDWR | O_DIRECT);
+//    printf("fdram=%d\n",fdram);
+//
+//    char* buf;
+//    int returncode = posix_memalign(&buf, 512, 4096);
+//    size_t count = 512;
+//    off_t offset = 0;
+//
+//    int r;
+//    while(1)
+//    {
+//        r = pwrite(fdram,buf,count,offset);
+//        if(r<=0)
+//        {
+//            printf("write ramdisk error:%d\n",r);
+//            exit(1);
+//        }
+//    }
+//}
+char* tracefile[] = {"/home/trace/src1_2.csv.req",
+                     "/home/trace/wdev_0.csv.req",
+                     "/home/trace/hm_0.csv.req",
+                     "/home/trace/mds_0.csv.req",
+                     "/home/trace/prn_0.csv.req",
+                     "/home/trace/rsrch_0.csv.req",
+                     "/home/trace/stg_0.csv.req",
+                     "/home/trace/ts_0.csv.req",
+                     "/home/trace/usr_0.csv.req",
+                     "/home/trace/web_0.csv.req"
+                    };
+int isWriteOnly;
+int traceId;
+off_t startLBA;
+int batchId;
+int usrId;
 
 int
 main(int argc, char** argv)
 {
 //    ramdisk_iotest();
-    int isWriteOnly;
-    int traceId;
-    off_t startLBA;
-    int batchId;
-    int usrId;
+
+
     if(argc == 7)
     {
         NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = atoi(argv[1]);
@@ -112,29 +126,21 @@ main(int argc, char** argv)
     inner_ssd_fd = open(inner_ssd_device, O_RDWR | O_DIRECT);
 #endif
     //NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = 500000;//280M //50000; // 200MB
+
+
     SSD_BUFFER_SIZE = 4096;
     EvictStrategy = LRU;
-    char logpath[50];
-    sprintf(logpath,"/home/outputs/logs/b=%d_uid=%d_tid=%d",batchId,usrId,traceId);
 
+    initLog();
+    initRuntimeInfo();
     initSSD();
+
     hdd_fd = open(smr_device, O_RDWR | O_DIRECT);
     ssd_fd = open(ssd_device, O_RDWR | O_DIRECT);
-    if(OpenLogFile(logpath) < 0)
-        error("open log file failure.\n");
+
 
     printf("Device ID: hdd=%d, ssd=%d\n",hdd_fd,ssd_fd);
-    char* tracefile[] = {"/home/trace/src1_2.csv.req",
-                         "/home/trace/wdev_0.csv.req",
-                         "/home/trace/hm_0.csv.req",
-                         "/home/trace/mds_0.csv.req",
-                         "/home/trace/prn_0.csv.req",
-                         "/home/trace/rsrch_0.csv.req",
-                         "/home/trace/stg_0.csv.req",
-                         "/home/trace/ts_0.csv.req",
-                         "/home/trace/usr_0.csv.req",
-                         "/home/trace/web_0.csv.req"
-                        };
+
     trace_to_iocall(tracefile[traceId],isWriteOnly,startLBA);
     close(hdd_fd);
     close(ssd_fd);
@@ -224,4 +230,30 @@ main(int argc, char** argv)
 //}
 }
 
+int initRuntimeInfo()
+{
+    char str_STT[50];
+    sprintf(str_STT,"STAT_b%d_u%d_t%d",batchId,usrId,traceId);
+    if((STT = (struct RuntimeSTAT*)SHM_alloc(str_STT,sizeof(struct RuntimeSTAT))) == NULL)
+        return errno;
 
+    STT->batchId = batchId;
+    STT->userId = usrId;
+    STT->traceId = traceId;
+    STT->startLBA = startLBA;
+    STT->isWriteOnly = isWriteOnly;
+    return 0;
+}
+
+int initLog()
+{
+    char logpath[50];
+    sprintf(logpath,"%s/b%d_u%d_t%d.log",PATH_LOG,batchId,usrId,traceId);
+    int rt = 0;
+    if((rt = OpenLogFile(logpath)) < 0)
+    {
+        error("open log file failure.\n");
+
+    }
+    return rt;
+}

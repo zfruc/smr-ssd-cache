@@ -8,6 +8,11 @@
 #include "ssd_buf_table.h"
 #include "strategy/lru.h"
 #include "shmlib.h"
+#include "report.h"
+
+SSDBufDespCtrl*     ssd_buf_desp_ctrl;
+SSDBufDesp*         ssd_buf_desps;
+
 
 static int          init_SSDDescriptorBuffer();
 static int          init_StatisticObj();
@@ -35,6 +40,8 @@ static int dev_pread(int fd, void* buf,size_t nbytes,off_t offset);
 static int dev_pwrite(int fd, void* buf,size_t nbytes,off_t offset);
 static char* ssd_buffer;
 
+extern struct RuntimeSTAT* STT;
+extern struct InitUsrInfo UsrInfo;
 /*
  * init buffer hash table, strategy_control, buffer, work_mem
  */
@@ -95,22 +102,22 @@ init_SSDDescriptorBuffer()
 static int
 init_StatisticObj()
 {
-    hit_num = 0;
-    read_hit_num = 0;
-    write_hit_num = 0;
-    load_ssd_blocks = 0;
-    flush_ssd_blocks = 0;
-    load_hdd_blocks = 0;
-    flush_hdd_blocks = 0;
-    flush_clean_blocks = 0;
+    STT->hitnum_s = 0;
+    STT->hitnum_r = 0;
+    STT->hitnum_w = 0;
+    STT->load_ssd_blocks = 0;
+    STT->flush_ssd_blocks = 0;
+    STT->load_hdd_blocks = 0;
+    STT->flush_hdd_blocks = 0;
+    STT->flush_clean_blocks = 0;
 
-    time_read_hdd = 0.0;
-    time_write_hdd = 0.0;
-    time_read_ssd = 0.0;
-    time_write_ssd = 0.0;
-    hashmiss_sum = 0;
-    hashmiss_read = 0;
-    hashmiss_write = 0;
+    STT->time_read_hdd = 0.0;
+    STT->time_write_hdd = 0.0;
+    STT->time_read_ssd = 0.0;
+    STT->time_write_ssd = 0.0;
+    STT->hashmiss_sum = 0;
+    STT->hashmiss_read = 0;
+    STT->hashmiss_write = 0;
     return 0;
 }
 
@@ -119,19 +126,19 @@ flushSSDBuffer(SSDBufDesp * ssd_buf_hdr)
 {
     if ((ssd_buf_hdr->ssd_buf_flag & SSD_BUF_DIRTY) == 0)
     {
-        flush_clean_blocks++;
+        STT->flush_clean_blocks++;
         return;
     }
 
     dev_pread(ssd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_id * SSD_BUFFER_SIZE);
-    msec_r_ssd = GetTimerInterval(&tv_start,&tv_stop);
-    time_read_ssd += Mirco2Sec(msec_r_ssd);
-    load_ssd_blocks++;
+    msec_r_ssd = TimerInterval_MICRO(&tv_start,&tv_stop);
+    STT->time_read_ssd += Mirco2Sec(msec_r_ssd);
+    STT->load_ssd_blocks++;
 
     dev_pwrite(hdd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_tag.offset);
-    msec_w_hdd = GetTimerInterval(&tv_start,&tv_stop);
-    time_write_hdd += Mirco2Sec(msec_w_hdd);
-    flush_hdd_blocks++;
+    msec_w_hdd = TimerInterval_MICRO(&tv_start,&tv_stop);
+    STT->time_write_hdd += Mirco2Sec(msec_w_hdd);
+    STT->flush_hdd_blocks++;
 }
 
 static SSDBufDesp*
@@ -150,7 +157,7 @@ allocSSDBuf(SSDBufferTag *ssd_buf_tag, bool * found, int alloc4What)
         if(isSamebuf(&ssd_buf_hdr->ssd_buf_tag,ssd_buf_tag))
         {
             Strategy_HitIn(ssd_buf_hdr->serial_id, EvictStrategy); //need lock
-            hit_num++;
+            STT->hitnum_s++;
             *found = 1;
             return ssd_buf_hdr;
         }
@@ -159,11 +166,11 @@ allocSSDBuf(SSDBufferTag *ssd_buf_tag, bool * found, int alloc4What)
             _UNLOCK(&ssd_buf_hdr->lock);
             /** passive delete hash item, which corresponding cache buf has been evicted early **/
             HashTab_Delete(ssd_buf_tag,ssd_buf_hash);
-            hashmiss_sum++;
+            STT->hashmiss_sum++;
             if(alloc4What == 1)	// alloc for write
-                hashmiss_write++;
+                STT->hashmiss_write++;
             else		//alloc for read
-                hashmiss_read++;
+                STT->hashmiss_read++;
         }
     }
 
@@ -254,23 +261,23 @@ read_block(off_t offset, char *ssd_buffer)
     if (found)
     {
         dev_pread(ssd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_id * SSD_BUFFER_SIZE);
+        msec_r_ssd = TimerInterval_MICRO(&tv_start,&tv_stop);
 
-        read_hit_num++;
-        msec_r_ssd = GetTimerInterval(&tv_start,&tv_stop);
-        time_read_ssd += Mirco2Sec(msec_r_ssd);
-        load_ssd_blocks++;
+        STT->hitnum_r++;
+        STT->time_read_ssd += Mirco2Sec(msec_r_ssd);
+        STT->load_ssd_blocks++;
     }
     else
     {
         dev_pread(hdd_fd, ssd_buffer, SSD_BUFFER_SIZE, offset);
-        msec_r_hdd = GetTimerInterval(&tv_start,&tv_stop);
-        time_read_hdd += Mirco2Sec(msec_r_hdd);
-        load_hdd_blocks++;
+        msec_r_hdd = TimerInterval_MICRO(&tv_start,&tv_stop);
+        STT->time_read_hdd += Mirco2Sec(msec_r_hdd);
+        STT->load_hdd_blocks++;
 
         dev_pwrite(ssd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_id * SSD_BUFFER_SIZE);
-        msec_w_ssd = GetTimerInterval(&tv_start,&tv_stop);;
-        time_write_ssd += Mirco2Sec(msec_w_ssd);
-        flush_ssd_blocks++;
+        msec_w_ssd = TimerInterval_MICRO(&tv_start,&tv_stop);
+        STT->time_write_ssd += Mirco2Sec(msec_w_ssd);
+        STT->flush_ssd_blocks++;
     }
     ssd_buf_hdr->ssd_buf_flag &= ~SSD_BUF_DIRTY;
     ssd_buf_hdr->ssd_buf_flag |= SSD_BUF_VALID;
@@ -296,12 +303,12 @@ write_block(off_t offset, char *ssd_buffer)
     ssd_buf_hdr = allocSSDBuf(&ssd_buf_tag, &found, 1);
 
     IsHit = found;
-    write_hit_num += found;
+    STT->hitnum_w += found;
 
     dev_pwrite(ssd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_id * SSD_BUFFER_SIZE);
-    msec_w_ssd = GetTimerInterval(&tv_start,&tv_stop);
-    time_write_ssd += Mirco2Sec(msec_w_ssd);
-    flush_ssd_blocks++ ;
+    msec_w_ssd = TimerInterval_MICRO(&tv_start,&tv_stop);
+    STT->time_write_ssd += Mirco2Sec(msec_w_ssd);
+    STT->flush_ssd_blocks++ ;
 
     ssd_buf_hdr->ssd_buf_flag |= SSD_BUF_VALID | SSD_BUF_DIRTY;
     _UNLOCK(&ssd_buf_hdr->lock);
@@ -314,9 +321,9 @@ write_block(off_t offset, char *ssd_buffer)
 
 static int dev_pread(int fd, void* buf,size_t nbytes,off_t offset)
 {
-    TimerStart(&tv_start);
+    _TimerStart(&tv_start);
     int r = pread(fd,buf,nbytes,offset);
-    TimerStop(&tv_stop);
+    _TimerStop(&tv_stop);
     if (r < 0)
     {
         printf("[ERROR] read():-------read from device: fd=%d, errorcode=%d, offset=%lu\n", fd, r, offset);
@@ -327,9 +334,9 @@ static int dev_pread(int fd, void* buf,size_t nbytes,off_t offset)
 
 static int dev_pwrite(int fd, void* buf,size_t nbytes,off_t offset)
 {
-    TimerStart(&tv_start);
+    _TimerStart(&tv_start);
     int w = pwrite(fd,buf,nbytes,offset);
-    TimerStop(&tv_stop);
+    _TimerStop(&tv_stop);
     if (w < 0)
     {
         printf("[ERROR] read():-------write to device: fd=%d, errorcode=%d, offset=%lu\n", fd, w, offset);

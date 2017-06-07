@@ -11,12 +11,13 @@ typedef struct timeval timeval;
 
 typedef __suseconds_t microsecond_t;
 
-extern void TimerStart(timeval* tv_start);
+extern void _TimerStart(timeval* tv_start);
 
-extern void TimerStop(timeval* tv_stop);
+extern void _TimerStop(timeval* tv_stop);
 
-extern microsecond_t GetTimerInterval(timeval* tv_start, timeval* tv_stop);
+extern microsecond_t    TimerInterval_MICRO(timeval* tv_start, timeval* tv_stop);
+extern double           TimerInterval_SECOND(timeval* tv_start, timeval* tv_stop);
 
 extern double Mirco2Sec(microsecond_t msecond);
-
+extern double Mirco2Milli(microsecond_t msecond);
 #endif // _TIMER_UTILS_H_

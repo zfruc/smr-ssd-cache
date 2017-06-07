@@ -21,12 +21,13 @@ void* SHM_alloc(char* shm_name, size_t len)
     if(fd < 0)
     {
         printf("create share memory error.");
+        return NULL;
     }
 
     if(ftruncate(fd,len)!=0)
     {
         error("truncate share memory error.");
-        exit(1);
+        return NULL;
     }
 
     void* shm_vir_addr = mmap(NULL,len,PROT_READ|PROT_WRITE,MAP_SHARED,fd,0);
