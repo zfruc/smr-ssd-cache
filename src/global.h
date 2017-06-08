@@ -61,7 +61,7 @@ typedef enum
     HotDivSize,
     /** add for multiuser **/
     LRU_global,
-    LRU_peruser
+    LRU_private
 } SSDEvictionStrategy;
 
 

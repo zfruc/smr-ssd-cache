@@ -19,6 +19,7 @@ void CheckRuntime()
     char* str_nobatch = "There is no batch ID = %d\n";
     char* str_nouser = "There is no sser ID = %d\n";
     char* str_pipeerr = "something error...\n";
+    char str_buf[1024];
 
     char str_bid[10];
     char str_uid[10];
@@ -30,32 +31,37 @@ void CheckRuntime()
 
     while(1)
     {
-        fputs(str_selectbatch,stdout);
+        Ask(str_selectbatch);
         fgets(str_bid,9,stdin);
         batchId = atoi(str_bid);
-        sprintf(command,"ls %s/STAT_b%d*",PATH_SHM,batchId);
+        sprintf(command,"ls -l %s/STAT_b%d_* | grep \"^-\"|wc -l",PATH_SHM,batchId);
 
         fd_shell = popen(command,"r");
         if(fd_shell <=0 )
         {
-            printf(str_pipeerr);
+            Say(str_pipeerr);
             continue;
         }
-        while(fgets(shellbuf,1023,fd_shell)>0)
-        {
-            printf(shellbuf);
-        }
+        fgets(shellbuf,1023,fd_shell);
         pclose(fd_shell);
 
-        fputs(str_selectuser,stdout);
-        fgets(str_uid,9,stdin);
+	int usercnt = atoi(shellbuf);
+        sprintf(str_buf,"%d Users in this batch.\n",usercnt);
+	Say(str_buf);
+	if(usercnt==0) continue;
+
+	do
+	{
+            Ask(str_selectuser);
+            fgets(str_uid,9,stdin);
+	}while(str_uid[0] == '\n'); 
         usrId = atoi(str_uid);
         sprintf(command,"ls %s/STAT_b%d_u%d*",PATH_SHM,batchId,usrId);
 
         fd_shell = popen(command,"r");
         if(fd_shell <= 0)
         {
-            printf(str_pipeerr);
+            Say(str_pipeerr);
             continue;
         }
         fgets(shellbuf,1023,fd_shell);
@@ -63,7 +69,7 @@ void CheckRuntime()
         int len = strlen(shellbuf);
         if(len <= 0)
         {
-            printf(str_nouser);
+            Say(str_nouser);
             continue;
         }
         shellbuf[len-1]=0;
@@ -73,12 +79,13 @@ void CheckRuntime()
         usrStat = (struct RuntimeSTAT*)SHM_get(fname,sizeof(struct RuntimeSTAT));
         if(usrStat == NULL)
         {
-            printf(str_pipeerr);
+            Say(str_pipeerr);
             continue;
         }
 
-        printf("User [%d] Runtime Statistic is here:\n",usrId);
-        PrintStatInfo(usrStat);
+        sprintf(str_buf,"User #%d Runtime Statistic is here:\n",usrId);
+        Say(str_buf);
+	PrintStatInfo(usrStat);
 
     }
 }
@@ -115,5 +122,15 @@ void PrintStatInfo(struct RuntimeSTAT* STT)
     printf("**********************************************\n\n");
 
 
+}
+
+void Ask(char* msg)
+{
+	printf("[monitor]# %s",msg);
+}
+
+void Say(char* msg)
+{
+	printf(msg);
 }
 

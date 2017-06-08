@@ -110,6 +110,7 @@ main(int argc, char** argv)
         startLBA = atol(argv[4]);
         batchId = atoi(argv[5]);
         usrId = atoi(argv[6]);
+        //MaxSSD = atol(argv[7]);
     }
     else
     {
