@@ -234,6 +234,15 @@ Strategy_HitIn(long serial_id, SSDEvictionStrategy strategy)
     return -1;
 }
 
+static hasStrateyLimited()
+{
+    switch(strategy)
+    {
+        case LRU: return 0;
+        case LRU_private: return HasStrateyLimited_LRU_private();
+    }
+    return 0;
+}
 static void*
 Strategy_AddBufID(long serial_id)
 {
@@ -360,7 +369,7 @@ bool isSamebuf(SSDBufferTag *tag1, SSDBufferTag *tag2)
 static SSDBufDesp*
 getAFreeSSDBuf()
 {
-    if(ssd_buf_desp_ctrl->first_freessd < 0)
+    if(ssd_buf_desp_ctrl->first_freessd < 0 || hasStrateyLimited())
         return NULL;
 
     SSDBufDesp* ssd_buf_hdr = &ssd_buf_desps[ssd_buf_desp_ctrl->first_freessd];

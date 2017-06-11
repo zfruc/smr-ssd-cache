@@ -19,7 +19,6 @@ static void report_ontime();
 static void resetStatics();
 
 static timeval  tv_trace_start, tv_trace_end;
-static timeval  tv_checkpoint;
 static double time_trace;
 
 /** single request statistic information **/

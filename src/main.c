@@ -90,11 +90,6 @@ char* tracefile[] = {"/home/trace/src1_2.csv.req",
                      "/home/trace/usr_0.csv.req",
                      "/home/trace/web_0.csv.req"
                     };
-int isWriteOnly;
-int traceId;
-off_t startLBA;
-int batchId;
-int usrId;
 
 int
 main(int argc, char** argv)
@@ -102,15 +97,16 @@ main(int argc, char** argv)
 //    ramdisk_iotest();
 
 
-    if(argc == 7)
+    if(argc == 8)
     {
-        NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = atoi(argv[1]);
-        isWriteOnly = atoi(argv[2]);
-        traceId = atoi(argv[3]);
-        startLBA = atol(argv[4]);
-        batchId = atoi(argv[5]);
-        usrId = atoi(argv[6]);
-        //MaxSSD = atol(argv[7]);
+        BatchId = atoi(argv[1]);
+        UserId = atoi(argv[2]);
+        TraceId = atoi(argv[3]);
+        StartLBA = atol(argv[4]);
+        WriteOnly = atoi(argv[5]);
+        NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = atol(argv[6]);
+
+        Param1 = atol(argv[7]);
     }
     else
     {
@@ -142,7 +138,7 @@ main(int argc, char** argv)
 
     printf("Device ID: hdd=%d, ssd=%d\n",hdd_fd,ssd_fd);
 
-    trace_to_iocall(tracefile[traceId],isWriteOnly,startLBA);
+    trace_to_iocall(tracefile[TraceId],WriteOnly,StartLBA);
     close(hdd_fd);
     close(ssd_fd);
     CloseLogFile();
@@ -234,22 +230,22 @@ main(int argc, char** argv)
 int initRuntimeInfo()
 {
     char str_STT[50];
-    sprintf(str_STT,"STAT_b%d_u%d_t%d",batchId,usrId,traceId);
+    sprintf(str_STT,"STAT_b%d_u%d_t%d",BatchId,UserId,TraceId);
     if((STT = (struct RuntimeSTAT*)SHM_alloc(str_STT,sizeof(struct RuntimeSTAT))) == NULL)
         return errno;
 
-    STT->batchId = batchId;
-    STT->userId = usrId;
-    STT->traceId = traceId;
-    STT->startLBA = startLBA;
-    STT->isWriteOnly = isWriteOnly;
+    STT->batchId = BatchId;
+    STT->userId = UserId;
+    STT->traceId = TraceId;
+    STT->startLBA = StartLBA;
+    STT->isWriteOnly = WriteOnly;
     return 0;
 }
 
 int initLog()
 {
     char logpath[50];
-    sprintf(logpath,"%s/b%d_u%d_t%d.log",PATH_LOG,batchId,usrId,traceId);
+    sprintf(logpath,"%s/b%d_u%d_t%d.log",PATH_LOG,BatchId,UserId,TraceId);
     int rt = 0;
     if((rt = OpenLogFile(logpath)) < 0)
     {

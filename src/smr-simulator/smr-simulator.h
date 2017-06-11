@@ -7,7 +7,7 @@
 
 typedef struct
 {
-        unsigned long       offset;
+    off_t offset;
 } SSDTag;
 
 typedef struct
