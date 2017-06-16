@@ -21,7 +21,7 @@ static int hasBeenDeleted(StrategyDesp_LRU_global* ssd_buf_hdr_for_lru);
 int
 initSSDBufferForLRU()
 {
-    STT->myStrategy.ref_lru_global.whole_cache_size = NBLOCK_SSD_CACHE;
+    STT->strategyRef.ref_lru_global.whole_cache_size = NBLOCK_SSD_CACHE;
     int stat = SHM_lock_n_check("LOCK_SSDBUF_STRATEGY_LRU");
     if(stat == 0)
     {

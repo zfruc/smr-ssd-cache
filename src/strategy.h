@@ -8,7 +8,7 @@ struct Ref_lru_global
 
 struct Ref_lru_private
 {
-    blksize_t maxssd;   // this user private lru cache blocks count.
+    //blksize_t maxssd;   // this user private lru cache blocks count.
 };
 
 union StratetyUnion

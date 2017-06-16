@@ -10,7 +10,6 @@
  ** SHM**
  ********/
 
-static blksize_t MaxSSD;
 static StrategyCtrl_LRU_private *strategy_ctrl;
 static StrategyDesp_LRU_private	*strategy_desp;
 static StrategyCtrl_LRU_private *self_strategy_ctrl;
@@ -18,14 +17,14 @@ static StrategyCtrl_LRU_private *self_strategy_ctrl;
 static volatile void *addToLRUHead(StrategyDesp_LRU_private * ssd_buf_hdr_for_lru);
 static volatile void *deleteFromLRU(StrategyDesp_LRU_private * ssd_buf_hdr_for_lru);
 static volatile void *moveToLRUHead(StrategyDesp_LRU_private * ssd_buf_hdr_for_lru);
-static int hasBeenDeleted(StrategyDesp_LRU_private* ssd_buf_hdr_for_lru);
+static int hasDeleted(StrategyDesp_LRU_private* ssd_buf_hdr_for_lru);
 /*
  * init buffer hash table, Strategy_control, buffer, work_mem
  */
 int
 initSSDBufferFor_LRU_private()
 {
-    STT->myStrategy.ref_lru_private.maxssd = MaxSSD = Param1;
+    STT->cacheLimit = Param1;
     int stat = SHM_lock_n_check("LOCK_SSDBUF_STRATEGY_LRU");
     if(stat == 0)
     {
@@ -71,7 +70,7 @@ Unload_Buf_LRU_private()
     deleteFromLRU(&strategy_desp[frozen_id]);
 
     _UNLOCK(&strategy_ctrl->lock);
-    STT->NowUsedBlks--;
+    STT->cacheUsage--;
     return frozen_id;
 }
 
@@ -101,10 +100,16 @@ insertBuffer_LRU_private(long serial_id)
     addToLRUHead(&strategy_desp[serial_id]);
 
     _UNLOCK(&strategy_ctrl->lock);
-    STT->NowUsedBlks++;
+    STT->cacheUsage++;
     return 0;
 }
 
+int
+isOverUpperLimit()
+{
+    if(STT->cacheUsage >= STT->cacheLimit)
+        return 1;
+}
 
 static volatile void *
 addToLRUHead(StrategyDesp_LRU_private* ssd_buf_hdr_for_lru)
@@ -199,7 +204,7 @@ moveToLRUHead(StrategyDesp_LRU_private * ssd_buf_hdr_for_lru)
 }
 
 static int
-hasBeenDeleted(StrategyDesp_LRU_private* ssd_buf_hdr_for_lru)
+hasDeleted(StrategyDesp_LRU_private* ssd_buf_hdr_for_lru)
 {
     if(ssd_buf_hdr_for_lru->last_lru < 0 && ssd_buf_hdr_for_lru->next_lru < 0)
         return 1;

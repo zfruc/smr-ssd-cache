@@ -234,9 +234,9 @@ Strategy_HitIn(long serial_id, SSDEvictionStrategy strategy)
     return -1;
 }
 
-static hasStrateyLimited()
+static int hasStrateyLimited()
 {
-    switch(strategy)
+    switch(EvictStrategy)
     {
         case LRU: return 0;
         case LRU_private: return HasStrateyLimited_LRU_private();

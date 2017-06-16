@@ -11,12 +11,12 @@ struct RuntimeSTAT
     unsigned int startLBA;
     unsigned int isWriteOnly;
 
-    /** Runtime strategy refered values **/
-    union StratetyUnion myStrategy;
+    /** Runtime strategy refered parameter **/
+    union StratetyUnion strategyRef;
 
     /** Runtime Statistic **/
-
-    blksize_t NowUsedBlks;
+    blksize_t cacheLimit;
+    blksize_t cacheUsage;
 
     blksize_t reqcnt_s;
     blksize_t reqcnt_r;
