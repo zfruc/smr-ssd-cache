@@ -147,7 +147,7 @@ int ResizeCacheUsage()
     if(needEvictCnt <= 0)
         return 0;
 
-    while(needEvictCnt)
+    while(needEvictCnt-- > 0)
     {
         long unloadId = Strategy_GetUnloadBufID();
         SSDBufDesp* ssd_buf_hdr = &ssd_buf_desps[unloadId];
@@ -162,7 +162,7 @@ int ResizeCacheUsage()
 
         _LOCK(&ssd_buf_desp_ctrl->lock);
         ssd_buf_hdr->next_freessd = ssd_buf_desp_ctrl->first_freessd;
-        ssd_buf_desp_ctrl->first_freessd = ssd_buf_hdr;
+        ssd_buf_desp_ctrl->first_freessd = ssd_buf_hdr->serial_id;
         _UNLOCK(&ssd_buf_desp_ctrl->lock);
     }
 }

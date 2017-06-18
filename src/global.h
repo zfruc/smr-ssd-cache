@@ -7,7 +7,7 @@ struct RuntimeSTAT
     unsigned int batchId;
     unsigned int userId;
     unsigned int traceId;
-    unsigned int startLBA;
+    unsigned long startLBA;
     unsigned int isWriteOnly;
 
     /** Runtime strategy refered parameter **/

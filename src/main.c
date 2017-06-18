@@ -65,8 +65,8 @@ main(int argc, char** argv)
         BatchId = atoi(argv[1]);
         UserId = atoi(argv[2]);
         TraceId = atoi(argv[3]);
-        StartLBA = atol(argv[4]);
-        WriteOnly = atoi(argv[5]);
+        WriteOnly = atoi(argv[4]);
+        StartLBA = atol(argv[5]);
         NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = atol(argv[6]);
 
         Param1 = atol(argv[7]);

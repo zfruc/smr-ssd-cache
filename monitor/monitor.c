@@ -1,24 +1,35 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <getopt.h>             /* getopt */
 #include "global.h"
 #include "shmlib.h"
+
 const char* PATH_SHM = "/dev/shm";
+
+static char cmdbuf[1024];
+static void ReadCommond();
+static int readANS(char* buf,int cnt);
+
+char* str_help = "Command action\n\ta\tCheck processes runtime state.\n\tp\tRe-Size the Cache Usage upper limitation.\n";
 
 int
 main(int argc, char** argv)
 {
-    CheckRuntime();
+    while(1)
+    {
+        ReadCommond();
+    }
 }
 
 void CheckRuntime()
 {
     struct RuntimeSTAT* usrStat;
-    char* str_selectbatch = "Input the batch ID you've set: ";
-    char* str_selectuser = "Input the user ID you want to check: ";
-    char* str_nobatch = "There is no batch ID = %d\n";
-    char* str_nouser = "There is no sser ID = %d\n";
+    char* str_selectbatch = "Batch ID: ";
+    char* str_selectuser = "User ID: ";
+    char* str_nouser = "There is no the user\n";
     char* str_pipeerr = "something error...\n";
+
     char str_buf[1024];
 
     char str_bid[10];
@@ -32,7 +43,7 @@ void CheckRuntime()
     while(1)
     {
         Ask(str_selectbatch);
-        fgets(str_bid,9,stdin);
+        if(readANS(str_bid,9)<0) return;
         batchId = atoi(str_bid);
         sprintf(command,"ls -l %s/STAT_b%d_* | grep \"^-\"|wc -l",PATH_SHM,batchId);
 
@@ -45,16 +56,17 @@ void CheckRuntime()
         fgets(shellbuf,1023,fd_shell);
         pclose(fd_shell);
 
-	int usercnt = atoi(shellbuf);
+        int usercnt = atoi(shellbuf);
         sprintf(str_buf,"%d Users in this batch.\n",usercnt);
-	Say(str_buf);
-	if(usercnt==0) continue;
+        Say(str_buf);
+        if(usercnt==0) continue;
 
-	do
-	{
+        do
+        {
             Ask(str_selectuser);
-            fgets(str_uid,9,stdin);
-	}while(str_uid[0] == '\n');
+            if(readANS(str_uid,9)<0) return;
+        }
+        while(str_uid[0] == '\n');
         usrId = atoi(str_uid);
         sprintf(command,"ls %s/STAT_b%d_u%d*",PATH_SHM,batchId,usrId);
 
@@ -85,8 +97,7 @@ void CheckRuntime()
 
         sprintf(str_buf,"User #%d Runtime Statistic is here:\n",usrId);
         Say(str_buf);
-	PrintStatInfo(usrStat);
-
+        PrintStatInfo(usrStat);
     }
 }
 
@@ -130,13 +141,123 @@ void PrintStatInfo(struct RuntimeSTAT* STT)
 
 }
 
+void ResizeCache()
+{
+    struct RuntimeSTAT* usrStat;
+    char* str_selectbatch = "Batch ID: ";
+    char* str_selectuser = "User ID: ";
+    char* str_nouser = "There is no the user\n";
+    char* str_pipeerr = "something error...\n";
+
+    char str_buf[1024];
+
+    char str_bid[10];
+    char str_uid[10];
+    int batchId;
+    int usrId;
+    FILE* fd_shell;
+    char command[1024];
+    char shellbuf[1024];
+
+    while(1)
+    {
+        Ask(str_selectbatch);
+        if(readANS(str_bid,9)<0) return;
+        batchId = atoi(str_bid);
+        sprintf(command,"ls -l %s/STAT_b%d_* | grep \"^-\"|wc -l",PATH_SHM,batchId);
+
+        fd_shell = popen(command,"r");
+        if(fd_shell <=0 )
+        {
+            Say(str_pipeerr);
+            continue;
+        }
+        fgets(shellbuf,1023,fd_shell);
+        pclose(fd_shell);
+
+        int usercnt = atoi(shellbuf);
+        sprintf(str_buf,"%d Users in this batch.\n",usercnt);
+        Say(str_buf);
+        if(usercnt==0) continue;
+
+        do
+        {
+            Ask(str_selectuser);
+            if(readANS(str_uid,9)<0) return;
+        }
+        while(str_uid[0] == '\n');
+        usrId = atoi(str_uid);
+        sprintf(command,"ls %s/STAT_b%d_u%d*",PATH_SHM,batchId,usrId);
+
+        fd_shell = popen(command,"r");
+        if(fd_shell <= 0)
+        {
+            Say(str_pipeerr);
+            continue;
+        }
+        fgets(shellbuf,1023,fd_shell);
+
+        int len = strlen(shellbuf);
+        if(len <= 0)
+        {
+            Say(str_nouser);
+            continue;
+        }
+        shellbuf[len-1]=0;
+        char* fname = strrchr(shellbuf,'/');
+        fname++;
+
+        usrStat = (struct RuntimeSTAT*)SHM_get(fname,sizeof(struct RuntimeSTAT));
+        if(usrStat == NULL)
+        {
+            Say(str_pipeerr);
+            continue;
+        }
+
+        sprintf(str_buf,"User #%d Runtime Statistic is here:\n",usrId);
+        Say(str_buf);
+        PrintStatInfo(usrStat);
+
+        Ask("Re-Size the cahe limit to:");
+        if(readANS(str_buf,64)<0) return;
+        blksize_t cachelimit = atol(str_buf);
+        usrStat->cacheLimit = cachelimit;
+    }
+}
+
 void Ask(char* msg)
 {
-	printf("[monitor]# %s",msg);
+    printf("[monitor]# %s",msg);
 }
 
 void Say(char* msg)
 {
-	printf(msg);
+    printf(msg);
 }
 
+static
+int readANS(char* buf,int cnt)
+{
+    fgets(buf,cnt,stdin);
+    if(buf[0] == 'q')
+        return -1;
+    return 0;
+}
+static
+void ReadCommond()
+{
+    Ask("Command (h for help): ");
+    fgets(cmdbuf,10,stdin);
+    int cmd = cmdbuf[0];
+    switch(cmd)
+    {
+    case 'a':
+        CheckRuntime();
+        break;
+    case 'p':
+        ResizeCache();
+        break;
+    case 'h':
+        Say(str_help);
+    }
+}
