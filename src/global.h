@@ -1,7 +1,6 @@
 #ifndef _GLOBAL_H
 #define _GLOBAL_H 1
 #include <sys/types.h>
-#include "strategy.h"
 struct RuntimeSTAT
 {
     /** This user basic info */
@@ -12,7 +11,7 @@ struct RuntimeSTAT
     unsigned int isWriteOnly;
 
     /** Runtime strategy refered parameter **/
-    union StratetyUnion strategyRef;
+    //union StratetyUnion strategyRef;
 
     /** Runtime Statistic **/
     blksize_t cacheLimit;

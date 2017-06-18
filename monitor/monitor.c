@@ -54,7 +54,7 @@ void CheckRuntime()
 	{
             Ask(str_selectuser);
             fgets(str_uid,9,stdin);
-	}while(str_uid[0] == '\n'); 
+	}while(str_uid[0] == '\n');
         usrId = atoi(str_uid);
         sprintf(command,"ls %s/STAT_b%d_u%d*",PATH_SHM,batchId,usrId);
 
@@ -97,6 +97,12 @@ void PrintStatInfo(struct RuntimeSTAT* STT)
     printf("IO Mode:%s\n",STT->isWriteOnly?"WO":"RW");
     printf("Start LBA:%lu\n",STT->startLBA);
     printf("-------------------------------------\n");
+
+    int hitRate = (double)STT->hitnum_s/STT->reqcnt_s * 100;
+    printf("Hit Rate:\t%d%\n",hitRate);
+    printf("Max CacheBlk:\t%lu\n", STT->cacheLimit);
+    printf("Cur CacheBkl:\t%lu\n", STT->cacheUsage);
+
     printf("Req Count:\t%lu\n", STT->reqcnt_s);
     printf("Req Read:\t%lu\n", STT->reqcnt_r);
     printf("Req Write:\t%lu\n", STT->reqcnt_w);

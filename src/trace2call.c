@@ -93,8 +93,10 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         _TimerStop(&tv_req_stop);
         msec_req = TimerInterval_MICRO(&tv_req_start,&tv_req_stop);
 
-        if (STT->reqcnt_s++ % REPORT_INTERVAL == 0)
+        if (++STT->reqcnt_s % REPORT_INTERVAL == 0)
+        {
             report_ontime();
+        }
 
         /*
             print log
@@ -104,6 +106,8 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         sprintf(logbuf,"%lu,%c,%d,%ld,%ld,%ld,%ld,%ld\n",STT->reqcnt_s,action,IsHit,msec_req,msec_r_ssd,msec_w_ssd,msec_r_hdd,msec_w_hdd);
         WriteLog(logbuf);
         msec_r_ssd = msec_w_ssd = msec_r_hdd = msec_w_hdd = 0;
+
+        ResizeCacheUsage();
     }
     _TimerStop(&tv_trace_end);
     time_trace = Mirco2Sec(TimerInterval_MICRO(&tv_trace_start,&tv_trace_end));

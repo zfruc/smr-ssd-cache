@@ -6,7 +6,7 @@
 #include "timerUtils.h"
 #include "ssd-cache.h"
 #include "ssd_buf_table.h"
-#include "strategy/lru.h"
+#include "strategy.h"
 #include "shmlib.h"
 #include "report.h"
 
@@ -19,11 +19,12 @@ static int          init_StatisticObj();
 static void         flushSSDBuffer(SSDBufDesp * ssd_buf_hdr);
 static SSDBufDesp*  allocSSDBuf(SSDBufferTag *ssd_buf_tag, bool * found, int alloc4What);
 static SSDBufDesp*  getAFreeSSDBuf();
+static int resizeCacheUsage();
 
-static int          initStrategySSDBuffer(SSDEvictionStrategy strategy);
-static long         Strategy_GetUnloadBufID(SSDBufferTag *ssd_buf_tag, SSDEvictionStrategy strategy);
-static int          Strategy_HitIn(long serial_id, SSDEvictionStrategy strategy);
-static void*        Strategy_AddBufID(long serial_id);
+static int          initStrategySSDBuffer();
+static long         Strategy_GetUnloadBufID();
+static int          Strategy_HitIn(long serial_id);
+static void        Strategy_AddBufID(long serial_id);
 
 void                CopySSDBufTag(SSDBufferTag* objectTag, SSDBufferTag* sourceTag);
 
@@ -49,7 +50,7 @@ void
 initSSD()
 {
     int r_initdesp          =   init_SSDDescriptorBuffer();
-    int r_initstrategybuf   =   initStrategySSDBuffer(EvictStrategy);
+    int r_initstrategybuf   =   initStrategySSDBuffer();
     int r_initbuftb         =   HashTab_Init();
     int r_initstt           =   init_StatisticObj();
     printf("init_Strategy: %d, init_table: %d, init_desp: %d, inti_Stt: %d\n",r_initstrategybuf, r_initbuftb, r_initdesp, r_initstt);
@@ -75,7 +76,6 @@ init_SSDDescriptorBuffer()
 
         ssd_buf_desp_ctrl->n_usedssd = 0;
         ssd_buf_desp_ctrl->first_freessd = 0;
-        ssd_buf_desp_ctrl->last_freessd = NBLOCK_SSD_CACHE - 1;
         SHM_mutex_init(&ssd_buf_desp_ctrl->lock);
 
         long i;
@@ -141,6 +141,32 @@ flushSSDBuffer(SSDBufDesp * ssd_buf_hdr)
     STT->flush_hdd_blocks++;
 }
 
+int ResizeCacheUsage()
+{
+    blksize_t needEvictCnt = STT->cacheUsage - STT->cacheLimit;
+    if(needEvictCnt <= 0)
+        return 0;
+
+    while(needEvictCnt)
+    {
+        long unloadId = Strategy_GetUnloadBufID();
+        SSDBufDesp* ssd_buf_hdr = &ssd_buf_desps[unloadId];
+
+        // TODO Flush
+        _LOCK(&ssd_buf_hdr->lock);
+        flushSSDBuffer(ssd_buf_hdr);
+
+        ssd_buf_hdr->ssd_buf_flag &= ~(SSD_BUF_VALID | SSD_BUF_DIRTY);
+        ssd_buf_hdr->ssd_buf_tag.offset = -1;
+        _UNLOCK(&ssd_buf_hdr->lock);
+
+        _LOCK(&ssd_buf_desp_ctrl->lock);
+        ssd_buf_hdr->next_freessd = ssd_buf_desp_ctrl->first_freessd;
+        ssd_buf_desp_ctrl->first_freessd = ssd_buf_hdr;
+        _UNLOCK(&ssd_buf_desp_ctrl->lock);
+    }
+}
+
 static SSDBufDesp*
 allocSSDBuf(SSDBufferTag *ssd_buf_tag, bool * found, int alloc4What)
 {
@@ -156,7 +182,7 @@ allocSSDBuf(SSDBufferTag *ssd_buf_tag, bool * found, int alloc4What)
         _LOCK(&ssd_buf_hdr->lock);
         if(isSamebuf(&ssd_buf_hdr->ssd_buf_tag,ssd_buf_tag))
         {
-            Strategy_HitIn(ssd_buf_hdr->serial_id, EvictStrategy); //need lock
+            Strategy_HitIn(ssd_buf_hdr->serial_id); //need lock
             STT->hitnum_s++;
             *found = 1;
             return ssd_buf_hdr;
@@ -209,45 +235,44 @@ allocSSDBuf(SSDBufferTag *ssd_buf_tag, bool * found, int alloc4What)
 }
 
 static int
-initStrategySSDBuffer(SSDEvictionStrategy strategy)
+initStrategySSDBuffer()
 {
     /** Add for multi-user **/
-    if (strategy == LRU)
+    if (EvictStrategy == LRU_global)
         return initSSDBufferForLRU();
+    else if(EvictStrategy == LRU_private)
+        return initSSDBufferFor_LRU_private();
     return -1;
 }
 
 static long
-Strategy_GetUnloadBufID(SSDBufferTag *ssd_buf_tag, SSDEvictionStrategy strategy)
+Strategy_GetUnloadBufID()
 {
 
-    if (strategy == LRU)
+    if (EvictStrategy == LRU_global)
         return Unload_LRUBuf();
+    else if(EvictStrategy == LRU_private)
+        return Unload_Buf_LRU_private();
     return -1;
 }
 
 static int
-Strategy_HitIn(long serial_id, SSDEvictionStrategy strategy)
+Strategy_HitIn(long serial_id)
 {
-    if (strategy == LRU)
+    if (EvictStrategy == LRU_global)
         return hitInLRUBuffer(serial_id);
+    else if(EvictStrategy == LRU_private)
+        return hitInBuffer_LRU_private(serial_id);
     return -1;
 }
 
-static int hasStrateyLimited()
-{
-    switch(EvictStrategy)
-    {
-        case LRU: return 0;
-        case LRU_private: return HasStrateyLimited_LRU_private();
-    }
-    return 0;
-}
-static void*
+static void
 Strategy_AddBufID(long serial_id)
 {
-    if(EvictStrategy == LRU)
+    if(EvictStrategy == LRU_global)
         return insertLRUBuffer(serial_id);
+    else if(EvictStrategy == LRU_private)
+        return insertBuffer_LRU_private(serial_id);
 }
 /*
  * read--return the buf_id of buffer according to buf_tag
@@ -369,7 +394,7 @@ bool isSamebuf(SSDBufferTag *tag1, SSDBufferTag *tag2)
 static SSDBufDesp*
 getAFreeSSDBuf()
 {
-    if(ssd_buf_desp_ctrl->first_freessd < 0 || hasStrateyLimited())
+    if(ssd_buf_desp_ctrl->first_freessd < 0)
         return NULL;
 
     SSDBufDesp* ssd_buf_hdr = &ssd_buf_desps[ssd_buf_desp_ctrl->first_freessd];

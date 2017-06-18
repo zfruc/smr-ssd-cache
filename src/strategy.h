@@ -1,6 +1,9 @@
 #ifndef _STRAtEGY_H_
 #define _STRAtEGY_H_
 
+#include <lru.h>
+#include <lru_private.h>
+
 struct Ref_lru_global
 {
     blksize_t whole_cache_size; // the blocks number of the whole lru cache which shared by all users.

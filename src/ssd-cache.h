@@ -32,7 +32,6 @@ typedef struct
 {
     long		n_usedssd;			// For eviction
     long		first_freessd;		// Head of list of free ssds
-    long		last_freessd;		// Tail of list of free ssds
     pthread_mutex_t lock;
 } SSDBufDespCtrl;
 
@@ -45,7 +44,7 @@ extern void write_block(off_t offset, char* ssd_buffer);
 extern void read_band(off_t offset, char* ssd_buffer);
 extern void write_band(off_t offset, char* ssd_buffer);
 extern bool isSamebuf(SSDBufferTag *, SSDBufferTag *);
-
+extern int ResizeCacheUsage();
 extern void CopySSDBufTag(SSDBufferTag* objectTag, SSDBufferTag* sourceTag);
 
 extern void _LOCK(pthread_mutex_t* lock);

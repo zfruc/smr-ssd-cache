@@ -23,6 +23,7 @@ int CloseLogFile()
 {
     return fclose(LogFile);
 }
+
 int WriteLog(char* log)
 {
     return fwrite(log,strlen(log),1,LogFile);

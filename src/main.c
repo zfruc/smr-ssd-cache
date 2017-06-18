@@ -58,7 +58,8 @@ main(int argc, char** argv)
 {
 //    ramdisk_iotest();
 
-
+// 1 1 1 0 0 100000 100000
+// 1 1 0 0 0 100000 100000
     if(argc == 8)
     {
         BatchId = atoi(argv[1]);
@@ -88,7 +89,7 @@ main(int argc, char** argv)
 
 
     SSD_BUFFER_SIZE = 4096;
-    EvictStrategy = LRU;
+    EvictStrategy = LRU_private;
 
     initLog();
     initRuntimeInfo();

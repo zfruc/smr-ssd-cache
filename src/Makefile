@@ -9,7 +9,7 @@ CPPFLAGS += -I$(SMR_SSD_CACHE_DIR) -I$(SMR_SSD_CACHE_DIR)/smr-simulator -I$(SMR_
 
 RM = rm -rf
 RMSHM = rm -f /dev/shm/*
-OBJS = global.o report.o timerUtils.o shmlib.o ssd_buf_table.o ssd-cache.o inner_ssd_buf_table.o smr-simulator.o trace2call.o main.o lru.o
+OBJS = global.o report.o timerUtils.o shmlib.o ssd_buf_table.o ssd-cache.o trace2call.o main.o lru.o lru_private.o
 
 all: $(OBJS) smr-ssd-cache
 	@echo 'Successfully built smr-ssd-cache...'
@@ -35,12 +35,6 @@ ssd_buf_table.o: ssd_buf_table.c
 ssd-cahce.o: sdd-cache.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
 
-inner_ssd_buf_table.o: smr-simulator/inner_ssd_buf_table.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
-
-smr-simulator.o: smr-simulator/smr-simulator.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
-
 trace2call.o: trace2call.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
 
@@ -51,6 +45,9 @@ clock.o: strategy/clock.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
 
 lru.o: strategy/lru.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
+
+lru_private.o: strategy/lru_private.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
 
 scan.o: strategy/scan.c
