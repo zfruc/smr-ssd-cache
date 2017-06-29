@@ -1,5 +1,6 @@
 #ifndef _GLOBAL_H
 #define _GLOBAL_H 1
+
 #include <sys/types.h>
 struct RuntimeSTAT
 {
@@ -58,7 +59,8 @@ typedef enum
     HotDivSize,
     /** add for multiuser **/
     LRU_global,
-    LRU_private
+    LRU_private,
+    LRU_batch
 } SSDEvictionStrategy;
 
 /** This user basic info */
@@ -70,6 +72,7 @@ extern int WriteOnly;
 extern SSDEvictionStrategy EvictStrategy;
 extern unsigned long Param1;
 extern unsigned long Param2;
+extern int BatchSize;
 
 /** All users basic setup **/
 extern blksize_t NBLOCK_SSD_CACHE;
@@ -92,13 +95,14 @@ extern blksize_t NCOLDBAND;
 extern blksize_t PERIODTIMES;
 extern char smr_device[];
 extern char ssd_device[];
+extern char ram_device[1024];
 
 extern int BandOrBlock;
 
 /*Block = 0, Band=1*/
 extern int hdd_fd;
 extern int ssd_fd;
-
+extern int ram_fd;
 extern struct RuntimeSTAT* STT;
 
 //extern SSDBufDespCtrl	*ssd_buf_desp_ctrl;

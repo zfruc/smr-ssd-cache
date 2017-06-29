@@ -58,7 +58,6 @@ Unload_Buf_LRU_private()
     long frozen_id = self_strategy_ctrl->last_self_lru;
     deleteFromLRU(&strategy_desp[frozen_id]);
 
-    STT->cacheUsage--;
     return frozen_id;
 }
 
@@ -82,7 +81,6 @@ insertBuffer_LRU_private(long serial_id)
     strategy_desp[serial_id].user_id = UserId;
     addToLRUHead(&strategy_desp[serial_id]);
 
-    STT->cacheUsage++;
     return 0;
 }
 

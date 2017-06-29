@@ -33,8 +33,10 @@ void                _UNLOCK(pthread_mutex_t* lock);
 
 /* stopwatch */
 static timeval tv_start, tv_stop;
+static timeval tv_bastart, tv_bastop;
+
 int IsHit;
-microsecond_t msec_r_hdd,msec_w_hdd,msec_r_ssd,msec_w_ssd;
+microsecond_t msec_r_hdd,msec_w_hdd,msec_r_ssd,msec_w_ssd,msec_bw_hdd=0;
 
 /* Device I/O operation with Timer */
 static int dev_pread(int fd, void* buf,size_t nbytes,off_t offset);
@@ -167,11 +169,14 @@ int ResizeCacheUsage()
     }
 }
 
+long unloads[20000];
+long intervaltime;
+char timestr[50];
 static SSDBufDesp*
 allocSSDBuf(SSDBufferTag *ssd_buf_tag, bool * found, int alloc4What)
 {
     /* Lookup if already cached. */
-    SSDBufDesp      *ssd_buf_hdr;
+    SSDBufDesp      *ssd_buf_hdr; //returned value.
     unsigned long   ssd_buf_hash = HashTab_GetHashCode(ssd_buf_tag);
     long            ssd_buf_id = HashTab_Lookup(ssd_buf_tag, ssd_buf_hash);
 
@@ -211,12 +216,46 @@ allocSSDBuf(SSDBufferTag *ssd_buf_tag, bool * found, int alloc4What)
     {
         _LOCK(&ssd_buf_hdr->lock);
         // if there is free SSD buffer.
-        Strategy_AddBufID(ssd_buf_hdr->serial_id);
     }
     else
     {
         /** When there is NO free SSD space for cache **/
         // TODO Choose a buffer by strategy/
+        #ifdef _LRU_BATCH_H_
+        Unload_Buf_LRU_batch(unloads,BatchSize);
+	int i = 0;
+
+//	while(i<BatchSize)
+//	{
+//		printf("%d ",unloads[i]);
+//		i++;
+//	}
+//	i=0; 
+        _TimerStart(&tv_bastart);
+        while(i<BatchSize)
+        {
+            ssd_buf_hdr = &ssd_buf_desps[unloads[i]];
+            _LOCK(&ssd_buf_hdr->lock);
+            flushSSDBuffer(ssd_buf_hdr);
+            ssd_buf_hdr->ssd_buf_flag &= ~(SSD_BUF_VALID | SSD_BUF_DIRTY);
+            ssd_buf_hdr->ssd_buf_tag.offset = -1;
+
+            //push into free ssd stack
+            ssd_buf_hdr->next_freessd = ssd_buf_desp_ctrl->first_freessd;
+            ssd_buf_desp_ctrl->first_freessd = ssd_buf_hdr->serial_id;
+            i++;
+            _UNLOCK(&ssd_buf_hdr->lock);
+        }
+        _TimerStop(&tv_bastop);
+	intervaltime = TimerInterval_MICRO(&tv_bastart,&tv_bastop);
+        msec_bw_hdd += intervaltime;
+	sprintf(timestr,"%lu\n",intervaltime);
+	WriteLog(timestr);
+	_LOCK(&ssd_buf_desp_ctrl->lock);
+        ssd_buf_hdr = getAFreeSSDBuf();
+        _UNLOCK(&ssd_buf_desp_ctrl->lock);
+        _LOCK(&ssd_buf_hdr->lock);
+        #else
         long renew_buf = Strategy_GetUnloadBufID(ssd_buf_tag, EvictStrategy); //need look
         ssd_buf_hdr = &ssd_buf_desps[renew_buf];
         _LOCK(&ssd_buf_hdr->lock);
@@ -224,8 +263,11 @@ allocSSDBuf(SSDBufferTag *ssd_buf_tag, bool * found, int alloc4What)
         // TODO Flush
         flushSSDBuffer(ssd_buf_hdr);
 
-        Strategy_AddBufID(ssd_buf_hdr->serial_id);
+        #endif // _LRU_BATCH_H_
+
     }
+
+    Strategy_AddBufID(ssd_buf_hdr->serial_id);
 
     ssd_buf_hdr->ssd_buf_flag &= ~(SSD_BUF_VALID | SSD_BUF_DIRTY);
     CopySSDBufTag(&ssd_buf_hdr->ssd_buf_tag,ssd_buf_tag);
@@ -242,37 +284,45 @@ initStrategySSDBuffer()
         return initSSDBufferForLRU();
     else if(EvictStrategy == LRU_private)
         return initSSDBufferFor_LRU_private();
+    else if(EvictStrategy == LRU_batch)
+        return initSSDBufferFor_LRU_batch();
     return -1;
 }
 
 static long
 Strategy_GetUnloadBufID()
 {
-
-    if (EvictStrategy == LRU_global)
-        return Unload_LRUBuf();
-    else if(EvictStrategy == LRU_private)
-        return Unload_Buf_LRU_private();
+    STT->cacheUsage--;
+    switch(EvictStrategy)
+    {
+        case LRU_global:        return Unload_LRUBuf();
+        case LRU_private:       return Unload_Buf_LRU_private();
+    }
     return -1;
 }
 
 static int
 Strategy_HitIn(long serial_id)
 {
-    if (EvictStrategy == LRU_global)
-        return hitInLRUBuffer(serial_id);
-    else if(EvictStrategy == LRU_private)
-        return hitInBuffer_LRU_private(serial_id);
+    switch(EvictStrategy)
+    {
+        case LRU_global:        return hitInLRUBuffer(serial_id);
+        case LRU_private:       return hitInBuffer_LRU_private(serial_id);
+        case LRU_batch:         return hitInBuffer_LRU_batch(serial_id);
+    }
     return -1;
 }
 
 static void
 Strategy_AddBufID(long serial_id)
 {
-    if(EvictStrategy == LRU_global)
-        return insertLRUBuffer(serial_id);
-    else if(EvictStrategy == LRU_private)
-        return insertBuffer_LRU_private(serial_id);
+    STT->cacheUsage++;
+    switch(EvictStrategy)
+    {
+        case LRU_global:        return insertLRUBuffer(serial_id);
+        case LRU_private:       return insertBuffer_LRU_private(serial_id);
+        case LRU_batch:         return insertBuffer_LRU_batch(serial_id);
+    }
 }
 /*
  * read--return the buf_id of buffer according to buf_tag
@@ -281,6 +331,9 @@ Strategy_AddBufID(long serial_id)
 void
 read_block(off_t offset, char *ssd_buffer)
 {
+    #ifdef _NO_CACHE_
+
+    #else
     bool found = 0;
     static SSDBufferTag ssd_buf_tag;
     static SSDBufDesp* ssd_buf_hdr;
@@ -317,6 +370,7 @@ read_block(off_t offset, char *ssd_buffer)
     ssd_buf_hdr->ssd_buf_flag |= SSD_BUF_VALID;
 
     _UNLOCK(&ssd_buf_hdr->lock);
+    #endif // _NO_CACHE_
 }
 
 /*
@@ -325,15 +379,15 @@ read_block(off_t offset, char *ssd_buffer)
 void
 write_block(off_t offset, char *ssd_buffer)
 {
+    #ifdef _NO_CACHE_
+    //IO by no cache.
+    #else
     bool	found;
 
     static SSDBufferTag ssd_buf_tag;
     static SSDBufDesp   *ssd_buf_hdr;
 
     ssd_buf_tag.offset = offset;
-    if (DEBUG)
-        printf("[INFO] write():-------offset=%lu\n", offset);
-
     ssd_buf_hdr = allocSSDBuf(&ssd_buf_tag, &found, 1);
 
     IsHit = found;
@@ -346,6 +400,8 @@ write_block(off_t offset, char *ssd_buffer)
 
     ssd_buf_hdr->ssd_buf_flag |= SSD_BUF_VALID | SSD_BUF_DIRTY;
     _UNLOCK(&ssd_buf_hdr->lock);
+    #endif // _NO_CAHCE_
+
 
 }
 

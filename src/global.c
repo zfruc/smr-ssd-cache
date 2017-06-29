@@ -6,6 +6,7 @@ int UserId;
 int TraceId;
 off_t StartLBA;
 int WriteOnly;
+int BatchSize;
 SSDEvictionStrategy EvictStrategy;
 
 unsigned long Param1;
@@ -14,7 +15,7 @@ unsigned long Param2;
 /** All users basic setup **/
 blksize_t NBLOCK_SSD_CACHE;
 blksize_t NTABLE_SSD_CACHE;
-blksize_t SSD_BUFFER_SIZE;
+blksize_t SSD_BUFFER_SIZE = 4096;
 blksize_t NSMRBands = 19418000;		// 194180*(18MB+36MB)/2~5TB
 blksize_t NSMRBlocks = 2621952;		// 2621952*8KB~20GB
 blksize_t NSSDs;
@@ -31,15 +32,15 @@ blksize_t WRITEAMPLIFICATION = 100;
 blksize_t NCOLDBAND = 1;
 blksize_t PERIODTIMES;
 char smr_device[] = "/dev/sdc";
-char ssd_device[] = "/mnt/ramdisk/ssd";
-
+char ssd_device[] = "/mnt/ssd/ssd";
+char ram_device[1024];
 
 int BandOrBlock;
 
 /*Block = 0, Band=1*/
 int hdd_fd;
 int ssd_fd;
-
+int ram_fd;
 struct RuntimeSTAT* STT;
 
 /** Shared memory variable names **/

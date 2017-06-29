@@ -36,6 +36,13 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     char       *ssd_buffer;
     int	        returnCode;
     int         isFullSSDcache = 0;
+
+    #ifdef _CG_LIMIT
+    char* cgbuf;
+    int returncode = posix_memalign(&cgbuf, 512, 4096);
+    #endif // _CG_LIMIT
+
+
     FILE *trace;
     if ((trace = fopen(trace_file_path, "rt")) == NULL)
     {
@@ -43,7 +50,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         exit(1);
     }
 
-    returnCode = posix_memalign(&ssd_buffer, 512, 16*sizeof(char) * BLCKSZ);
+    returnCode = posix_memalign(&ssd_buffer, 1024, 16*sizeof(char) * BLCKSZ);
     if (returnCode < 0)
     {
         error("posix memalign error\n");
@@ -61,6 +68,13 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     {
 //        if(feof(trace))
 //            fseek(trace,0,SEEK_SET);
+        #ifdef _CG_LIMIT
+        if(pwrite(ram_fd,cgbuf,1024,0) <= 0)
+        {
+            printf("write ramdisk error:%d\n",errno);
+            exit(1);
+        }
+        #endif // _CG_LIMIT
 
         returnCode = fscanf(trace, "%c %d %lu\n", &action, &i, &offset);
         if (returnCode < 0)
@@ -103,11 +117,11 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
             format:
             <req_id, r/w, ishit, time cost for: one request, read_ssd, write_ssd, read_smr, write_smr>
         */
-        sprintf(logbuf,"%lu,%c,%d,%ld,%ld,%ld,%ld,%ld\n",STT->reqcnt_s,action,IsHit,msec_req,msec_r_ssd,msec_w_ssd,msec_r_hdd,msec_w_hdd);
-        WriteLog(logbuf);
+        //sprintf(logbuf,"%lu,%c,%d,%ld,%ld,%ld,%ld,%ld\n",STT->reqcnt_s,action,IsHit,msec_req,msec_r_ssd,msec_w_ssd,msec_r_hdd,msec_w_hdd);
+       // WriteLog(logbuf);
         msec_r_ssd = msec_w_ssd = msec_r_hdd = msec_w_hdd = 0;
 
-        ResizeCacheUsage();
+        //ResizeCacheUsage();
     }
     _TimerStop(&tv_trace_end);
     time_trace = Mirco2Sec(TimerInterval_MICRO(&tv_trace_start,&tv_trace_end));
@@ -132,6 +146,7 @@ static void reportCurInfo()
 
     printf(" total run time (s) : %lf\n time_read_ssd : %lf\n time_write_ssd : %lf\n time_read_smr : %lf\n time_write_smr : %lf\n",
            time_trace, STT->time_read_ssd, STT->time_write_ssd, STT->time_read_hdd, STT->time_write_hdd);
+    printf("Batch flush HDD time:%lu\n",msec_bw_hdd);
 }
 
 static void report_ontime()
@@ -161,5 +176,6 @@ static void resetStatics()
     STT->hashmiss_sum = 0;
     STT->hashmiss_read = 0;
     STT->hashmiss_write = 0;
+    msec_bw_hdd = 0;
 }
 

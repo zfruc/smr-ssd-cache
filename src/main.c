@@ -20,27 +20,28 @@
 #include "trace2call.h"
 
 unsigned int INIT_PROCESS = 0;
-//void ramdisk_iotest()
-//{
-//    int fdram = open("/mnt/ramdisk/ramdisk",O_RDWR | O_DIRECT);
-//    printf("fdram=%d\n",fdram);
-//
-//    char* buf;
-//    int returncode = posix_memalign(&buf, 512, 4096);
-//    size_t count = 512;
-//    off_t offset = 0;
-//
-//    int r;
-//    while(1)
-//    {
-//        r = pwrite(fdram,buf,count,offset);
-//        if(r<=0)
-//        {
-//            printf("write ramdisk error:%d\n",r);
-//            exit(1);
-//        }
-//    }
-//}
+void ramdisk_iotest()
+{
+    int fdram = open("/mnt/ramdisk/ramdisk",O_RDWR | O_DIRECT);
+    printf("fdram=%d\n",fdram);
+
+    char* buf;
+    int returncode = posix_memalign(&buf, 512, 4096);
+    size_t count = 512;
+    off_t offset = 0;
+
+    int r;
+    while(1)
+    {
+        r = pwrite(fdram,buf,count,offset);
+        if(r<=0)
+        {
+            printf("write ramdisk error:%d\n",r);
+            exit(1);
+        }
+    }
+}
+
 char* tracefile[] = {"/home/trace/src1_2.csv.req",
                      "/home/trace/wdev_0.csv.req",
                      "/home/trace/hm_0.csv.req",
@@ -53,14 +54,16 @@ char* tracefile[] = {"/home/trace/src1_2.csv.req",
                      "/home/trace/web_0.csv.req"
                     };
 
+
+
 int
 main(int argc, char** argv)
 {
-//    ramdisk_iotest();
+    //ramdisk_iotest();
 
 // 1 1 1 0 0 100000 100000
 // 1 1 0 0 0 100000 100000
-    if(argc == 8)
+    if(argc == 9)
     {
         BatchId = atoi(argv[1]);
         UserId = atoi(argv[2]);
@@ -70,6 +73,9 @@ main(int argc, char** argv)
         NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = atol(argv[6]);
 
         Param1 = atol(argv[7]);
+        BatchSize = atoi(argv[8]);
+        EvictStrategy = LRU_batch;
+        //EvictStrategy = LRU_private;
     }
     else
     {
@@ -87,13 +93,10 @@ main(int argc, char** argv)
 #endif
     //NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = 500000;//280M //50000; // 200MB
 
-
-    SSD_BUFFER_SIZE = 4096;
-    EvictStrategy = LRU_private;
-
     initLog();
     initRuntimeInfo();
     initSSD();
+    init_cgdev();
 
     hdd_fd = open(smr_device, O_RDWR | O_DIRECT);
     ssd_fd = open(ssd_device, O_RDWR | O_DIRECT);
@@ -124,13 +127,23 @@ int initRuntimeInfo()
     STT->traceId = TraceId;
     STT->startLBA = StartLBA;
     STT->isWriteOnly = WriteOnly;
+    STT->cacheUsage = 0;
+    STT->cacheLimit = 0x7fffffffffffffff;
     return 0;
 }
+
+int init_cgdev()
+{
+    sprintf(ram_device,"/mnt/ramdisk/ramdisk_%d",STT->userId);
+    ram_fd = open(ram_device,O_RDWR | O_DIRECT);
+    printf("fdram=%d\n",ram_fd);
+}
+
 
 int initLog()
 {
     char logpath[50];
-    sprintf(logpath,"%s/b%d_u%d_t%d.log",PATH_LOG,BatchId,UserId,TraceId);
+    sprintf(logpath,"%s/b%d_u%d_t%d_bs%d.log",PATH_LOG,BatchId,UserId,TraceId,BatchSize);
     int rt = 0;
     if((rt = OpenLogFile(logpath)) < 0)
     {

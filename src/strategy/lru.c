@@ -87,7 +87,6 @@ insertLRUBuffer(long serial_id)
     _LOCK(&strategy_ctrl->lock);
 
     addToLRUHead(&strategy_desp[serial_id]);
-
     _UNLOCK(&strategy_ctrl->lock);
     return 0;
 }
@@ -132,7 +131,6 @@ deleteFromLRU(StrategyDesp_LRU_global * ssd_buf_hdr_for_lru)
     }
 
     ssd_buf_hdr_for_lru->last_lru = ssd_buf_hdr_for_lru->next_lru = -1;
-
     return NULL;
 }
 

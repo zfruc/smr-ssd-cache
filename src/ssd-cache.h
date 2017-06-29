@@ -36,7 +36,7 @@ typedef struct
 } SSDBufDespCtrl;
 
 extern int IsHit;
-extern microsecond_t msec_r_hdd,msec_w_hdd,msec_r_ssd,msec_w_ssd;
+extern microsecond_t msec_r_hdd,msec_w_hdd,msec_r_ssd,msec_w_ssd,msec_bw_hdd;
 
 extern void initSSD();
 extern void read_block(off_t offset, char* ssd_buffer);
