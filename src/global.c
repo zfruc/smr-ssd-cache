@@ -32,7 +32,7 @@ blksize_t WRITEAMPLIFICATION = 100;
 blksize_t NCOLDBAND = 1;
 blksize_t PERIODTIMES;
 char smr_device[] = "/dev/sdc";
-char ssd_device[] = "/mnt/ssd/ssd";
+char ssd_device[] = "/dev/sdd";
 char ram_device[1024];
 
 int BandOrBlock;
