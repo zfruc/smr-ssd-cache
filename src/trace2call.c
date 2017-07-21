@@ -6,7 +6,7 @@
 
 #include "global.h"
 #include "timerUtils.h"
-#include "ssd-cache.h"
+#include "cache.h"
 #include "strategy/lru.h"
 #include "trace2call.h"
 #include "report.h"

@@ -9,7 +9,7 @@ CPPFLAGS += -I$(SMR_SSD_CACHE_DIR) -I$(SMR_SSD_CACHE_DIR)/smr-simulator -I$(SMR_
 
 RM = rm -rf
 RMSHM = rm -f /dev/shm/*
-OBJS = global.o report.o timerUtils.o shmlib.o ssd_buf_table.o ssd-cache.o trace2call.o main.o lru.o lru_private.o lru_batch.o
+OBJS = global.o report.o timerUtils.o shmlib.o hashtable_utils.o cache.o trace2call.o main.o lru.o lru_private.o lru_batch.o
 
 all: $(OBJS) smr-ssd-cache
 	@echo 'Successfully built smr-ssd-cache...'
@@ -29,10 +29,10 @@ shmlib.o: shmlib.c
 timerUtils.o: timerUtils.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
 
-ssd_buf_table.o: ssd_buf_table.c
+hashtable_utils.o: hashtable_utils.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
 
-ssd-cahce.o: sdd-cache.c
+cahce.o: cache.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
 
 trace2call.o: trace2call.c

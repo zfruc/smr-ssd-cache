@@ -3,7 +3,7 @@
 
 #include "global.h"
 #include "lru.h"
-#include "ssd-cache.h"
+#include "cache.h"
 #include "lru_batch.h"
 #include "shmlib.h"
 /********

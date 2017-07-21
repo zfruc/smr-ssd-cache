@@ -15,7 +15,7 @@
 #include "report.h"
 #include "shmlib.h"
 #include "global.h"
-#include "ssd-cache.h"
+#include "cache.h"
 //#include "smr-simulator/smr-simulator.h"
 #include "trace2call.h"
 

@@ -4,7 +4,7 @@
 #include "global.h"
 #include "lru.h"
 #include "shmlib.h"
-#include "ssd-cache.h"
+#include "cache.h"
 /********
  ** SHM**
  ********/
