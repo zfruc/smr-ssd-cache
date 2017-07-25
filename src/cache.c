@@ -17,7 +17,7 @@ SSDBufDesp*         ssd_buf_desps;
 static int          init_SSDDescriptorBuffer();
 static int          init_StatisticObj();
 static void         flushSSDBuffer(SSDBufDesp * ssd_buf_hdr);
-static SSDBufDesp*  allocSSDBuf(SSDBufferTag *ssd_buf_tag, bool * found, int alloc4What);
+static SSDBufDesp*  allocSSDBuf(SSDBufTag *ssd_buf_tag, bool * found, int alloc4What);
 static SSDBufDesp*  getAFreeSSDBuf();
 static int resizeCacheUsage();
 
@@ -26,7 +26,7 @@ static long         Strategy_GetUnloadBufID();
 static int          Strategy_HitIn(long serial_id);
 static void        Strategy_AddBufID(long serial_id);
 
-void                CopySSDBufTag(SSDBufferTag* objectTag, SSDBufferTag* sourceTag);
+void                CopySSDBufTag(SSDBufTag* objectTag, SSDBufTag* sourceTag);
 
 void                _LOCK(pthread_mutex_t* lock);
 void                _UNLOCK(pthread_mutex_t* lock);
@@ -173,7 +173,7 @@ long unloads[20000];
 long intervaltime;
 char timestr[50];
 static SSDBufDesp*
-allocSSDBuf(SSDBufferTag *ssd_buf_tag, bool * found, int alloc4What)
+allocSSDBuf(SSDBufTag *ssd_buf_tag, bool * found, int alloc4What)
 {
     /* Lookup if already cached. */
     SSDBufDesp      *ssd_buf_hdr; //returned value.
@@ -335,7 +335,7 @@ read_block(off_t offset, char *ssd_buffer)
 
     #else
     bool found = 0;
-    static SSDBufferTag ssd_buf_tag;
+    static SSDBufTag ssd_buf_tag;
     static SSDBufDesp* ssd_buf_hdr;
 
     ssd_buf_tag.offset = offset;
@@ -384,7 +384,7 @@ write_block(off_t offset, char *ssd_buffer)
     #else
     bool	found;
 
-    static SSDBufferTag ssd_buf_tag;
+    static SSDBufTag ssd_buf_tag;
     static SSDBufDesp   *ssd_buf_hdr;
 
     ssd_buf_tag.offset = offset;
@@ -435,12 +435,12 @@ static int dev_pwrite(int fd, void* buf,size_t nbytes,off_t offset)
     return w;
 }
 
-void CopySSDBufTag(SSDBufferTag* objectTag, SSDBufferTag* sourceTag)
+void CopySSDBufTag(SSDBufTag* objectTag, SSDBufTag* sourceTag)
 {
     objectTag->offset = sourceTag->offset;
 }
 
-bool isSamebuf(SSDBufferTag *tag1, SSDBufferTag *tag2)
+bool isSamebuf(SSDBufTag *tag1, SSDBufTag *tag2)
 {
     if (tag1->offset != tag2->offset)
         return 0;

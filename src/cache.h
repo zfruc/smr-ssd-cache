@@ -12,7 +12,7 @@
 typedef struct
 {
     off_t	offset;
-} SSDBufferTag;
+} SSDBufTag;
 
 typedef struct
 {
@@ -20,7 +20,7 @@ typedef struct
     long 		ssd_buf_id;				// SSD buffer location in shared buffer
     unsigned 	ssd_buf_flag;
     long		next_freessd;           // to link the desp serial number of free SSD buffer
-    SSDBufferTag 	ssd_buf_tag;
+    SSDBufTag 	ssd_buf_tag;
     pthread_mutex_t lock;               // For the fine grain size
 } SSDBufDesp;
 
@@ -43,9 +43,9 @@ extern void read_block(off_t offset, char* ssd_buffer);
 extern void write_block(off_t offset, char* ssd_buffer);
 extern void read_band(off_t offset, char* ssd_buffer);
 extern void write_band(off_t offset, char* ssd_buffer);
-extern bool isSamebuf(SSDBufferTag *, SSDBufferTag *);
+extern bool isSamebuf(SSDBufTag *, SSDBufTag *);
 extern int ResizeCacheUsage();
-extern void CopySSDBufTag(SSDBufferTag* objectTag, SSDBufferTag* sourceTag);
+extern void CopySSDBufTag(SSDBufTag* objectTag, SSDBufTag* sourceTag);
 
 extern void _LOCK(pthread_mutex_t* lock);
 extern void _UNLOCK(pthread_mutex_t* lock);

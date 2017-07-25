@@ -78,14 +78,16 @@ extern int BatchSize;
 extern blksize_t NBLOCK_SSD_CACHE;
 extern blksize_t NTABLE_SSD_CACHE;
 extern blksize_t SSD_BUFFER_SIZE;
-extern blksize_t NSMRBands;		// 194180*(18MB+36MB)/2~5TB
-extern blksize_t NSMRBlocks;		// 2621952*8KB~20GB
-extern blksize_t NSSDs;
+extern blksize_t NBLOCK_SMR_FIFO;
+//extern blksize_t NSMRBands;		// 194180*(18MB+36MB)/2~5TB
+//extern blksize_t NSMRBlocks;		// 2621952*8KB~20GB
+//extern blksize_t NSSDs;
 extern blksize_t NSSDTables;
 extern blksize_t NBANDTables;
 extern blksize_t SSD_SIZE;
 extern blksize_t BLCKSZ;
 extern blksize_t BNDSZ;
+extern blksize_t NZONES;
 extern blksize_t ZONESZ;
 extern blksize_t INTERVALTIMELIMIT;
 extern blksize_t NSSDLIMIT;

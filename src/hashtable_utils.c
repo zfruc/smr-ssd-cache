@@ -61,7 +61,7 @@ int HashTab_Init()
 //    return stat;
 }
 
-unsigned long HashTab_GetHashCode(SSDBufferTag *ssd_buf_tag)
+unsigned long HashTab_GetHashCode(SSDBufTag *ssd_buf_tag)
 {
     if(BandOrBlock == 1)
     {
@@ -71,7 +71,7 @@ unsigned long HashTab_GetHashCode(SSDBufferTag *ssd_buf_tag)
     return hashcode;
 }
 
-long HashTab_Lookup(SSDBufferTag *ssd_buf_tag, unsigned long hash_code)
+long HashTab_Lookup(SSDBufTag *ssd_buf_tag, unsigned long hash_code)
 {
     if (DEBUG)
         printf("[INFO] Lookup ssd_buf_tag: %lu\n",ssd_buf_tag->offset);
@@ -88,7 +88,7 @@ long HashTab_Lookup(SSDBufferTag *ssd_buf_tag, unsigned long hash_code)
     return -1;
 }
 
-long HashTab_Insert(SSDBufferTag *ssd_buf_tag, unsigned long hash_code, long desp_serial_id)
+long HashTab_Insert(SSDBufTag *ssd_buf_tag, unsigned long hash_code, long desp_serial_id)
 {
     if (DEBUG)
         printf("[INFO] Insert buf_tag: %lu\n",ssd_buf_tag->offset);
@@ -113,7 +113,7 @@ long HashTab_Insert(SSDBufferTag *ssd_buf_tag, unsigned long hash_code, long des
     return 0;
 }
 
-long HashTab_Delete(SSDBufferTag *ssd_buf_tag, unsigned long hash_code)
+long HashTab_Delete(SSDBufTag *ssd_buf_tag, unsigned long hash_code)
 {
     if (DEBUG)
         printf("[INFO] Delete buf_tag: %lu\n",ssd_buf_tag->offset);
