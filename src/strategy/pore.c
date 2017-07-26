@@ -3,12 +3,12 @@
 static StrategyDesp_pore*   StrategyDespArray;
 static ZoneCtrl*            ZoneCtrlArray;
 
-static unsigned long*       ZoneSortArray;
-static int                  OpenZoneCnt = 0;
+static unsigned long*       ZoneSortArray;      /* The zone ID array sorted by weight(calculated customized). it is used to determine the open zones */
+static int                  OpenZoneCnt;        /* It represent the number of open zones and the first number elements in 'ZoneSortArray' is the open zones ID */
 
-/* Static Values */
-static long                 PeriodLenth;
-static long                 StampInPeriod;
+static long                 PeriodLenth;        /* The period lenth which defines the times of eviction triggered */
+static long                 PeriodProgress;     /* Current times of eviction in a period lenth */
+static long                 StampInPeriod;      /* Current io sequenced number in a period lenth, used to distinct the degree of heat among zones */
 
 static long stamp(StrategyDesp_pore* desp);
 
@@ -24,6 +24,7 @@ initPORE()
 {
     StampInPeriod = 0;
     PeriodLenth = NBLOCK_SMR_FIFO;
+    PeriodProgress = 0;
     StrategyDespArray = (StrategyDesp_pore*)malloc(sizeof(StrategyDesp_pore) * NBLOCK_SSD_CACHE);
     ZoneCtrlArray = (ZoneCtrl*)malloc(sizeof(ZoneCtrl) * NZONES);
 
