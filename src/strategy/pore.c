@@ -11,7 +11,8 @@ static long                 PeriodProgress;     /* Current times of eviction in 
 static long                 StampInPeriod;      /* Current io sequenced number in a period lenth, used to distinct the degree of heat among zones */
 
 static long stamp(StrategyDesp_pore* desp);
-
+static int unloadfromArray(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl);
+static void clearDesp(StrategyDesp_pore* desp);
 static volatile unsigned long
 getZoneNum(size_t offset)
 {
@@ -65,7 +66,7 @@ assignPOREBuffer(long despId, size_t offset)
 long
 UnloadDesp_pore()
 {
-    StrategyDesp_pore* desp = StrategyDespArray + despId;
+    StrategyDesp_pore* desp = StrategyDespArray;
     ZoneCtrl* zoneCtrl = ZoneCtrlArray + getZoneNum(desp->ssd_buf_tag.offset);;
 
     zoneCtrl->pagecnt--;
@@ -86,14 +87,14 @@ add2ArrayHead(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
 {
     if(zoneCtrl->head < 0){
         //empty
-        zoneCtrl->head = zoneCtrl->tail = despId;
+        zoneCtrl->head = zoneCtrl->tail = desp->serial_id;
     }else{
         //unempty
         StrategyDesp_pore* headDesp = StrategyDespArray + zoneCtrl->head;
         desp->pre = -1;
         desp->next = zoneCtrl->head;
         headDesp->pre = desp->serial_id;
-        zoneCtrl->head = despId;
+        zoneCtrl->head = desp->serial_id;
     }
 }
 
@@ -101,13 +102,13 @@ static int
 unloadfromArray(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
 {
     if(desp->pre < 0){
-        ctrl->head = desp->next;
+        zoneCtrl->head = desp->next;
     }else{
         StrategyDespArray[desp->pre].next = desp->next;
     }
 
     if(desp->next < 0){
-        ctrl->tail = desp->pre;
+        zoneCtrl->tail = desp->pre;
     }else{
         StrategyDespArray[desp->next].pre = desp->pre;
     }
@@ -130,6 +131,7 @@ clearDesp(StrategyDesp_pore* desp)
     desp->hitcnt = 0;
     desp->stamp = 0;
 }
+
 static int
 periodReset()
 {
@@ -145,10 +147,10 @@ qsort_zone(long start, long end)
 
 	ZoneCtrl* curCtrl = ZoneCtrlArray + ZoneSortArray[start];
 	while (i < j) {
-	    while (ZoneCtrlArray[ZoneSortArray[j]].weight < curCtrl.weight){ j--; }
+	    while (ZoneCtrlArray[ZoneSortArray[j]].weight < curCtrl->weight){ j--; }
         ZoneSortArray[i] = ZoneSortArray[j];
 
-        while (ZoneCtrlArray[ZoneSortArray[i]].weight > curCtrl.weight){ i++; }
+        while (ZoneCtrlArray[ZoneSortArray[i]].weight > curCtrl->weight){ i++; }
         ZoneSortArray[j] = ZoneSortArray[i];
 	}
 
@@ -166,18 +168,16 @@ pause_and_caculate_weight_sizedivhot()
     int n = 0;
     while( n < NZONES ){
         ZoneCtrl* ctrl = ZoneCtrlArray + n;
-        ctrl->weight = (ctrl->pagecnt ^ 2)/ctrl->hitcnt * 1000000;
+        ctrl->weight = (ctrl->pagecnt * ctrl->pagecnt)/ctrl->hitcnt * 1000000;
     }
 }
 
-static void
-sort_and_count
 
 static int
 redefineOpenZones()
 {
-    pause_and_caculate_weight_hotdivsize(); /**< Method 1 */
-    qsort_zone();
+    pause_and_caculate_weight_sizedivhot(); /**< Method 1 */
+    qsort_zone(0,NZONES-1);
 
     long n_chooseblk = 0, n = 0;
     while(n<NZONES && n_chooseblk<PeriodLenth)
@@ -191,8 +191,8 @@ redefineOpenZones()
 static long
 stamp(StrategyDesp_pore* desp)
 {
-    desp->stamp = ++_StampInPeriod;
-    return _StampInPeriod;
+    desp->stamp = ++StampInPeriod;
+    return StampInPeriod;
 }
 
 long

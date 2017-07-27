@@ -36,8 +36,7 @@ initSSDBufferFor_LRU_private()
             ssd_buf_hdr_for_lru->serial_id = i;
             ssd_buf_hdr_for_lru->next_self_lru = -1;
             ssd_buf_hdr_for_lru->last_self_lru = -1;
-            SHM_mutex_init(&
-                           ssd_buf_hdr_for_lru->lock);
+            SHM_mutex_init(&ssd_buf_hdr_for_lru->lock);
         }
     }
     else
