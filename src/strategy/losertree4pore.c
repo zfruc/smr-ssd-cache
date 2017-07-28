@@ -40,20 +40,20 @@ static void adjust(LoserTreeInfo* info, StrategyDesp_pore* winnerDesp)
         parentId /= 2;
     }
     info->non_leafs[0] = winnerLeaf;
+    info->winnerPathId = winnerLeaf.pathId;
 }
 
-int LoserTree_Create(int npath, StrategyDesp_pore* openBlkDesps,int maxValue, void** passport)
+int LoserTree_Create(int npath, StrategyDesp_pore* openBlkDesps,int maxValue, void** passport,int* winnerPathId, int* winnerDespId)
 {
     int nlevels = lg2_above(npath);
     int nodes_count = pow(2,nlevels);
     NonLeaf* non_leafs = (NonLeaf*)malloc(sizeof(NonLeaf)*nodes_count);
 
-
-    LoserTreeInfo* loserTreeInfo = (LoserTreeInfo*)malloc(sizeof(LoserTreeInfo));
-    loserTreeInfo->maxValue = maxValue +1;
-    loserTreeInfo->nonleaf_count = nodes_count;
-    loserTreeInfo->non_leafs = non_leafs;
-    loserTreeInfo->winnerPathId = 0;
+    LoserTreeInfo* ltInfo = (LoserTreeInfo*)malloc(sizeof(LoserTreeInfo));
+    ltInfo->maxValue = maxValue +1;
+    ltInfo->nonleaf_count = nodes_count;
+    ltInfo->non_leafs = non_leafs;
+    ltInfo->winnerPathId = 0;
 
     /** initial the loser tree with the min value of each path **/
     int i;
@@ -63,12 +63,15 @@ int LoserTree_Create(int npath, StrategyDesp_pore* openBlkDesps,int maxValue, vo
     }
 
     for(i = 0; i < nodes_count; i++){
-        loserTreeInfo->winnerPathId = i;
-        adjust(loserTreeInfo,openBlkDesps + i);
+        ltInfo->winnerPathId = i;
+        adjust(ltInfo,openBlkDesps + i);
     }
 
-    *passport = loserTreeInfo;
-    return 0;
+    winnerPathId = ltInfo->non_leafs[0].pathId;
+    winnerDespId = ltInfo->non_leafs[0].despId;
+    *passport = ltInfo;
+
+    return ltInfo->non_leafs[0].value;
 }
 
 /** \brief
@@ -89,7 +92,7 @@ LoserTree_GetWinner(void* passport, StrategyDesp_pore* candidateDesp, int* winne
     adjust(ltInfo,candidateDesp);
     *winnerPathId = ltInfo->non_leafs[0].pathId;
     *winnerDespId = ltInfo->non_leafs[0].despId;
-    return 0;
+    return ltInfo->non_leafs[0].value;
 }
 
 int LoserTree_Destory(void* passport)

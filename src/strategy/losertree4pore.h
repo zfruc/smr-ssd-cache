@@ -1,3 +1,8 @@
+/*
+    Author: Sun Diansen.    dssun@ruc.edu.cn
+    Date: 2017.07.28
+
+*/
 #ifndef _LOSERTREE4OPORE_H_
 #define _LOSERTREE4OPORE_H_
 #include "pore.h"
@@ -18,7 +23,7 @@ typedef struct LoserTreeInfo
 }LoserTreeInfo;
 
 
-extern int LoserTree_Create(int npath, StrategyDesp_pore* openBlkDesps,int maxValue, void** passport);
+extern int LoserTree_Create(int npath, StrategyDesp_pore* openBlkDesps,int maxValue, void** passport,int* winnerPathId, int* winnerDespId);
 extern int LoserTree_GetWinner(void* passport, StrategyDesp_pore* candidateDesp, int* winnerPathId, int* winnerDespId);
 extern int LoserTree_Destory(void* passport);
 

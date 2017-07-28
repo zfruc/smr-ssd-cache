@@ -19,6 +19,8 @@
 //#include "smr-simulator/smr-simulator.h"
 #include "trace2call.h"
 
+extern void FunctionalTest();
+
 unsigned int INIT_PROCESS = 0;
 void ramdisk_iotest()
 {
@@ -59,6 +61,7 @@ char* tracefile[] = {"/home/trace/src1_2.csv.req",
 int
 main(int argc, char** argv)
 {
+    FunctionalTest();
     //ramdisk_iotest();
 
 // 1 1 1 0 0 100000 100000
