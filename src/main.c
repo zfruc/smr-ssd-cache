@@ -28,7 +28,7 @@ void ramdisk_iotest()
     printf("fdram=%d\n",fdram);
 
     char* buf;
-    int returncode = posix_memalign(&buf, 512, 4096);
+    posix_memalign(&buf, 512, 4096);
     size_t count = 512;
     off_t offset = 0;
 
@@ -61,7 +61,7 @@ char* tracefile[] = {"/home/trace/src1_2.csv.req",
 int
 main(int argc, char** argv)
 {
-    FunctionalTest();
+    //FunctionalTest();
     //ramdisk_iotest();
 
 // 1 1 1 0 0 100000 100000

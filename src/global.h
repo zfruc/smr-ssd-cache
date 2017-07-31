@@ -2,6 +2,8 @@
 #define _GLOBAL_H 1
 
 #include <sys/types.h>
+
+
 struct RuntimeSTAT
 {
     /** This user basic info */
@@ -44,24 +46,25 @@ struct RuntimeSTAT
 
 typedef enum
 {
-    CLOCK = 0,
+//    CLOCK = 0,
     LRU,
     LRUofBand,
-    Most,
-    Most_Dirty,
-    SCAN,
-    CMR,
-    SMR,
-    WA,
-    MaxCold,
-    MaxAll,
-    AvgBandHot,
-    HotDivSize,
+//    Most,
+//    Most_Dirty,
+//    SCAN,
+//    CMR,
+//    SMR,
+//    WA,
+//    MaxCold,
+//    MaxAll,
+//    AvgBandHot,
+//    HotDivSize,
     /** add for multiuser **/
     LRU_global,
     LRU_private,
-    LRU_batch
-} SSDEvictionStrategy;
+    LRU_batch,
+    PORE
+}SSDEvictionStrategy;
 
 /** This user basic info */
 extern int BatchId;

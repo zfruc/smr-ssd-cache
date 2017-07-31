@@ -8,8 +8,9 @@ typedef struct StrategyDesp_pore
 {
     long            serial_id;
     SSDBufTag       ssd_buf_tag;
+    unsigned 	    flag;
     long            pre,next;
-    unsigned long   hitcnt;
+    unsigned long   heat;
     long   stamp;
 }StrategyDesp_pore;
 
@@ -22,7 +23,7 @@ typedef struct StrategyDesp_pore
 typedef struct ZoneCtrl
 {
     unsigned long   zoneId;
-    long            hitcnt;
+    long            heat;
     long            pagecnt;
     long            weight;
     long            head,tail;

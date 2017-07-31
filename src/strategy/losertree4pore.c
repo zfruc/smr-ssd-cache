@@ -1,7 +1,8 @@
 #include "losertree4pore.h"
+#include <stdlib.h>
 #include <math.h>
 
-static unsigned long OVERFLOW_LEAF_VALUE =  0x7FFFFFFFFFFFFFFF;
+static unsigned long OVERFLOW_LEAF_VALUE =  0x7FFFFFFFFFFFFFFF; // Not a elegant way to define the max leaf value.
 
 static int lg2_above(int V)
 {
@@ -45,14 +46,24 @@ static void adjust(LoserTreeInfo* info, StrategyDesp_pore* winnerDesp)
     info->non_leafs[0] = winnerLeaf;
     info->winnerPathId = winnerLeaf.pathId;
 }
-int LoserTree_Create(int npath, StrategyDesp_pore* openBlkDesps,int maxValue, void** passport,int* winnerPathId, int* winnerDespId)
+
+
+/** \brief
+ *  Create and initialize the loser tree for multi-path.
+ * \param npath: the paths count.
+ * \param openBlkDesps: the first elements' address array of each path. In this version I use the data type by StrategyDesp_pore.
+ * \param passport, winnerPathId, winnerDespId
+ * \return The first winner value from the input array.
+ *
+ */
+int
+LoserTree_Create(int npath, StrategyDesp_pore** openBlkDesps, void** passport,int* winnerPathId, long* winnerDespId)
 {
     int nlevels = lg2_above(npath);
     int nodes_count = pow(2,nlevels);
     NonLeaf* non_leafs = (NonLeaf*)malloc(sizeof(NonLeaf)*nodes_count);
 
     LoserTreeInfo* ltInfo = (LoserTreeInfo*)malloc(sizeof(LoserTreeInfo));
-    ltInfo->maxValue = maxValue +1;
     ltInfo->nonleaf_count = nodes_count;
     ltInfo->non_leafs = non_leafs;
     ltInfo->winnerPathId = 0;
@@ -66,7 +77,7 @@ int LoserTree_Create(int npath, StrategyDesp_pore* openBlkDesps,int maxValue, vo
 
     for(i = 0; i < npath; i++){
         ltInfo->winnerPathId = i;
-        adjust(ltInfo,openBlkDesps + i);
+        adjust(ltInfo,*(openBlkDesps + i));
     }
 
     StrategyDesp_pore maxdesp;
@@ -81,6 +92,8 @@ int LoserTree_Create(int npath, StrategyDesp_pore* openBlkDesps,int maxValue, vo
     *winnerDespId = non_leafs[0].despId;
     *passport = ltInfo;
 
+    if(non_leafs[0].value < 0 || non_leafs[0].value == OVERFLOW_LEAF_VALUE)
+        return -1;
     return non_leafs[0].value;
 }
 
@@ -96,7 +109,7 @@ int LoserTree_Create(int npath, StrategyDesp_pore* openBlkDesps,int maxValue, vo
  *  0: no error.
  */
 int
-LoserTree_GetWinner(void* passport, StrategyDesp_pore* candidateDesp, int* winnerPathId, int* winnerDespId)
+LoserTree_GetWinner(void* passport, StrategyDesp_pore* candidateDesp, int* winnerPathId, long* winnerDespId)
 {
     LoserTreeInfo* ltInfo = (LoserTreeInfo*)passport;
     adjust(ltInfo,candidateDesp);
@@ -107,6 +120,8 @@ LoserTree_GetWinner(void* passport, StrategyDesp_pore* candidateDesp, int* winne
 
 int LoserTree_Destory(void* passport)
 {
+    if(passport == NULL)
+        return 0;
     LoserTreeInfo* info =(LoserTreeInfo*)passport;
     int i = 0;
     while(i < info->nonleaf_count){

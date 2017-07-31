@@ -3,6 +3,8 @@
 #include <memory.h>
 #include <unistd.h>
 
+#include "statusDef.h"
+#include "statusDef.h"
 #include "timerUtils.h"
 #include "cache.h"
 #include "hashtable_utils.h"
@@ -19,7 +21,6 @@ static int          init_StatisticObj();
 static void         flushSSDBuffer(SSDBufDesp * ssd_buf_hdr);
 static SSDBufDesp*  allocSSDBuf(SSDBufTag *ssd_buf_tag, bool * found, int alloc4What);
 static SSDBufDesp*  getAFreeSSDBuf();
-static int resizeCacheUsage();
 
 static int          initStrategySSDBuffer();
 static long         Strategy_GetUnloadBufID();
@@ -167,6 +168,7 @@ int ResizeCacheUsage()
         ssd_buf_desp_ctrl->first_freessd = ssd_buf_hdr->serial_id;
         _UNLOCK(&ssd_buf_desp_ctrl->lock);
     }
+    return 0;
 }
 
 long unloads[20000];

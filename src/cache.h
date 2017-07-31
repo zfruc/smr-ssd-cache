@@ -24,10 +24,6 @@ typedef struct
     pthread_mutex_t lock;               // For the fine grain size
 } SSDBufDesp;
 
-#define SSD_BUF_VALID 0x01
-#define SSD_BUF_DIRTY 0x02
-
-
 typedef struct
 {
     long		n_usedssd;			// For eviction

@@ -9,13 +9,13 @@ CPPFLAGS += -I$(SMR_SSD_CACHE_DIR) -I$(SMR_SSD_CACHE_DIR)/smr-simulator -I$(SMR_
 
 RM = rm -rf
 RMSHM = rm -f /dev/shm/*
-OBJS = global.o report.o timerUtils.o shmlib.o hashtable_utils.o cache.o trace2call.o main.o lru.o lru_private.o lru_batch.o
+OBJS = global.o report.o timerUtils.o shmlib.o hashtable_utils.o cache.o trace2call.o main.o losertree4pore.o pore.o lru.o lru_private.o lru_batch.o
 
 all: $(OBJS) smr-ssd-cache
 	@echo 'Successfully built smr-ssd-cache...'
 
 smr-ssd-cache:
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(OBJS) -lrt -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(OBJS) -lrt -lm -o $@
 
 global.o: global.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
@@ -41,6 +41,12 @@ trace2call.o: trace2call.c
 main.o: main.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
 
+losertree4pore.o: strategy/losertree4pore.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
+
+pore.o: strategy/pore.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
+
 clock.o: strategy/clock.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
 
@@ -55,7 +61,6 @@ lru_batch.o: strategy/lru_batch.c
 
 scan.o: strategy/scan.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
-
 
 lruofband.o: strategy/lruofband.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?

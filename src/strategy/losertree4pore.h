@@ -19,12 +19,11 @@ typedef struct LoserTreeInfo
     NonLeaf* non_leafs;
     int nonleaf_count;
     int winnerPathId;
-    int maxValue;
 }LoserTreeInfo;
 
 
-extern int LoserTree_Create(int npath, StrategyDesp_pore* openBlkDesps,int maxValue, void** passport,int* winnerPathId, int* winnerDespId);
-extern int LoserTree_GetWinner(void* passport, StrategyDesp_pore* candidateDesp, int* winnerPathId, int* winnerDespId);
+extern int LoserTree_Create(int npath, StrategyDesp_pore** openBlkDesps, void** passport,int* winnerPathId, long* winnerDespId);
+extern int LoserTree_GetWinner(void* passport, StrategyDesp_pore* candidateDesp, int* winnerPathId, long* winnerDespId);
 extern int LoserTree_Destory(void* passport);
 
 #endif // _LOSERTREE4OPORE_

@@ -23,9 +23,15 @@ FunctionalTest()
     initDesp[4].serial_id = 5;
 
     int winnerPath, winnerDesp,winnerVal;
+    StrategyDesp_pore* initAddress[5];
+    int i=0;
+    while(i<5){
+        initAddress[i] = initDesp + i;
+        i++;
+    }
 
     void* passport;
-    winnerVal = LoserTree_Create(5,initDesp,50,&passport,&winnerPath,&winnerDesp);
+    winnerVal = LoserTree_Create(5,initAddress,&passport,&winnerPath,&winnerDesp);
     printf("winnerPath = %d, winnerDesp = %d winnerVal = %d\n", winnerPath, winnerDesp,winnerVal);
 
     int id = 1;
