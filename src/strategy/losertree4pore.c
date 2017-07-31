@@ -1,10 +1,13 @@
 #include "losertree4pore.h"
 #include <math.h>
 
+static unsigned long OVERFLOW_LEAF_VALUE =  0x7FFFFFFFFFFFFFFF;
+
 static int lg2_above(int V)
 {
     V--;
     V |= V >> 1;
+
     V |= V >> 2;
     V |= V >> 4;
     V |= V >> 8;
@@ -42,7 +45,6 @@ static void adjust(LoserTreeInfo* info, StrategyDesp_pore* winnerDesp)
     info->non_leafs[0] = winnerLeaf;
     info->winnerPathId = winnerLeaf.pathId;
 }
-
 int LoserTree_Create(int npath, StrategyDesp_pore* openBlkDesps,int maxValue, void** passport,int* winnerPathId, int* winnerDespId)
 {
     int nlevels = lg2_above(npath);
@@ -62,16 +64,24 @@ int LoserTree_Create(int npath, StrategyDesp_pore* openBlkDesps,int maxValue, vo
         non_leafs[i].value = -1;
     }
 
-    for(i = 0; i < nodes_count; i++){
+    for(i = 0; i < npath; i++){
         ltInfo->winnerPathId = i;
         adjust(ltInfo,openBlkDesps + i);
     }
 
-    winnerPathId = ltInfo->non_leafs[0].pathId;
-    winnerDespId = ltInfo->non_leafs[0].despId;
+    StrategyDesp_pore maxdesp;
+    maxdesp.stamp = OVERFLOW_LEAF_VALUE;
+    maxdesp.serial_id = -1;
+    for(i = npath; i < nodes_count; i++){
+        ltInfo->winnerPathId = i;
+        adjust(ltInfo,&maxdesp);
+    }
+
+    *winnerPathId = non_leafs[0].pathId;
+    *winnerDespId = non_leafs[0].despId;
     *passport = ltInfo;
 
-    return ltInfo->non_leafs[0].value;
+    return non_leafs[0].value;
 }
 
 /** \brief

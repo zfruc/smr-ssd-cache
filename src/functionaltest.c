@@ -25,7 +25,8 @@ FunctionalTest()
     int winnerPath, winnerDesp,winnerVal;
 
     void* passport;
-    LoserTree_Create(5,initDesp,50,&passport,&winnerPath,&winnerDesp);
+    winnerVal = LoserTree_Create(5,initDesp,50,&passport,&winnerPath,&winnerDesp);
+    printf("winnerPath = %d, winnerDesp = %d winnerVal = %d\n", winnerPath, winnerDesp,winnerVal);
 
     int id = 1;
     while(1){
