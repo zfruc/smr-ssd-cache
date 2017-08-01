@@ -24,7 +24,8 @@ typedef struct ZoneCtrl
 {
     unsigned long   zoneId;
     long            heat;
-    long            pagecnt;
+    long            pagecnt_dirty;
+    long            pagecnt_clean;
     long            weight;
     long            head,tail;
 }ZoneCtrl;

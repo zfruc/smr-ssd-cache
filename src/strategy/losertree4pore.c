@@ -32,7 +32,7 @@ static void adjust(LoserTreeInfo* info, StrategyDesp_pore* winnerDesp)
     winnerLeaf.despId = winnerDesp->serial_id;
 
     int parentId = (info->nonleaf_count + info->winnerPathId)/2;
-    while(parentId>0)
+    while(parentId > 0)
     {
         NonLeaf* parentLeaf = info->non_leafs + parentId;
         if(winnerLeaf.value > parentLeaf->value){
@@ -41,7 +41,7 @@ static void adjust(LoserTreeInfo* info, StrategyDesp_pore* winnerDesp)
             *parentLeaf = winnerLeaf;
             winnerLeaf = tmpLeaf;
         }
-        parentId /= 2;
+        parentId /= 2;  // when winner wins, looking for upper level.
     }
     info->non_leafs[0] = winnerLeaf;
     info->winnerPathId = winnerLeaf.pathId;
@@ -123,10 +123,7 @@ int LoserTree_Destory(void* passport)
     if(passport == NULL)
         return 0;
     LoserTreeInfo* info =(LoserTreeInfo*)passport;
-    int i = 0;
-    while(i < info->nonleaf_count){
-        free(info->non_leafs + i);
-    }
+    free(info->non_leafs);
     free(info);
     return 0;
 }

@@ -66,7 +66,7 @@ main(int argc, char** argv)
 
 // 1 1 1 0 0 100000 100000
 // 1 1 0 0 0 100000 100000
-    if(argc == 10)
+    if(argc == 8)
     {
         BatchId = atoi(argv[1]);
         UserId = atoi(argv[2]);
@@ -74,11 +74,8 @@ main(int argc, char** argv)
         WriteOnly = atoi(argv[4]);
         StartLBA = atol(argv[5]);
         NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = atol(argv[6]);
-
         NBLOCK_SMR_FIFO = atol(argv[7]);
-        Param1 = atol(argv[8]);
-        BatchSize = atoi(argv[9]);
-        EvictStrategy = LRU_batch;
+        EvictStrategy = PORE;
         //EvictStrategy = LRU_private;
     }
     else
@@ -100,7 +97,9 @@ main(int argc, char** argv)
     initLog();
     initRuntimeInfo();
     initSSD();
+#ifdef CG_THROTTLE
     init_cgdev();
+#endif // CG_THROTTLE
 
     hdd_fd = open(smr_device, O_RDWR | O_DIRECT);
     ssd_fd = open(ssd_device, O_RDWR | O_DIRECT);

@@ -5,6 +5,8 @@
 #include <unistd.h>
 
 #include "global.h"
+#include "statusDef.h"
+
 #include "timerUtils.h"
 #include "cache.h"
 #include "strategy/lru.h"
@@ -36,12 +38,10 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     char       *ssd_buffer;
     int	        returnCode;
     int         isFullSSDcache = 0;
-
-    #ifdef _CG_LIMIT
-    char* cgbuf;
+#ifdef CG_THROTTLE
+    static char* cgbuf;
     int returncode = posix_memalign(&cgbuf, 512, 4096);
-    #endif // _CG_LIMIT
-
+#endif // CG_THROTTLE
 
     FILE *trace;
     if ((trace = fopen(trace_file_path, "rt")) == NULL)
@@ -68,13 +68,14 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     {
 //        if(feof(trace))
 //            fseek(trace,0,SEEK_SET);
-        #ifdef _CG_LIMIT
+
+#ifdef CG_THROTTLE
         if(pwrite(ram_fd,cgbuf,1024,0) <= 0)
         {
             printf("write ramdisk error:%d\n",errno);
             exit(1);
         }
-        #endif // _CG_LIMIT
+#endif // CG_THROTTLE
 
         returnCode = fscanf(trace, "%c %d %lu\n", &action, &i, &offset);
         if (returnCode < 0)
@@ -91,8 +92,9 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
             isFullSSDcache = 1;
         }
 
+#ifdef LOG_SINGLE_REQ
         _TimerStart(&tv_req_start);
-
+#endif // TIMER_SINGLE_REQ
         if (action == ACT_WRITE) // Write = 1
         {
             STT->reqcnt_w++;
@@ -103,15 +105,9 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
             STT->reqcnt_r++;
             read_block(offset,ssd_buffer);
         }
-
+#ifdef LOG_SINGLE_REQ
         _TimerStop(&tv_req_stop);
         msec_req = TimerInterval_MICRO(&tv_req_start,&tv_req_stop);
-
-        if (++STT->reqcnt_s % REPORT_INTERVAL == 0)
-        {
-            report_ontime();
-        }
-
         /*
             print log
             format:
@@ -120,6 +116,13 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         //sprintf(logbuf,"%lu,%c,%d,%ld,%ld,%ld,%ld,%ld\n",STT->reqcnt_s,action,IsHit,msec_req,msec_r_ssd,msec_w_ssd,msec_r_hdd,msec_w_hdd);
        // WriteLog(logbuf);
         msec_r_ssd = msec_w_ssd = msec_r_hdd = msec_w_hdd = 0;
+#endif // TIMER_SINGLE_REQ
+
+        if (++STT->reqcnt_s % REPORT_INTERVAL == 0)
+        {
+            report_ontime();
+        }
+
 
         //ResizeCacheUsage();
     }
