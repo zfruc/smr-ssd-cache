@@ -426,8 +426,13 @@ write_block(off_t offset, char *ssd_buffer)
 
 static int dev_pread(int fd, void* buf,size_t nbytes,off_t offset)
 {
+    int r;
     _TimerStart(&tv_start);
-    int r = pread(fd,buf,nbytes,offset);
+#ifdef SIMULATION
+    r = simu_smr_read(fd,buf,nbytes,offset);
+#else
+    r = pread(fd,buf,nbytes,offset);
+#endif // SIMULATION
     _TimerStop(&tv_stop);
     if (r < 0)
     {
@@ -439,8 +444,14 @@ static int dev_pread(int fd, void* buf,size_t nbytes,off_t offset)
 
 static int dev_pwrite(int fd, void* buf,size_t nbytes,off_t offset)
 {
+    int w;
     _TimerStart(&tv_start);
-    int w = pwrite(fd,buf,nbytes,offset);
+#ifdef SIMULATION
+    w = simu_smr_write(fd,buf,nbytes,offset);
+#else
+    w = pwrite(fd,buf,nbytes,offset);
+#endif // SIMULATION
+
     _TimerStop(&tv_stop);
     if (w < 0)
     {

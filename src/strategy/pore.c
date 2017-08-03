@@ -47,7 +47,8 @@ InitPORE()
     ZoneSortArray = (unsigned long*)malloc(sizeof(unsigned long) * NZONES);
 
     int i = 0;
-    while(i < NBLOCK_SSD_CACHE){
+    while(i < NBLOCK_SSD_CACHE)
+    {
         StrategyDesp_pore* desp = GlobalDespArray + i;
         desp->serial_id = i;
         desp->ssd_buf_tag.offset = -1;
@@ -58,7 +59,8 @@ InitPORE()
         i++;
     }
     i = 0;
-    while(i < NZONES){
+    while(i < NZONES)
+    {
         ZoneCtrl* ctrl = ZoneCtrlArray + i;
         ctrl->zoneId = i;
         ctrl->heat = ctrl->pagecnt_clean = ctrl->pagecnt_dirty = 0;
@@ -77,38 +79,58 @@ LogInPoreBuffer(long despId, SSDBufTag tag, unsigned flag)
     StrategyDesp_pore* myDesp = GlobalDespArray + despId;
     ZoneCtrl* myZone = ZoneCtrlArray + getZoneNum(tag.offset);
     myDesp->ssd_buf_tag = tag;
-    myDesp->flag = flag;
+    myDesp->flag |= flag;
 
     /* add into chain */
     stamp(myDesp);
     add2ArrayHead(myDesp, myZone);
 
-    if((flag & SSD_BUF_DIRTY) != 0)
+    if((flag & SSD_BUF_DIRTY) != 0){
         myZone->pagecnt_dirty++;
-    else
+//        if(myZone->zoneId==205){
+//            char str[50];
+//            sprintf(str,"[<%ld>\tdirty+1]\tndirty=%ld,nclean=%ld\n",myDesp->serial_id,myZone->pagecnt_dirty,myZone->pagecnt_clean);
+//            WriteLog(str);
+//        }
+    }
+    else{
         myZone->pagecnt_clean++;
+    }
+
 }
 
+static int periodCnt = 0;
 long
 LogOutDesp_pore()
 {
     if(PeriodProgress % PeriodLenth == 0)
     {
-        // need to rechoose open zones.
         redefineOpenZones();
-        PeriodProgress = 0;
+        PeriodProgress = 1;
+        periodCnt++;
+        printf("Period [%d], OpenZones_cnt=%d\n",periodCnt,OpenZoneCnt);
     }
 
-    ZoneCtrl*           chosenOpZone = getEvictZone();
+    ZoneCtrl* chosenOpZone;
+    while((chosenOpZone = getEvictZone()) == NULL){
+        redefineOpenZones();
+        PeriodProgress = 1;
+        periodCnt++;
+        printf("Period [%d], OpenZones_cnt=%d\n",periodCnt,OpenZoneCnt);
+    }
+
+
     StrategyDesp_pore*  evitedDesp = GlobalDespArray + chosenOpZone->tail;
 
     unloadfromZone(evitedDesp,chosenOpZone);
     chosenOpZone->heat -= evitedDesp->heat;   /**< Decision indicators */
-    if((evitedDesp->flag & SSD_BUF_DIRTY) != 0){
+    if((evitedDesp->flag & SSD_BUF_DIRTY) != 0)
+    {
         PeriodProgress++;
         chosenOpZone->pagecnt_dirty--;                  /**< Decision indicators */
     }
-    else{
+    else
+    {
         chosenOpZone->pagecnt_clean--;                  /**< Decision indicators */
     }
 
@@ -125,7 +147,11 @@ HitPoreBuffer(long despId, unsigned flag)
     move2ArrayHead(myDesp,myZone);
     hit(myDesp,myZone);
     stamp(myDesp);
-    myDesp->flag = flag;
+    if((myDesp->flag & SSD_BUF_DIRTY) == 0 && (flag & SSD_BUF_DIRTY) != 0){
+        myZone->pagecnt_dirty++;
+        myZone->pagecnt_clean--;
+    }
+    myDesp->flag |= flag;
 }
 
 /****************
@@ -142,10 +168,13 @@ hit(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
 static void
 add2ArrayHead(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
 {
-    if(zoneCtrl->head < 0){
+    if(zoneCtrl->head < 0)
+    {
         //empty
         zoneCtrl->head = zoneCtrl->tail = desp->serial_id;
-    }else{
+    }
+    else
+    {
         //unempty
         StrategyDesp_pore* headDesp = GlobalDespArray + zoneCtrl->head;
         desp->pre = -1;
@@ -158,15 +187,21 @@ add2ArrayHead(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
 static void
 unloadfromZone(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
 {
-    if(desp->pre < 0){
+    if(desp->pre < 0)
+    {
         zoneCtrl->head = desp->next;
-    }else{
+    }
+    else
+    {
         GlobalDespArray[desp->pre].next = desp->next;
     }
 
-    if(desp->next < 0){
+    if(desp->next < 0)
+    {
         zoneCtrl->tail = desp->pre;
-    }else{
+    }
+    else
+    {
         GlobalDespArray[desp->next].pre = desp->pre;
     }
     desp->pre = desp->next = -1;
@@ -187,7 +222,7 @@ clearDesp(StrategyDesp_pore* desp)
     desp->next = desp->pre = -1;
     desp->heat = 0;
     desp->stamp = 0;
-    desp->flag = 0;
+    desp->flag &= ~(SSD_BUF_DIRTY | SSD_BUF_VALID);
 }
 
 /* Decision Method */
@@ -200,34 +235,43 @@ clearDesp(StrategyDesp_pore* desp)
 static void
 qsort_zone(long start, long end)
 {
-	long		i = start;
-	long		j = end;
+    long		i = start;
+    long		j = end;
 
-	long S = ZoneSortArray[start];
-	ZoneCtrl* curCtrl = ZoneCtrlArray + S;
-	long sWeight = curCtrl->weight;
-	while (i < j) {
-	    while (!(ZoneCtrlArray[ZoneSortArray[j]].weight > sWeight) && i<j){ j--; }
+    long S = ZoneSortArray[start];
+    ZoneCtrl* curCtrl = ZoneCtrlArray + S;
+    long sWeight = curCtrl->weight;
+    while (i < j)
+    {
+        while (!(ZoneCtrlArray[ZoneSortArray[j]].weight > sWeight) && i<j)
+        {
+            j--;
+        }
         ZoneSortArray[i] = ZoneSortArray[j];
 
-        while (!(ZoneCtrlArray[ZoneSortArray[i]].weight < sWeight) && i<j){ i++; }
+        while (!(ZoneCtrlArray[ZoneSortArray[i]].weight < sWeight) && i<j)
+        {
+            i++;
+        }
         ZoneSortArray[j] = ZoneSortArray[i];
-	}
+    }
 
-	ZoneSortArray[i] = S;
-	if (i - 1 > start)
-		qsort_zone(start, i - 1);
-	if (j + 1 < end)
-		qsort_zone(j + 1, end);
+    ZoneSortArray[i] = S;
+    if (i - 1 > start)
+        qsort_zone(start, i - 1);
+    if (j + 1 < end)
+        qsort_zone(j + 1, end);
 }
 
 static long
 extractNonEmptyZoneId()
 {
     int zoneId = 0, cnt = 0;
-    while(zoneId < NZONES){
+    while(zoneId < NZONES)
+    {
         ZoneCtrl* zone = ZoneCtrlArray + zoneId;
-        if(zone->pagecnt_dirty > 0){
+        if(zone->pagecnt_dirty+zone->pagecnt_clean > 0)
+        {
             ZoneSortArray[cnt] = zoneId;
             cnt++;
         }
@@ -240,9 +284,10 @@ static volatile void *
 pause_and_caculate_weight_sizedivhot()
 {
     int n = 0;
-    while( n < NZONES ){
+    while( n < NZONES )
+    {
         ZoneCtrl* ctrl = ZoneCtrlArray + n;
-        ctrl->weight = (ctrl->pagecnt_dirty * ctrl->pagecnt_dirty) * 1000000 / (ctrl->heat+1);
+        ctrl->weight = ((ctrl->pagecnt_dirty+ctrl->pagecnt_clean) * (ctrl->pagecnt_dirty+ctrl->pagecnt_clean)) * 1000000 / (ctrl->heat+1);
         n++;
     }
 }
@@ -255,21 +300,27 @@ redefineOpenZones()
     long nonEmptyZoneCnt = extractNonEmptyZoneId();
     qsort_zone(0,nonEmptyZoneCnt-1);
 
-//    /** lookup sort result **/
-//    int i;
-//    for(i = 0; i<100; i++)
-//    {
-//        printf("%d: weight=%ld\t\theat=%ld\t\tnpage=%ld\n", i,ZoneCtrlArray[ZoneSortArray[i]].weight,ZoneCtrlArray[ZoneSortArray[i]].heat,ZoneCtrlArray[ZoneSortArray[i]].pagecnt_dirty);
-//    }
+    /** lookup sort result **/
+    int i;
+    for(i = 0; i<100; i++)
+    {
+        printf("%d: weight=%ld\t\theat=%ld\t\tndirty=%ld\t\tnclean=%ld\n",
+               i,
+               ZoneCtrlArray[ZoneSortArray[i]].weight,
+               ZoneCtrlArray[ZoneSortArray[i]].heat,
+               ZoneCtrlArray[ZoneSortArray[i]].pagecnt_dirty,
+               ZoneCtrlArray[ZoneSortArray[i]].pagecnt_clean);
+    }
 
     long n_chooseblk = 0, n = 0;
-    while(n < NZONES && n_chooseblk < PeriodLenth)
+    while(n < nonEmptyZoneCnt && n_chooseblk < PeriodLenth)
     {
         n_chooseblk += ZoneCtrlArray[ZoneSortArray[n]].pagecnt_dirty;
         n++;
     }
     OpenZoneCnt = n;
     IsNewPeriod = 1;
+    printf("NonEmptyZoneCnt = %d.\n",nonEmptyZoneCnt);
     return 0;
 }
 
@@ -282,12 +333,14 @@ getEvictZone()
     long winnerDespId;
     ZoneCtrl* winnerOz;
 
-    if(IsNewPeriod){
+    if(IsNewPeriod)
+    {
         // Go into the new period, re-creating the loser tree.
         LoserTree_Destory(passport); // to free old tree space.
         StrategyDesp_pore* openZoneTailBlks[OpenZoneCnt];
         int i = 0;
-        while(i < OpenZoneCnt){
+        while(i < OpenZoneCnt)
+        {
             ZoneCtrl* oz = ZoneCtrlArray + ZoneSortArray[i];
             openZoneTailBlks[i] = GlobalDespArray + oz->tail;
             i++;
@@ -297,13 +350,21 @@ getEvictZone()
         winnerOz = ZoneCtrlArray + ZoneSortArray[winnerZoneSortId];
         IsNewPeriod = 0;
     }
-    else{
+    else
+    {
         do{
-           winnerOz = ZoneCtrlArray + ZoneSortArray[winnerZoneSortId];
-           StrategyDesp_pore* candidateDesp = GlobalDespArray + winnerOz->tail;
-           LoserTree_GetWinner(passport, candidateDesp, &winnerZoneSortId, &winnerDespId);
-           winnerOz = ZoneCtrlArray + ZoneSortArray[winnerZoneSortId];
-        }while(winnerOz->tail != winnerDespId);
+            winnerOz = ZoneCtrlArray + ZoneSortArray[winnerZoneSortId];
+            StrategyDesp_pore* candidateDesp;
+            if(winnerOz->tail < 0)
+                candidateDesp = NULL;
+            else
+                candidateDesp = GlobalDespArray + winnerOz->tail;
+            int r = LoserTree_GetWinner(passport, candidateDesp, &winnerZoneSortId, &winnerDespId);
+            if(r < 0)
+                return NULL;
+            winnerOz = ZoneCtrlArray + ZoneSortArray[winnerZoneSortId];
+        }
+        while(winnerOz->tail != winnerDespId);
     }
     return winnerOz;
 }

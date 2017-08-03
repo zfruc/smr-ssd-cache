@@ -75,7 +75,7 @@ main(int argc, char** argv)
         StartLBA = atol(argv[5]);
         NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = atol(argv[6]);
         NBLOCK_SMR_FIFO = atol(argv[7]);
-        EvictStrategy = PORE;
+        EvictStrategy = LRU;
         //EvictStrategy = LRU_private;
     }
     else
@@ -88,18 +88,20 @@ main(int argc, char** argv)
 //        isWriteOnly = 0;
 //        traceId = 1;
 //        startLBA = 0;
-#ifdef SIMULATION
-    initFIFOCache();
-    inner_ssd_fd = open(inner_ssd_device, O_RDWR | O_DIRECT);
-#endif
     //NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = 500000;//280M //50000; // 200MB
 
-    initLog();
-    initRuntimeInfo();
-    initSSD();
 #ifdef CG_THROTTLE
     init_cgdev();
 #endif // CG_THROTTLE
+
+#ifdef SIMULATION
+    initFIFOCache();
+#endif
+    initLog();
+    initRuntimeInfo();
+    initSSD();
+
+
 
     hdd_fd = open(smr_device, O_RDWR | O_DIRECT);
     ssd_fd = open(ssd_device, O_RDWR | O_DIRECT);
@@ -112,9 +114,6 @@ main(int argc, char** argv)
     close(ssd_fd);
     CloseLogFile();
 
-#ifdef SIMULATION
-    close(inner_ssd_fd);
-#endif
     return 0;
 }
 

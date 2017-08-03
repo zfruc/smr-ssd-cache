@@ -3,7 +3,7 @@
 
 #include <sys/types.h>
 
-
+#include "statusDef.h"
 struct RuntimeSTAT
 {
     /** This user basic info */
@@ -17,22 +17,22 @@ struct RuntimeSTAT
     //union StratetyUnion strategyRef;
 
     /** Runtime Statistic **/
-    blksize_t cacheLimit;
-    blksize_t cacheUsage;
+    blkcnt_t cacheLimit;
+    blkcnt_t cacheUsage;
 
-    blksize_t reqcnt_s;
-    blksize_t reqcnt_r;
-    blksize_t reqcnt_w;
+    blkcnt_t reqcnt_s;
+    blkcnt_t reqcnt_r;
+    blkcnt_t reqcnt_w;
 
-    blksize_t hitnum_s;
-    blksize_t hitnum_r;
-    blksize_t hitnum_w;
+    blkcnt_t hitnum_s;
+    blkcnt_t hitnum_r;
+    blkcnt_t hitnum_w;
 
-    blksize_t load_ssd_blocks;
-    blksize_t load_hdd_blocks;
-    blksize_t flush_hdd_blocks;
-    blksize_t flush_ssd_blocks;
-    blksize_t flush_clean_blocks;
+    blkcnt_t load_ssd_blocks;
+    blkcnt_t load_hdd_blocks;
+    blkcnt_t flush_hdd_blocks;
+    blkcnt_t flush_ssd_blocks;
+    blkcnt_t flush_clean_blocks;
 
     double time_read_ssd;
     double time_read_hdd;
@@ -78,26 +78,22 @@ extern unsigned long Param2;
 extern int BatchSize;
 
 /** All users basic setup **/
-extern blksize_t NBLOCK_SSD_CACHE;
-extern blksize_t NTABLE_SSD_CACHE;
-extern blksize_t SSD_BUFFER_SIZE;
-extern blksize_t NBLOCK_SMR_FIFO;
-//extern blksize_t NSMRBands;		// 194180*(18MB+36MB)/2~5TB
-//extern blksize_t NSMRBlocks;		// 2621952*8KB~20GB
-//extern blksize_t NSSDs;
-extern blksize_t NSSDTables;
-extern blksize_t NBANDTables;
-extern blksize_t SSD_SIZE;
-extern blksize_t BLCKSZ;
-extern blksize_t BNDSZ;
-extern blksize_t NZONES;
-extern blksize_t ZONESZ;
-extern blksize_t INTERVALTIMELIMIT;
-extern blksize_t NSSDLIMIT;
-extern blksize_t NSSDCLEAN;
-extern blksize_t WRITEAMPLIFICATION;
-extern blksize_t NCOLDBAND;
-extern blksize_t PERIODTIMES;
+extern blkcnt_t NBLOCK_SSD_CACHE;
+extern blkcnt_t NTABLE_SSD_CACHE;
+extern blkcnt_t SSD_BUFFER_SIZE;
+extern blkcnt_t NBLOCK_SMR_FIFO;
+//extern blkcnt_t NSMRBands;		// 194180*(18MB+36MB)/2~5TB
+//extern blkcnt_t NSMRBlocks;		// 2621952*8KB~20GB
+//extern blkcnt_t NSSDs;
+extern blkcnt_t NSSDTables;
+extern blkcnt_t NBANDTables;
+extern blkcnt_t SSD_SIZE;
+extern blkcnt_t BLCKSZ;
+extern blkcnt_t BNDSZ;
+extern blkcnt_t NZONES;
+extern blkcnt_t ZONESZ;
+extern blkcnt_t WRITEAMPLIFICATION;
+extern blkcnt_t NCOLDBAND;
 extern char smr_device[];
 extern char ssd_device[];
 extern char ram_device[1024];
@@ -109,28 +105,6 @@ extern int hdd_fd;
 extern int ssd_fd;
 extern int ram_fd;
 extern struct RuntimeSTAT* STT;
-
-//extern SSDBufDespCtrl	*ssd_buf_desp_ctrl;
-//extern SSDBufDesp	    *ssd_buf_desps;
-
-//SSDBufHashCtrl   *ssd_buf_hash_ctrl;
-//extern SSDBufHashBucket *ssd_buf_hashtable;
-//SSDBufHashBucket *ssd_buf_hashdesps;
-
-#ifdef SIMULATION
-int 		    inner_ssd_fd;
-SSDStrategyControl	*ssd_strategy_control;
-SSDDesc		*ssd_descriptors;
-SSDHashBucket	*ssd_hashtable;
-blksize_t interval_time;
-blksize_t read_smr_bands;
-blksize_t flush_bands;
-blksize_t flush_band_size;
-
-pthread_mutex_t free_ssd_mutex;
-pthread_mutex_t inner_ssd_hdr_mutex;
-pthread_mutex_t inner_ssd_hash_mutex;
-#endif // SIMULATION
 
 /** Shared memory variable names **/
 extern const char* SHM_SSDBUF_STRATEGY_CTRL;
