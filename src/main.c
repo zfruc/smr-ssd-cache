@@ -75,7 +75,7 @@ main(int argc, char** argv)
         StartLBA = atol(argv[5]);
         NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = atol(argv[6]);
         NBLOCK_SMR_FIFO = atol(argv[7]);
-        EvictStrategy = LRU;
+        EvictStrategy = PORE;
         //EvictStrategy = LRU_private;
     }
     else
@@ -110,6 +110,10 @@ main(int argc, char** argv)
     printf("Device ID: hdd=%d, ssd=%d\n",hdd_fd,ssd_fd);
 
     trace_to_iocall(tracefile[TraceId],WriteOnly,StartLBA);
+
+#ifdef SIMULATION
+    PrintSimulatorStatistic();
+#endif
     close(hdd_fd);
     close(ssd_fd);
     CloseLogFile();

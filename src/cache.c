@@ -243,7 +243,7 @@ allocSSDBuf(SSDBufTag *ssd_buf_tag, bool * found, int alloc4What)
 //		i++;
 //	}
 //	i=0;
-        _TimerStart(&tv_bastart);
+        _TimerLap(&tv_bastart);
         while(i<BatchSize)
         {
             ssd_buf_hdr = &ssd_buf_desps[unloads[i]];
@@ -258,7 +258,7 @@ allocSSDBuf(SSDBufTag *ssd_buf_tag, bool * found, int alloc4What)
             i++;
             _UNLOCK(&ssd_buf_hdr->lock);
         }
-        _TimerStop(&tv_bastop);
+        _TimerLap(&tv_bastop);
 	intervaltime = TimerInterval_MICRO(&tv_bastart,&tv_bastop);
         msec_bw_hdd += intervaltime;
 	sprintf(timestr,"%lu\n",intervaltime);
@@ -427,13 +427,13 @@ write_block(off_t offset, char *ssd_buffer)
 static int dev_pread(int fd, void* buf,size_t nbytes,off_t offset)
 {
     int r;
-    _TimerStart(&tv_start);
+    _TimerLap(&tv_start);
 #ifdef SIMULATION
     r = simu_smr_read(fd,buf,nbytes,offset);
 #else
     r = pread(fd,buf,nbytes,offset);
 #endif // SIMULATION
-    _TimerStop(&tv_stop);
+    _TimerLap(&tv_stop);
     if (r < 0)
     {
         printf("[ERROR] read():-------read from device: fd=%d, errorcode=%d, offset=%lu\n", fd, r, offset);
@@ -445,14 +445,14 @@ static int dev_pread(int fd, void* buf,size_t nbytes,off_t offset)
 static int dev_pwrite(int fd, void* buf,size_t nbytes,off_t offset)
 {
     int w;
-    _TimerStart(&tv_start);
+    _TimerLap(&tv_start);
 #ifdef SIMULATION
     w = simu_smr_write(fd,buf,nbytes,offset);
 #else
     w = pwrite(fd,buf,nbytes,offset);
 #endif // SIMULATION
 
-    _TimerStop(&tv_stop);
+    _TimerLap(&tv_stop);
     if (w < 0)
     {
         printf("[ERROR] read():-------write to device: fd=%d, errorcode=%d, offset=%lu\n", fd, w, offset);

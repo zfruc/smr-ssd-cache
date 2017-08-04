@@ -63,10 +63,6 @@ int HashTab_Init()
 
 unsigned long HashTab_GetHashCode(SSDBufTag *ssd_buf_tag)
 {
-    if(BandOrBlock == 1)
-    {
-        SSD_BUFFER_SIZE = BNDSZ;
-    }
     unsigned long hashcode = (ssd_buf_tag->offset / SSD_BUFFER_SIZE) % NTABLE_SSD_CACHE;
     return hashcode;
 }

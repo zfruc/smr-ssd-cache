@@ -63,7 +63,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         ssd_buffer[i] = '1';
     }
 
-    _TimerStart(&tv_trace_start);
+    _TimerLap(&tv_trace_start);
     while (!feof(trace))
     {
 //        if(feof(trace))
@@ -93,7 +93,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         }
 
 #ifdef LOG_SINGLE_REQ
-        _TimerStart(&tv_req_start);
+        _TimerLap(&tv_req_start);
 #endif // TIMER_SINGLE_REQ
         if (action == ACT_WRITE) // Write = 1
         {
@@ -106,7 +106,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
             read_block(offset,ssd_buffer);
         }
 #ifdef LOG_SINGLE_REQ
-        _TimerStop(&tv_req_stop);
+        _TimerLap(&tv_req_stop);
         msec_req = TimerInterval_MICRO(&tv_req_start,&tv_req_stop);
         /*
             print log
@@ -126,7 +126,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
 
         //ResizeCacheUsage();
     }
-    _TimerStop(&tv_trace_end);
+    _TimerLap(&tv_trace_end);
     time_trace = Mirco2Sec(TimerInterval_MICRO(&tv_trace_start,&tv_trace_end));
     reportCurInfo();
     free(ssd_buffer);
@@ -154,7 +154,7 @@ static void reportCurInfo()
 
 static void report_ontime()
 {
-//    _TimerStop(&tv_checkpoint);
+//    _TimerLap(&tv_checkpoint);
 //    double timecost = Mirco2Sec(TimerInterval_SECOND(&tv_trace_start,&tv_checkpoint));
     printf("totalreq:%lu, readreq:%lu, hit:%lu, readhit:%lu, flush_ssd_blk:%lu flush_hdd_blk:%lu, hashmiss:%lu, readhassmiss:%lu writehassmiss:%lu\n",
            STT->reqcnt_s,STT->reqcnt_r, STT->hitnum_s, STT->hitnum_r, STT->flush_ssd_blocks, STT->flush_hdd_blocks, STT->hashmiss_sum, STT->hashmiss_read, STT->hashmiss_write);

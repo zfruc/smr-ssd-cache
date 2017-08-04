@@ -72,7 +72,7 @@ InitPORE()
     return 0;
 }
 
-void*
+void
 LogInPoreBuffer(long despId, SSDBufTag tag, unsigned flag)
 {
     /* activate the decriptor */
@@ -138,7 +138,7 @@ LogOutDesp_pore()
     return evitedDesp->serial_id;
 }
 
-void*
+void
 HitPoreBuffer(long despId, unsigned flag)
 {
     StrategyDesp_pore* myDesp = GlobalDespArray + despId;
@@ -205,7 +205,6 @@ unloadfromZone(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
         GlobalDespArray[desp->next].pre = desp->pre;
     }
     desp->pre = desp->next = -1;
-    return 0;
 }
 
 static void
@@ -280,7 +279,7 @@ extractNonEmptyZoneId()
     return cnt;
 }
 
-static volatile void *
+static volatile void
 pause_and_caculate_weight_sizedivhot()
 {
     int n = 0;
@@ -320,7 +319,7 @@ redefineOpenZones()
     }
     OpenZoneCnt = n;
     IsNewPeriod = 1;
-    printf("NonEmptyZoneCnt = %d.\n",nonEmptyZoneCnt);
+    printf("NonEmptyZoneCnt = %ld.\n",nonEmptyZoneCnt);
     return 0;
 }
 

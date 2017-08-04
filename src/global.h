@@ -89,7 +89,6 @@ extern blkcnt_t NSSDTables;
 extern blkcnt_t NBANDTables;
 extern blkcnt_t SSD_SIZE;
 extern blkcnt_t BLCKSZ;
-extern blkcnt_t BNDSZ;
 extern blkcnt_t NZONES;
 extern blkcnt_t ZONESZ;
 extern blkcnt_t WRITEAMPLIFICATION;

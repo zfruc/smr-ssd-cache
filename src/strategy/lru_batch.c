@@ -66,9 +66,9 @@ Unload_Buf_LRU_batch(long* unloads, int cnt)
         unloads[i] = frozen_id;
         i++;
     }
-    //_TimerStart(&tv_1);
+    //_TimerLap(&tv_1);
     //sort(unloads,0,cnt-1);
-    //_TimerStop(&tv_2);
+    //_TimerLap(&tv_2);
     //microsecond_t msec_sort = TimerInterval_MICRO(&tv_1,&tv_2);
     //printf("Sort use time: %lu(usec)\n",msec_sort);
 
