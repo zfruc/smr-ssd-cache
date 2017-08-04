@@ -1,9 +1,8 @@
-#ifdef SIMULATION
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "smr-simulator.h"
-#include "../ssd-cache.h"
+#include "cache.h"
 
 static bool isSamessd(SSDTag *, SSDTag *);
 
@@ -112,4 +111,3 @@ static bool isSamessd(SSDTag *tag1, SSDTag *tag2)
 		return 0;
 	else return 1;
 }
-#endif

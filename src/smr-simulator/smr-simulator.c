@@ -19,6 +19,10 @@ static int 		    smr_fifo_simu_fd;
 SSDStrategyControl	*ssd_strategy_control;
 FIFODesc		*ssd_descriptors;
 SSDHashBucket	*ssd_hashtable;
+
+static blksize_t NSMRBands = 194180;		// smr band cnt = 194180;
+static blksize_t BNDSZ = 36*1024*1024;      // bandsize = 36MB  (18MB~36MB)
+
 static long interval_time;
 static long read_smr_bands;
 static long flush_bands;
@@ -29,6 +33,8 @@ pthread_mutex_t inner_ssd_hdr_mutex;
 pthread_mutex_t inner_ssd_hash_mutex;
 #endif // SIMULATION
 
+static long	band_size_num;
+static long	num_each_size;
 
 static blksize_t interval_time;
 
@@ -70,6 +76,10 @@ initFIFOCache()
     {
         printf("[ERROR] initSSD: fail to create thread: %s\n", strerror(err));
     }
+
+    band_size_num = BNDSZ / 1024 / 1024 / 2 + 1;
+    num_each_size = NSMRBands / band_size_num;
+
     flush_bands = 0;
     flush_band_size = 0;
     //flush_fifo_blocks = 0;
@@ -329,7 +339,7 @@ flushFIFO(FIFODesc * ssd_hdr,int smr_fd)
             read_fifo_blocks++;
             gettimeofday(&tv_begin_temp, &tz_begin_temp);
             time_begin_temp = tv_begin_temp.tv_sec + tv_begin_temp.tv_usec / 1000000.0;
-            returnCode = pread(inner_ssd_fd, band + Offset * BLCKSZ, BLCKSZ, ssd_descriptors[i % NSSDs].ssd_id * BLCKSZ);
+            returnCode = pread()inner_ssd_fd, band + Offset * BLCKSZ, BLCKSZ, ssd_descriptors[i % NSSDs].ssd_id * BLCKSZ);
             if (returnCode < 0)
             {
                 printf("[ERROR] flushSSD():-------read from inner ssd: fd=%d, errorcode=%d, offset=%lu\n", inner_ssd_fd, returnCode, ssd_descriptors[i % NSSDs].ssd_id * BLCKSZ);
@@ -368,8 +378,7 @@ flushFIFO(FIFODesc * ssd_hdr,int smr_fd)
 unsigned long
 GetSMRActualBandSizeFromSSD(unsigned long offset)
 {
-    long		band_size_num = BNDSZ / 1024 / 1024 / 2 + 1;
-    long		num_each_size = NSMRBands / band_size_num;
+
     long		i, size, total_size = 0;
     for (i = 0; i < band_size_num; i++)
     {
@@ -385,8 +394,6 @@ GetSMRActualBandSizeFromSSD(unsigned long offset)
 unsigned long
 GetSMRBandNumFromSSD(unsigned long offset)
 {
-    long		band_size_num = BNDSZ / 1024 / 1024 / 2 + 1;
-    long		num_each_size = NSMRBands / band_size_num;
     long		i, size, total_size = 0;
     for (i = 0; i < band_size_num; i++)
     {
@@ -402,8 +409,6 @@ GetSMRBandNumFromSSD(unsigned long offset)
 off_t
 GetSMROffsetInBandFromSSD(FIFODesc * ssd_hdr)
 {
-    long		band_size_num = BNDSZ / 1024 / 1024 / 2 + 1;
-    long		num_each_size = NSMRBands / band_size_num;
     long		i, size, total_size = 0;
     unsigned long	offset = ssd_hdr->ssd_tag.offset;
 

@@ -17,16 +17,14 @@ blksize_t NBLOCK_SSD_CACHE;
 blksize_t NTABLE_SSD_CACHE;
 blksize_t SSD_BUFFER_SIZE = 4096;
 blksize_t NBLOCK_SMR_FIFO;
-blksize_t NSMRBands = 194180;		// 194180*(18MB+36MB)/2~5TB
 //blksize_t NSMRBlocks = 2621952;		// 2621952*8KB~20GB
 //blksize_t NSSDs;
 //blksize_t NSSDTables;
 blksize_t NBANDTables = 2621952;
 blksize_t SSD_SIZE = 4096;
 blksize_t BLCKSZ = 4096;
-blksize_t BNDSZ = 36*1024*1024;
 blksize_t NZONES = 194180;    // NZONES * ZONESZ =
-blksize_t ZONESZ = 20971520;    // Unit: Byte.
+blksize_t ZONESZ = 20971520;//20MB    // Unit: Byte.
 blksize_t WRITEAMPLIFICATION = 100;
 blksize_t NCOLDBAND = 1;
 char smr_device[] = "/dev/sda";
