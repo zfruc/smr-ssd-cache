@@ -94,9 +94,6 @@ main(int argc, char** argv)
     init_cgdev();
 #endif // CG_THROTTLE
 
-#ifdef SIMULATION
-    initFIFOCache();
-#endif
     initLog();
     initRuntimeInfo();
     initSSD();
@@ -106,8 +103,11 @@ main(int argc, char** argv)
     hdd_fd = open(smr_device, O_RDWR | O_DIRECT);
     ssd_fd = open(ssd_device, O_RDWR | O_DIRECT);
 
-
     printf("Device ID: hdd=%d, ssd=%d\n",hdd_fd,ssd_fd);
+
+#ifdef SIMULATION
+    initFIFOCache();
+#endif
 
     trace_to_iocall(tracefile[TraceId],WriteOnly,StartLBA);
 

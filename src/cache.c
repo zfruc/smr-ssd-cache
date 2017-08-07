@@ -40,6 +40,9 @@ microsecond_t msec_r_hdd,msec_w_hdd,msec_r_ssd,msec_w_ssd,msec_bw_hdd=0;
 /* Device I/O operation with Timer */
 static int dev_pread(int fd, void* buf,size_t nbytes,off_t offset);
 static int dev_pwrite(int fd, void* buf,size_t nbytes,off_t offset);
+static int dev_simu_read(int fd, void* buf,size_t nbytes,off_t offset);
+static int dev_simu_write(int fd, void* buf,size_t nbytes,off_t offset);
+
 static char* ssd_buffer;
 
 extern struct RuntimeSTAT* STT;
@@ -135,8 +138,11 @@ flushSSDBuffer(SSDBufDesp * ssd_buf_hdr)
     msec_r_ssd = TimerInterval_MICRO(&tv_start,&tv_stop);
     STT->time_read_ssd += Mirco2Sec(msec_r_ssd);
     STT->load_ssd_blocks++;
-
+#ifdef SIMULATION
+    dev_simu_write(hdd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_tag.offset);
+#else
     dev_pwrite(hdd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_tag.offset);
+#endif
     msec_w_hdd = TimerInterval_MICRO(&tv_start,&tv_stop);
     STT->time_write_hdd += Mirco2Sec(msec_w_hdd);
     STT->flush_hdd_blocks++;
@@ -372,7 +378,11 @@ read_block(off_t offset, char *ssd_buffer)
     }
     else
     {
+#ifdef SIMULATION
+        dev_simu_read(hdd_fd, ssd_buffer, SSD_BUFFER_SIZE, offset);
+#else
         dev_pread(hdd_fd, ssd_buffer, SSD_BUFFER_SIZE, offset);
+#endif // SIMULATION
         msec_r_hdd = TimerInterval_MICRO(&tv_start,&tv_stop);
         STT->time_read_hdd += Mirco2Sec(msec_r_hdd);
         STT->load_hdd_blocks++;
@@ -428,11 +438,7 @@ static int dev_pread(int fd, void* buf,size_t nbytes,off_t offset)
 {
     int r;
     _TimerLap(&tv_start);
-#ifdef SIMULATION
-    r = simu_smr_read(fd,buf,nbytes,offset);
-#else
     r = pread(fd,buf,nbytes,offset);
-#endif // SIMULATION
     _TimerLap(&tv_stop);
     if (r < 0)
     {
@@ -446,12 +452,7 @@ static int dev_pwrite(int fd, void* buf,size_t nbytes,off_t offset)
 {
     int w;
     _TimerLap(&tv_start);
-#ifdef SIMULATION
-    w = simu_smr_write(fd,buf,nbytes,offset);
-#else
     w = pwrite(fd,buf,nbytes,offset);
-#endif // SIMULATION
-
     _TimerLap(&tv_stop);
     if (w < 0)
     {
@@ -459,6 +460,34 @@ static int dev_pwrite(int fd, void* buf,size_t nbytes,off_t offset)
         exit(-1);
     }
     return w;
+}
+
+static int dev_simu_write(int fd, void* buf,size_t nbytes,off_t offset)
+{
+    int w;
+    _TimerLap(&tv_start);
+    w = simu_smr_write(fd,buf,nbytes,offset);
+    _TimerLap(&tv_stop);
+    if (w < 0)
+    {
+        printf("[ERROR] read():-------write to device: fd=%d, errorcode=%d, offset=%lu\n", fd, w, offset);
+        exit(-1);
+    }
+    return w;
+}
+
+static int dev_simu_read(int fd, void* buf,size_t nbytes,off_t offset)
+{
+    int r;
+    _TimerLap(&tv_start);
+    r = simu_smr_read(fd,buf,nbytes,offset);
+    _TimerLap(&tv_stop);
+    if (r < 0)
+    {
+        printf("[ERROR] read():-------read from device: fd=%d, errorcode=%d, offset=%lu\n", fd, r, offset);
+        exit(-1);
+    }
+    return r;
 }
 
 void CopySSDBufTag(SSDBufTag* objectTag, SSDBufTag* sourceTag)

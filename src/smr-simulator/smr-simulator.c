@@ -15,7 +15,7 @@
 FIFOCtrl	    *global_fifo_ctrl;
 FIFODesc		*fifo_desp_array;
 SSDHashBucket	*ssd_hashtable;
-
+char* BandBuffer;
 static blksize_t NSMRBands = 194180;		// smr band cnt = 194180;
 static unsigned long BNDSZ = 36*1024*1024;      // bandsize = 36MB  (18MB~36MB)
 
@@ -83,6 +83,9 @@ initFIFOCache()
         fifo_hdr->next_freeId = (i==NBLOCK_SMR_FIFO-1) ? -1 : i + 1;
         fifo_hdr->pre_useId = fifo_hdr->next_useId = -1;
     }
+
+    posix_memalign(&BandBuffer, 512, sizeof(char) * BNDSZ);
+
     pthread_mutex_init(&simu_smr_fifo_mutex, NULL);
 
     simu_read_smr_bands = 0;
@@ -242,10 +245,10 @@ static void
 removeFromUsedArray(FIFODesc* desp)
 {
     if(desp->pre_useId < 0){
-        global_fifo_ctrl->first_useId = desp->next_freeId;
+        global_fifo_ctrl->first_useId = desp->next_useId;
     }
     else{
-        fifo_desp_array[desp->pre_useId].next_useId = desp->next_freeId;
+        fifo_desp_array[desp->pre_useId].next_useId = desp->next_useId;
     }
 
     if(desp->next_useId < 0){
@@ -270,6 +273,7 @@ addIntoUseArray(FIFODesc* newDesp)
         newDesp->pre_useId = tailDesp->despId;
         global_fifo_ctrl->last_useId = newDesp->despId;
     }
+    global_fifo_ctrl->n_used++;
 }
 
 static void
@@ -283,7 +287,6 @@ addIntoFreeArray(FIFODesc* newDesp)
         tailDesp->next_freeId = newDesp->despId;
         global_fifo_ctrl->last_freeId = newDesp->despId;
     }
-    global_fifo_ctrl->n_used++;
 }
 
 static FIFODesc*
@@ -322,7 +325,6 @@ flushFIFO()
         return NULL;
 
     int		returnCode;
-    char*   bandbuf;
     struct timeval	tv_start, tv_stop;
     long    dirty_n_inBand = 0;
     double  wtrAmp;
@@ -331,7 +333,6 @@ flushFIFO()
     /* Create a band-sized buffer for readind and flushing whole band bytes */
     long		band_size = GetSMRActualBandSizeFromSSD(headDesp->tag.offset);
     off_t		band_offset = headDesp->tag.offset - GetSMROffsetInBandFromSSD(headDesp) * BLCKSZ;
-    returnCode = posix_memalign(&bandbuf, 512, sizeof(char) * band_size);
     if (returnCode < 0)
     {
         printf("[ERROR] flushSSD():-------posix_memalign\n");
@@ -340,7 +341,7 @@ flushFIFO()
 
     /* read whole band from smr to buffer*/
     _TimerLap(&tv_start);
-    returnCode = pread(hdd_fd, bandbuf, band_size,SMR_DISK_OFFSET + band_offset);
+    returnCode = pread(hdd_fd, BandBuffer, band_size,SMR_DISK_OFFSET + band_offset);
     if (returnCode < 0)
     {
         printf("[ERROR] flushSSD():---------read from smr: fd=%d, errorcode=%d, offset=%lu\n", hdd_fd, returnCode, band_offset);
@@ -357,7 +358,7 @@ flushFIFO()
     while(curPos >= 0)
     {
         FIFODesc* curDesp = fifo_desp_array + curPos;
-        FIFODesc* nextPos = curDesp->next_useId;
+        long nextPos = curDesp->next_useId;
         if (GetSMRBandNumFromSSD(curDesp->tag.offset) == BandNum)
         {
             // The block belongs the same band with the header of fifo.
@@ -366,7 +367,7 @@ flushFIFO()
 
             off_t offset_inband = GetSMROffsetInBandFromSSD(curDesp);
             _TimerLap(&tv_start);
-            returnCode = pread(hdd_fd, bandbuf + offset_inband * BLCKSZ, BLCKSZ, curPos * BLCKSZ);
+            returnCode = pread(hdd_fd, BandBuffer + offset_inband * BLCKSZ, BLCKSZ, curPos * BLCKSZ);
             if (returnCode < 0)
             {
                 printf("[ERROR] flushSSD():-------read from inner ssd: fd=%d, errorcode=%d, offset=%lu\n", hdd_fd, returnCode, curPos * BLCKSZ);
@@ -386,7 +387,7 @@ flushFIFO()
     /* write whole band to smr */
     _TimerLap(&tv_start);
 
-    returnCode = pwrite(hdd_fd, bandbuf, band_size, SMR_DISK_OFFSET + band_offset);
+    returnCode = pwrite(hdd_fd, BandBuffer, band_size, SMR_DISK_OFFSET + band_offset);
     if (returnCode < 0)
     {
         printf("[ERROR] flushSSD():-------write to smr: fd=%d, errorcode=%d, offset=%lu\n", hdd_fd, returnCode, band_offset);
@@ -398,12 +399,10 @@ flushFIFO()
     simu_flush_bands++;
     simu_flush_band_size += band_size;
 
-    wtrAmp = band_size / (dirty_n_inBand * BLCKSZ);
+    wtrAmp = (double)band_size / (dirty_n_inBand * BLCKSZ);
     char log[128];
     sprintf(log,"flush [%ld] times from fifo to smr, WtrAmp = %f.2\n",simu_flush_bands,wtrAmp);
     WriteLog(log);
-
-    free(bandbuf);
 }
 
 static unsigned long
