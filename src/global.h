@@ -4,6 +4,11 @@
 #include <sys/types.h>
 
 #include "statusDef.h"
+
+
+#define SSD_BUF_VALID 0x01
+#define SSD_BUF_DIRTY 0x02
+
 struct RuntimeSTAT
 {
     /** This user basic info */

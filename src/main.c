@@ -75,7 +75,7 @@ main(int argc, char** argv)
         StartLBA = atol(argv[5]);
         NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = atol(argv[6]);
         NBLOCK_SMR_FIFO = atol(argv[7]);
-        EvictStrategy = PORE;
+        EvictStrategy = LRU_private;//PORE;
         //EvictStrategy = LRU_private;
     }
     else
@@ -149,7 +149,7 @@ int init_cgdev()
 int initLog()
 {
     char logpath[50];
-    sprintf(logpath,"%s/b%d_u%d_t%d_bs%d.log",PATH_LOG,BatchId,UserId,TraceId,BatchSize);
+    sprintf(logpath,"%s/b%d_u%d_t%d_bs%d_LRU.log",PATH_LOG,BatchId,UserId,TraceId,BatchSize);
     int rt = 0;
     if((rt = OpenLogFile(logpath)) < 0)
     {

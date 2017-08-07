@@ -1,4 +1,5 @@
 #include "report.h"
+#include "statusDef.h"
 FILE* LogFile;
 void info(char* str)
 {

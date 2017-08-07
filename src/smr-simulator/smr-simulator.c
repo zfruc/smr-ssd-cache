@@ -401,7 +401,7 @@ flushFIFO()
 
     wtrAmp = (double)band_size / (dirty_n_inBand * BLCKSZ);
     char log[128];
-    sprintf(log,"flush [%ld] times from fifo to smr, WtrAmp = %f.2\n",simu_flush_bands,wtrAmp);
+    sprintf(log,"flush [%ld] times from fifo to smr, WtrAmp = %lf\n",simu_flush_bands,wtrAmp);
     WriteLog(log);
 }
 

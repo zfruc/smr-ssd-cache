@@ -315,7 +315,7 @@ Strategy_Desp_LogOut()
     switch(EvictStrategy)
     {
 //        case LRU_global:        return Unload_LRUBuf();
-//        case LRU_private:       return Unload_Buf_LRU_private();
+        case LRU_private:       return Unload_Buf_LRU_private();
         case PORE:              return LogOutDesp_pore();
     }
     return -1;
@@ -327,7 +327,7 @@ Strategy_Desp_HitIn(SSDBufDesp* desp)
     switch(EvictStrategy)
     {
 //        case LRU_global:        return hitInLRUBuffer(desp->serial_id);
-//        case LRU_private:       return hitInBuffer_LRU_private(desp->serial_id);
+        case LRU_private:       return hitInBuffer_LRU_private(desp->serial_id);
 //        case LRU_batch:         return hitInBuffer_LRU_batch(desp->serial_id);
         case PORE:              return HitPoreBuffer(desp->serial_id, desp->ssd_buf_flag);
     }
@@ -341,7 +341,7 @@ Strategy_Desp_LogIn(SSDBufDesp* desp)
     switch(EvictStrategy)
     {
 //        case LRU_global:        return insertLRUBuffer(serial_id);
-//        case LRU_private:       return insertBuffer_LRU_private(serial_id);
+        case LRU_private:       return insertBuffer_LRU_private(desp->serial_id);
 //        case LRU_batch:         return insertBuffer_LRU_batch(serial_id);
         case PORE:              return LogInPoreBuffer(desp->serial_id,desp->ssd_buf_tag,desp->ssd_buf_flag);
     }
