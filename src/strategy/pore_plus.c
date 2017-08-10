@@ -20,7 +20,6 @@ typedef enum{
 static StrategyDesp_pore*   GlobalDespArray;
 static ZoneCtrl*            ZoneCtrlArray;
 static CleanDespCtrl        CleanCtrl;
-static EnumEvictModel       CurEvictModel;
 
 static unsigned long*       ZoneSortArray;      /* The zone ID array sorted by weight(calculated customized). it is used to determine the open zones */
 static int                  NonEmptyZoneCnt;
@@ -48,10 +47,13 @@ static void move2CleanArrayHead(StrategyDesp_pore* desp);
 static int redefineOpenZones();
 static ZoneCtrl* getEvictZone();
 static long stamp(StrategyDesp_pore* desp);
-static int random_choose(long stampA, long stampB, long minStamp);
 
 static long plus_Dirty_Threshold;
 static long plus_Clean_LowBound, plus_Clean_UpBound;
+
+static EnumEvictModel       CurEvictModel;
+static int random_choose(long stampA, long stampB, long minStamp);
+
 
 static volatile unsigned long
 getZoneNum(size_t offset)
@@ -175,6 +177,7 @@ long
 LogOutDesp_pore_plus()
 {
     static int periodCnt = 0;
+    static int CurEvictZonePos = 0;
 
     if(PeriodProgress % PeriodLenth == 0)
     {
@@ -189,7 +192,9 @@ LogOutDesp_pore_plus()
         if(CleanCtrl.pagecnt_clean < plus_Clean_LowBound)
         {
             if(OpenZoneCnt > 0)
+            {
                 CurEvictModel = HYBRID_OpZone;
+            }
             else
                 CurEvictModel = HYBRID_ALL;
         }
@@ -208,6 +213,7 @@ LogOutDesp_pore_plus()
                 CurEvictModel = CLEAN_ONLY;
         }
 
+        CurEvictZonePos = 0;
         periodCnt++;
         printf("Period [%d], OpenZones_cnt=%d\n",periodCnt,OpenZoneCnt);
     }
@@ -227,12 +233,31 @@ LogOutDesp_pore_plus()
     }
     else if(CurEvictModel == HYBRID_OpZone)
     {
+        ZoneCtrl* evictZone = ZoneCtrlArray + OpenZoneSet[CurEvictZonePos];
+        if(evictZone->head < 0)
+        {
+
+        }
+        StrategyDesp_pore* dirtyDesp = GlobalDespArray + evictZone->tail;
+        StrategyDesp_pore* cleanDesp = GlobalDespArray + CleanCtrl.tail;
+
+        if(random_choose(cleanDesp->stamp, dirtyDesp->stamp, StampGlobal))
+        {
+            unloadfromCleanArray(cleanDesp);
+            CleanCtrl.pagecnt_clean--;
+            evitedDesp = cleanDesp;
+        }
+        else
+        {
+        }
 
     }
     else if(CurEvictModel == HYBRID_ALL)
     {
 
     }
+
+
     clearDesp(evitedDesp);
 
 //    ZoneCtrl* chosenOpZone;
@@ -545,12 +570,12 @@ stamp(StrategyDesp_pore* desp)
 }
 
 static int
-random_choose(long stampA, long stampB, long minStamp)
+random_choose(long stampA, long stampB, long maxStamp)
 {
     srand((unsigned int)time(0));
     long ran = rand();
 
-    double weightA = (double)(stampB - minStamp + 1) /(stampA + stampB + 2 - 2*minStamp);
+    double weightA = (double)(maxStamp - stampA + 1) / (2*maxStamp - stampA - stampB + 2);
 
     if(ran < RAND_MAX * weightA)
         return 1;
