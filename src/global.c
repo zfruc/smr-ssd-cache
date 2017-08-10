@@ -22,13 +22,13 @@ blksize_t NBLOCK_SMR_FIFO;
 //blksize_t NSSDTables;
 blksize_t NBANDTables = 2621952;
 blksize_t SSD_SIZE = 4096;
-blksize_t BLCKSZ = 4096;
-blksize_t NZONES = 194180;    // NZONES * ZONESZ =
-blksize_t ZONESZ = 20971520;//20MB    // Unit: Byte.
+const blksize_t BLCKSZ = 4096;
+const blksize_t NZONES = 194180;    // NZONES * ZONESZ =
+const blksize_t ZONESZ = 18874368;//18MB    // Unit: Byte.
 blksize_t WRITEAMPLIFICATION = 100;
 blksize_t NCOLDBAND = 1;
 char smr_device[] = "/dev/sda";
-char ssd_device[] = "/dev/sdd";
+char ssd_device[] = "/mnt/ssd/ssd";
 char ram_device[1024];
 
 int BandOrBlock;

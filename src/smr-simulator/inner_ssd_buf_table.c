@@ -76,7 +76,7 @@ long ssdtableDelete(DespTag *tag, unsigned long hash_code)
 	SSDHashBucket *nowbucket = GetSSDHashBucket(hash_code);
 	long del_id;
 	SSDHashBucket *delitem;
-	nowbucket->next_item;
+
 	while (nowbucket->next_item != NULL && nowbucket != NULL) {
 		if (isSamessd(&nowbucket->next_item->hash_key, tag)) {
 			del_id = nowbucket->next_item->despId;

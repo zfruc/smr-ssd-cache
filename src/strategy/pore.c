@@ -12,7 +12,7 @@ static int                  OpenZoneCnt;        /* It represent the number of op
 
 static long                 PeriodLenth;        /* The period lenth which defines the times of eviction triggered */
 static long                 PeriodProgress;     /* Current times of eviction in a period lenth */
-static long                 StampInPeriod;      /* Current io sequenced number in a period lenth, used to distinct the degree of heat among zones */
+static long                 StampGlobal;      /* Current io sequenced number in a period lenth, used to distinct the degree of heat among zones */
 static int                  IsNewPeriod;
 
 
@@ -39,7 +39,7 @@ int
 InitPORE()
 {
     PeriodLenth = NBLOCK_SMR_FIFO;
-    StampInPeriod = PeriodProgress = 0;
+    StampGlobal = PeriodProgress = 0;
     IsNewPeriod = 0;
     GlobalDespArray = (StrategyDesp_pore*)malloc(sizeof(StrategyDesp_pore) * NBLOCK_SSD_CACHE);
     ZoneCtrlArray = (ZoneCtrl*)malloc(sizeof(ZoneCtrl) * NZONES);
@@ -371,7 +371,7 @@ getEvictZone()
 static long
 stamp(StrategyDesp_pore* desp)
 {
-    desp->stamp = ++StampInPeriod;
-    return StampInPeriod;
+    desp->stamp = ++StampGlobal;
+    return StampGlobal;
 }
 

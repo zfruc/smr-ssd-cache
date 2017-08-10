@@ -30,5 +30,9 @@ typedef struct ZoneCtrl
     long            head,tail;
 }ZoneCtrl;
 
+extern int InitPORE();
+extern void LogInPoreBuffer(long despId, SSDBufTag tag, unsigned flag);
+extern void HitPoreBuffer(long despId, unsigned flag);
+extern long LogOutDesp_pore();
 
 #endif // _PORE_H

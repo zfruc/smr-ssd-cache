@@ -8,7 +8,6 @@
 #include "hashtable_utils.h"
 #include "shmlib.h"
 #include "report.h"
-#include "statusDef.h"
 
 SSDBufDespCtrl*     ssd_buf_desp_ctrl;
 SSDBufDesp*         ssd_buf_desps;
@@ -40,8 +39,8 @@ microsecond_t msec_r_hdd,msec_w_hdd,msec_r_ssd,msec_w_ssd,msec_bw_hdd=0;
 /* Device I/O operation with Timer */
 static int dev_pread(int fd, void* buf,size_t nbytes,off_t offset);
 static int dev_pwrite(int fd, void* buf,size_t nbytes,off_t offset);
-static int dev_simu_read(int fd, void* buf,size_t nbytes,off_t offset);
-static int dev_simu_write(int fd, void* buf,size_t nbytes,off_t offset);
+static int dev_simu_read(void* buf,size_t nbytes,off_t offset);
+static int dev_simu_write(void* buf,size_t nbytes,off_t offset);
 
 static char* ssd_buffer;
 
@@ -139,7 +138,7 @@ flushSSDBuffer(SSDBufDesp * ssd_buf_hdr)
     STT->time_read_ssd += Mirco2Sec(msec_r_ssd);
     STT->load_ssd_blocks++;
 #ifdef SIMULATION
-    dev_simu_write(hdd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_tag.offset);
+    dev_simu_write(ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_tag.offset);
 #else
     dev_pwrite(hdd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_tag.offset);
 #endif
@@ -353,9 +352,13 @@ Strategy_Desp_LogIn(SSDBufDesp* desp)
 void
 read_block(off_t offset, char *ssd_buffer)
 {
-    #ifdef _NO_CACHE_
-
-    #else
+#ifdef NO_CACHE
+    dev_pread(hdd_fd, ssd_buffer, SSD_BUFFER_SIZE, offset);
+    msec_r_hdd = TimerInterval_MICRO(&tv_start,&tv_stop);
+    STT->time_read_hdd += Mirco2Sec(msec_r_hdd);
+    STT->load_hdd_blocks++;
+    return;
+#else
     bool found = 0;
     static SSDBufTag ssd_buf_tag;
     static SSDBufDesp* ssd_buf_hdr;
@@ -379,7 +382,7 @@ read_block(off_t offset, char *ssd_buffer)
     else
     {
 #ifdef SIMULATION
-        dev_simu_read(hdd_fd, ssd_buffer, SSD_BUFFER_SIZE, offset);
+        dev_simu_read(ssd_buffer, SSD_BUFFER_SIZE, offset);
 #else
         dev_pread(hdd_fd, ssd_buffer, SSD_BUFFER_SIZE, offset);
 #endif // SIMULATION
@@ -396,7 +399,7 @@ read_block(off_t offset, char *ssd_buffer)
     ssd_buf_hdr->ssd_buf_flag |= SSD_BUF_VALID;
 
     _UNLOCK(&ssd_buf_hdr->lock);
-    #endif // _NO_CACHE_
+#endif // NO_CACHE
 }
 
 /*
@@ -405,8 +408,13 @@ read_block(off_t offset, char *ssd_buffer)
 void
 write_block(off_t offset, char *ssd_buffer)
 {
-    #ifdef _NO_CACHE_
+    #ifdef NO_CACHE
     //IO by no cache.
+    dev_pwrite(hdd_fd, ssd_buffer, SSD_BUFFER_SIZE, offset);
+    msec_w_hdd = TimerInterval_MICRO(&tv_start,&tv_stop);
+    STT->time_write_hdd += Mirco2Sec(msec_w_hdd);
+    STT->flush_hdd_blocks++;
+    return;
     #else
     bool	found;
 
@@ -425,7 +433,7 @@ write_block(off_t offset, char *ssd_buffer)
     STT->flush_ssd_blocks++ ;
 
     _UNLOCK(&ssd_buf_hdr->lock);
-    #endif // _NO_CAHCE_
+    #endif // NO_CAHCE
 
 
 }
@@ -462,31 +470,21 @@ static int dev_pwrite(int fd, void* buf,size_t nbytes,off_t offset)
     return w;
 }
 
-static int dev_simu_write(int fd, void* buf,size_t nbytes,off_t offset)
+static int dev_simu_write(void* buf,size_t nbytes,off_t offset)
 {
     int w;
     _TimerLap(&tv_start);
-    w = simu_smr_write(fd,buf,nbytes,offset);
+    w = simu_smr_write(buf,nbytes,offset);
     _TimerLap(&tv_stop);
-    if (w < 0)
-    {
-        printf("[ERROR] read():-------write to device: fd=%d, errorcode=%d, offset=%lu\n", fd, w, offset);
-        exit(-1);
-    }
     return w;
 }
 
-static int dev_simu_read(int fd, void* buf,size_t nbytes,off_t offset)
+static int dev_simu_read(void* buf,size_t nbytes,off_t offset)
 {
     int r;
     _TimerLap(&tv_start);
-    r = simu_smr_read(fd,buf,nbytes,offset);
+    r = simu_smr_read(buf,nbytes,offset);
     _TimerLap(&tv_stop);
-    if (r < 0)
-    {
-        printf("[ERROR] read():-------read from device: fd=%d, errorcode=%d, offset=%lu\n", fd, r, offset);
-        exit(-1);
-    }
     return r;
 }
 

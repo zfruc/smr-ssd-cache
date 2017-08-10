@@ -16,7 +16,7 @@
 #include "shmlib.h"
 #include "global.h"
 #include "cache.h"
-//#include "smr-simulator/smr-simulator.h"
+#include "smr-simulator/smr-simulator.h"
 #include "trace2call.h"
 
 extern void FunctionalTest();
@@ -66,7 +66,7 @@ main(int argc, char** argv)
 
 // 1 1 1 0 0 100000 100000
 // 1 1 0 0 0 100000 100000
-    if(argc == 8)
+    if(argc == 9)
     {
         BatchId = atoi(argv[1]);
         UserId = atoi(argv[2]);
@@ -75,7 +75,7 @@ main(int argc, char** argv)
         StartLBA = atol(argv[5]);
         NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = atol(argv[6]);
         NBLOCK_SMR_FIFO = atol(argv[7]);
-        EvictStrategy = LRU_private;//PORE;
+        EvictStrategy = (atoi(argv[8]) == 0)? PORE : LRU_private;//PORE;
         //EvictStrategy = LRU_private;
     }
     else
@@ -88,7 +88,7 @@ main(int argc, char** argv)
 //        isWriteOnly = 0;
 //        traceId = 1;
 //        startLBA = 0;
-    //NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = 500000;//280M //50000; // 200MB
+//        NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = 500000;//280M //50000; // 200MB
 
 #ifdef CG_THROTTLE
     init_cgdev();
@@ -100,14 +100,21 @@ main(int argc, char** argv)
 
 
 
-    hdd_fd = open(smr_device, O_RDWR | O_DIRECT);
-    ssd_fd = open(ssd_device, O_RDWR | O_DIRECT);
 
-    printf("Device ID: hdd=%d, ssd=%d\n",hdd_fd,ssd_fd);
 
 #ifdef SIMULATION
+    fd_fifo_part = open(smr_device, O_RDWR | O_DIRECT);
+    fd_smr_part = open(smr_device, O_RDWR | O_DIRECT | O_FSYNC);
+    printf("Simulator Device: fifo part=%d, smr part=%d\n",fd_fifo_part,fd_smr_part);
+
     initFIFOCache();
+#else
+    hdd_fd = open(smr_device, O_RDWR | O_DIRECT);
+    printf("Device ID: hdd=%d, ssd=%d\n",hdd_fd,ssd_fd);
+
 #endif
+    ssd_fd = open(ssd_device, O_RDWR | O_DIRECT);
+
 
     trace_to_iocall(tracefile[TraceId],WriteOnly,StartLBA);
 
@@ -149,12 +156,11 @@ int init_cgdev()
 int initLog()
 {
     char logpath[50];
-    sprintf(logpath,"%s/b%d_u%d_t%d_bs%d_LRU.log",PATH_LOG,BatchId,UserId,TraceId,BatchSize);
+    sprintf(logpath,"%s/PORE_SMR_prn_PORE_CS106K_FF21K_AIO.log",PATH_LOG);
     int rt = 0;
     if((rt = OpenLogFile(logpath)) < 0)
     {
         error("open log file failure.\n");
-
     }
     return rt;
 }

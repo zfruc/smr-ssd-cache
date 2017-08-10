@@ -9,7 +9,7 @@ CPPFLAGS += -I$(SMR_SSD_CACHE_DIR) -I$(SMR_SSD_CACHE_DIR)/smr-simulator -I$(SMR_
 
 RM = rm -rf
 RMSHM = rm -f /dev/shm/*
-OBJS = global.o report.o timerUtils.o shmlib.o hashtable_utils.o cache.o trace2call.o main.o losertree4pore.o pore.o lru.o lru_private.o lru_batch.o
+OBJS = global.o report.o timerUtils.o shmlib.o hashtable_utils.o cache.o trace2call.o main.o losertree4pore.o pore.o lru.o lru_private.o lru_batch.o smr-simulator.o inner_ssd_buf_table.o
 
 all: $(OBJS) smr-ssd-cache
 	@echo 'Successfully built smr-ssd-cache...'
@@ -59,25 +59,10 @@ lru_private.o: strategy/lru_private.c
 lru_batch.o: strategy/lru_batch.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
 
-scan.o: strategy/scan.c
+smr-simulator.o: smr-simulator/smr-simulator.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
 
-lruofband.o: strategy/lruofband.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
-
-band_table.o: strategy/band_table.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
-
-most.o: strategy/most.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
-
-WA.o: strategy/WA.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
-
-ssd_buf_table_for_coldmax_history.o: strategy/ssd_buf_table_for_coldmax_history.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
-
-maxcold.o: strategy/maxcold.c
+inner_ssd_buf_table.o: smr-simulator/inner_ssd_buf_table.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
 
 clean:

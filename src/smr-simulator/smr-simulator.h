@@ -38,6 +38,9 @@ typedef struct
 	long            last_freeId;
 } FIFOCtrl;
 
+extern int  fd_fifo_part;
+extern int  fd_smr_part;
+
 extern FIFODesc		*ssd_descriptors;
 extern char             *ssd_blocks;
 extern FIFOCtrl *global_fifo_ctrl;
@@ -47,8 +50,8 @@ extern SSDHashBucket	*ssd_hashtable;
 #define GetSSDHashBucket(hash_code) ((SSDHashBucket *) (ssd_hashtable + (unsigned long) (hash_code)))
 
 extern void initFIFOCache();
-extern int smrread(int smr_fd, char* buffer, size_t size, off_t offset);
-extern int smrwrite(int smr_fd, char* buffer, size_t size, off_t offset);
+extern int smrread(char* buffer, size_t size, off_t offset);
+extern int smrwrite(char* buffer, size_t size, off_t offset);
 extern void PrintSimulatorStatistic();
 
 #endif
