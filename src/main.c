@@ -75,8 +75,8 @@ main(int argc, char** argv)
         StartLBA = atol(argv[5]);
         NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = atol(argv[6]);
         NBLOCK_SMR_FIFO = atol(argv[7]);
-        EvictStrategy = (atoi(argv[8]) == 0)? PORE : LRU_private;//PORE;
-        //EvictStrategy = LRU_private;
+        //EvictStrategy = (atoi(argv[8]) == 0)? PORE : LRU_private;//PORE;
+        EvictStrategy = PORE_PLUS;
     }
     else
     {
@@ -156,7 +156,7 @@ int init_cgdev()
 int initLog()
 {
     char logpath[50];
-    sprintf(logpath,"%s/PORE_SMR_prn_PORE_CS106K_FF21K_AIO.log",PATH_LOG);
+    sprintf(logpath,"%s/PORE_SMR_prn_PORE_PLUS_CS106K_FF21K_AIO.log",PATH_LOG);
     int rt = 0;
     if((rt = OpenLogFile(logpath)) < 0)
     {

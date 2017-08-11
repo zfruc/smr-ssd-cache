@@ -296,14 +296,13 @@ allocSSDBuf(SSDBufTag *ssd_buf_tag, bool * found, int alloc4What)
 static int
 initStrategySSDBuffer()
 {
-    if (EvictStrategy == LRU_global)
-        return initSSDBufferForLRU();
-    else if(EvictStrategy == LRU_private)
-        return initSSDBufferFor_LRU_private();
-    else if(EvictStrategy == LRU_batch)
-        return initSSDBufferFor_LRU_batch();
-    else if(EvictStrategy == PORE)
-        return InitPORE();
+    switch(EvictStrategy)
+    {
+        case LRU_private:       return initSSDBufferFor_LRU_private();
+        case PORE:              return InitPORE();
+        case PORE_PLUS:        return InitPORE_plus();
+
+    }
     return -1;
 }
 
@@ -316,6 +315,7 @@ Strategy_Desp_LogOut()
 //        case LRU_global:        return Unload_LRUBuf();
         case LRU_private:       return Unload_Buf_LRU_private();
         case PORE:              return LogOutDesp_pore();
+        case PORE_PLUS:        return LogOutDesp_pore_plus();
     }
     return -1;
 }
@@ -329,6 +329,7 @@ Strategy_Desp_HitIn(SSDBufDesp* desp)
         case LRU_private:       return hitInBuffer_LRU_private(desp->serial_id);
 //        case LRU_batch:         return hitInBuffer_LRU_batch(desp->serial_id);
         case PORE:              return HitPoreBuffer(desp->serial_id, desp->ssd_buf_flag);
+        case PORE_PLUS:         return HitPoreBuffer_plus(desp->serial_id, desp->ssd_buf_flag);
     }
     return -1;
 }
@@ -342,7 +343,8 @@ Strategy_Desp_LogIn(SSDBufDesp* desp)
 //        case LRU_global:        return insertLRUBuffer(serial_id);
         case LRU_private:       return insertBuffer_LRU_private(desp->serial_id);
 //        case LRU_batch:         return insertBuffer_LRU_batch(serial_id);
-        case PORE:              return LogInPoreBuffer(desp->serial_id,desp->ssd_buf_tag,desp->ssd_buf_flag);
+        case PORE:              return LogInPoreBuffer(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
+        case PORE_PLUS:         return LogInPoreBuffer_plus(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
     }
 }
 /*

@@ -4,6 +4,10 @@
 #include "losertree4pore.h"
 #include "report.h"
 
+#define random(x) (rand()%x)
+
+
+
 typedef struct
 {
     long            pagecnt_clean;
@@ -68,7 +72,7 @@ InitPORE_plus()
     PeriodLenth = NBLOCK_SMR_FIFO;
     plus_Dirty_Threshold =  ZONESZ * 0.8;               /* Cover Rate mush be >= 80% */
     plus_Clean_LowBound =   NBLOCK_SSD_CACHE * 0.2;     /* Clean blocks number < 20% of cache size, must to adopt Hybrid Model, even if there is NONE of zones reach the dirty threshold. */
-    plus_Clean_LowBound =   NBLOCK_SSD_CACHE * 0.8;     /* Clean blocks number > 80% of cache size, must to adopt Clean-Only Model, even if there EXIST zones reach the dirty threshold. */
+    plus_Clean_UpBound =    NBLOCK_SSD_CACHE * 0.8;     /* Clean blocks number > 80% of cache size, must to adopt Clean-Only Model, even if there EXIST zones reach the dirty threshold. */
 
 
     StampGlobal = PeriodProgress = 0;
@@ -178,14 +182,14 @@ LogOutDesp_pore_plus()
 {
     static int periodCnt = 0;
     static int CurEvictZonePos = 0;
-
+    static long evict_clean_cnt = 0, evict_dirty_cnt = 0;
     if(PeriodProgress % PeriodLenth == 0)
     {
+        printf("This Period Evict Info: clean:%ld, dirty:%d\n",evict_clean_cnt,evict_dirty_cnt);
         /* 1. Searching Phase */
         OpenZoneCnt = 0;
-        PeriodLenth = 0;
-        PeriodProgress = 0;
-
+        PeriodProgress = 1;
+        evict_clean_cnt = evict_dirty_cnt = 0;
         redefineOpenZones();
 
         /* 2. Decide Evict Model Phase */
@@ -196,7 +200,15 @@ LogOutDesp_pore_plus()
                 CurEvictModel = HYBRID_OpZone;
             }
             else
+            {
                 CurEvictModel = HYBRID_ALL;
+                int i;
+                for(i = 0; i < NonEmptyZoneCnt; i++)
+                {
+                    OpenZoneSet[i] = ZoneSortArray[i];
+                }
+                OpenZoneCnt = NonEmptyZoneCnt;
+            }
         }
         else if(CleanCtrl.pagecnt_clean > plus_Clean_UpBound)
         {
@@ -215,10 +227,11 @@ LogOutDesp_pore_plus()
 
         CurEvictZonePos = 0;
         periodCnt++;
-        printf("Period [%d], OpenZones_cnt=%d\n",periodCnt,OpenZoneCnt);
+        printf("Period [%d], OpenZones_cnt=%d, Evict Model=%s\n",periodCnt,OpenZoneCnt,(CurEvictModel == CLEAN_ONLY)? "CLEAN-ONLY": "HYBRID");
     }
 
-    /* Evict Phase */
+    /*3. Evict Phase */
+
     StrategyDesp_pore*  evitedDesp;
     if(CurEvictModel == CLEAN_ONLY)
     {
@@ -229,56 +242,73 @@ LogOutDesp_pore_plus()
         CleanCtrl.pagecnt_clean--;
 
         evitedDesp = frozenDesp;
+        evict_clean_cnt++;
         PeriodProgress++;
     }
-    else if(CurEvictModel == HYBRID_OpZone)
+    else if(CurEvictModel == HYBRID_OpZone || CurEvictModel == HYBRID_ALL)
     {
+        static int once_zone_evcit = 0;
         ZoneCtrl* evictZone = ZoneCtrlArray + OpenZoneSet[CurEvictZonePos];
-        if(evictZone->head < 0)
-        {
 
-        }
+        StrategyDesp_pore* cleanDesp;
         StrategyDesp_pore* dirtyDesp = GlobalDespArray + evictZone->tail;
-        StrategyDesp_pore* cleanDesp = GlobalDespArray + CleanCtrl.tail;
 
-        if(random_choose(cleanDesp->stamp, dirtyDesp->stamp, StampGlobal))
+        if(CleanCtrl.pagecnt_clean > 0)
         {
-            unloadfromCleanArray(cleanDesp);
-            CleanCtrl.pagecnt_clean--;
-            evitedDesp = cleanDesp;
+            cleanDesp = GlobalDespArray + CleanCtrl.tail;
         }
         else
         {
+            once_zone_evcit = 1;
         }
 
-    }
-    else if(CurEvictModel == HYBRID_ALL)
-    {
+        if(!once_zone_evcit && random_choose(cleanDesp->stamp, dirtyDesp->stamp, StampGlobal))
+        {
+            unloadfromCleanArray(cleanDesp);
+            CleanCtrl.pagecnt_clean--;
+            if(CleanCtrl.pagecnt_clean == 0)
+            {
+                int a = 0;
+            }
+            evitedDesp = cleanDesp;
+            PeriodProgress++;
+            evict_clean_cnt++;
+        }
+        else
+        {
+            unloadfromZone(dirtyDesp,evictZone);
+            evictZone->pagecnt_dirty--;
+            evictZone->heat -= dirtyDesp->heat;
+            PeriodProgress++;
 
+            evitedDesp = dirtyDesp;
+            once_zone_evcit = 1;
+            evict_dirty_cnt++;
+        }
+
+        /* While finish to cache out whole zone, Cache out next Open Zone or restart new period. */
+        if(evictZone->head < 0)
+        {
+            once_zone_evcit = 0;
+            if(CurEvictZonePos < OpenZoneCnt -1)
+            {
+                CurEvictZonePos++;
+            }
+            else
+                PeriodProgress = 0; // restart
+        }
+        else if(once_zone_evcit && PeriodProgress == PeriodLenth)
+        {
+            PeriodProgress--;
+        }
+    }
+    else
+    {
+        return -2;
     }
 
 
     clearDesp(evitedDesp);
-
-//    ZoneCtrl* chosenOpZone;
-//    while((chosenOpZone = getEvictZone()) == NULL){
-//        redefineOpenZones();
-//        PeriodProgress = 1;
-//        periodCnt++;
-//        printf("Period [%d], OpenZones_cnt=%d\n",periodCnt,OpenZoneCnt);
-//    }
-//
-//
-//    StrategyDesp_pore*  evitedDesp = GlobalDespArray + chosenOpZone->tail;
-//
-//    unloadfromZone(evitedDesp,chosenOpZone);
-//    chosenOpZone->heat -= evitedDesp->heat;   /**< Decision indicators */
-//    if((evitedDesp->flag & SSD_BUF_DIRTY) != 0)
-//    {
-//        PeriodProgress++;
-//        chosenOpZone->pagecnt_dirty--;                  /**< Decision indicators */
-//    }
-//    clearDesp(evitedDesp);
     return evitedDesp->serial_id;
 }
 
@@ -479,7 +509,7 @@ static int
 redefineOpenZones()
 {
     pause_and_caculate_weight_sizedivhot(); /**< Method 1 */
-    long NonEmptyZoneCnt = extractNonEmptyZoneId();
+    NonEmptyZoneCnt = extractNonEmptyZoneId();
     qsort_zone(0,NonEmptyZoneCnt-1);
 
     long n_chooseblk = 0, n = 0;
@@ -573,11 +603,11 @@ static int
 random_choose(long stampA, long stampB, long maxStamp)
 {
     srand((unsigned int)time(0));
-    long ran = rand();
+    long ran = random(1000);
 
     double weightA = (double)(maxStamp - stampA + 1) / (2*maxStamp - stampA - stampB + 2);
 
-    if(ran < RAND_MAX * weightA)
+    if(ran < 1000 * weightA)
         return 1;
     else
         return 0;

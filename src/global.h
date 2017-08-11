@@ -68,7 +68,8 @@ typedef enum
     LRU_global,
     LRU_private,
     LRU_batch,
-    PORE
+    PORE,
+    PORE_PLUS
 }SSDEvictionStrategy;
 
 /** This user basic info */
