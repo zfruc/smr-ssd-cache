@@ -1,20 +1,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "inner_ssd_buf_table.h"
 #include "smr-simulator.h"
 #include "cache.h"
+
+static SSDHashBucket* HashTable;
+#define GetSSDHashBucket(hash_code) ((SSDHashBucket *) (HashTable + (unsigned long) (hash_code)))
 
 static bool isSamessd(DespTag *, DespTag *);
 
 void initSSDTable(size_t size)
 {
-	ssd_hashtable = (SSDHashBucket*)malloc(sizeof(SSDHashBucket)*size);
+	HashTable = (SSDHashBucket*)malloc(sizeof(SSDHashBucket)*size);
 	size_t i;
-	SSDHashBucket *ssd_hash = ssd_hashtable;
-	for (i = 0; i < size; ssd_hash++, i++){
-		ssd_hash->despId = -1;
-		ssd_hash->hash_key.offset = -1;
-		ssd_hash->next_item = NULL;
+	SSDHashBucket *bucket = HashTable;
+	for (i = 0; i < size; bucket++, i++){
+		bucket->despId = -1;
+		bucket->hash_key.offset = -1;
+		bucket->next_item = NULL;
 	}
 }
 

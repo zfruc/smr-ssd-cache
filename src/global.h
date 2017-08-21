@@ -94,11 +94,12 @@ extern blkcnt_t NBLOCK_SMR_FIFO;
 extern blkcnt_t NSSDTables;
 extern blkcnt_t NBANDTables;
 extern blkcnt_t SSD_SIZE;
-extern const blkcnt_t BLCKSZ;
-extern const blkcnt_t NZONES;
-extern const blkcnt_t ZONESZ;
-extern blkcnt_t WRITEAMPLIFICATION;
-extern blkcnt_t NCOLDBAND;
+extern const blksize_t BLCKSZ;
+extern const blkcnt_t  NZONES;
+extern const blksize_t ZONESZ;
+
+extern char simu_smr_fifo_device[];
+extern char simu_smr_smr_device[];
 extern char smr_device[];
 extern char ssd_device[];
 extern char ram_device[1024];

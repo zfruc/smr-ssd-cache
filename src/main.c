@@ -17,6 +17,7 @@
 #include "global.h"
 #include "cache.h"
 #include "smr-simulator/smr-simulator.h"
+#include "smr-simulator/simulator_logfifo.h"
 #include "trace2call.h"
 
 extern void FunctionalTest();
@@ -76,7 +77,7 @@ main(int argc, char** argv)
         NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = atol(argv[6]);
         NBLOCK_SMR_FIFO = atol(argv[7]);
         //EvictStrategy = (atoi(argv[8]) == 0)? PORE : LRU_private;//PORE;
-        EvictStrategy = PORE_PLUS;
+        EvictStrategy = PORE;
     }
     else
     {
@@ -101,10 +102,10 @@ main(int argc, char** argv)
 
 
 
-
+    ssd_fd = open(ssd_device, O_RDWR | O_DIRECT);
 #ifdef SIMULATION
-    fd_fifo_part = open(smr_device, O_RDWR | O_DIRECT);
-    fd_smr_part = open(smr_device, O_RDWR | O_DIRECT | O_FSYNC);
+    fd_fifo_part = open(simu_smr_fifo_device, O_RDWR | O_DIRECT);
+    fd_smr_part = open(simu_smr_smr_device, O_RDWR | O_DIRECT | O_FSYNC);
     printf("Simulator Device: fifo part=%d, smr part=%d\n",fd_fifo_part,fd_smr_part);
 
     initFIFOCache();
@@ -113,8 +114,6 @@ main(int argc, char** argv)
     printf("Device ID: hdd=%d, ssd=%d\n",hdd_fd,ssd_fd);
 
 #endif
-    ssd_fd = open(ssd_device, O_RDWR | O_DIRECT);
-
 
     trace_to_iocall(tracefile[TraceId],WriteOnly,StartLBA);
 
@@ -156,7 +155,7 @@ int init_cgdev()
 int initLog()
 {
     char logpath[50];
-    sprintf(logpath,"%s/PORE_SMR_prn_PORE_PLUS_CS106K_FF21K_AIO.log",PATH_LOG);
+    sprintf(logpath,"%s/prn_PORE-_V1.0_LOGSIMU.log",PATH_LOG);
     int rt = 0;
     if((rt = OpenLogFile(logpath)) < 0)
     {

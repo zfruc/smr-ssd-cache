@@ -6,6 +6,9 @@
 #include "timerUtils.h"
 #include "cache.h"
 #include "hashtable_utils.h"
+#include "smr-simulator/smr-simulator.h"
+#include "smr-simulator/simulator_logfifo.h"
+
 #include "shmlib.h"
 #include "report.h"
 
@@ -355,7 +358,7 @@ void
 read_block(off_t offset, char *ssd_buffer)
 {
 #ifdef NO_CACHE
-    dev_pread(hdd_fd, ssd_buffer, SSD_BUFFER_SIZE, offset);
+    dev_pread(hdd_fd, ssd_buffer, BLCKSZ, offset);
     msec_r_hdd = TimerInterval_MICRO(&tv_start,&tv_stop);
     STT->time_read_hdd += Mirco2Sec(msec_r_hdd);
     STT->load_hdd_blocks++;
@@ -412,7 +415,7 @@ write_block(off_t offset, char *ssd_buffer)
 {
     #ifdef NO_CACHE
     //IO by no cache.
-    dev_pwrite(hdd_fd, ssd_buffer, SSD_BUFFER_SIZE, offset);
+    dev_pwrite(hdd_fd, ssd_buffer, BLCKSZ, offset);
     msec_w_hdd = TimerInterval_MICRO(&tv_start,&tv_stop);
     STT->time_write_hdd += Mirco2Sec(msec_w_hdd);
     STT->flush_hdd_blocks++;
