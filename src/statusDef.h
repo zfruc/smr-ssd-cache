@@ -1,5 +1,5 @@
 
-#undef NO_CACHE
+#define NO_CACHE
 
 #undef CG_THROTTLE     // CGroup throttle.
 #undef MULTIUSER

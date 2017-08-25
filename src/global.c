@@ -28,7 +28,7 @@ const blksize_t ZONESZ = 18874368;//18MB    // Unit: Byte.
 
 char simu_smr_fifo_device[] = "/dev/sdb1";
 char simu_smr_smr_device[] = "/dev/sdb2";
-char smr_device[] = "/dev/sdb";
+char smr_device[] = "/dev/sdc";
 char ssd_device[] = "/mnt/ssd/ssd";
 char ram_device[1024];
 

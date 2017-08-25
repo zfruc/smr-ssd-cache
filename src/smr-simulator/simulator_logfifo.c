@@ -124,6 +124,11 @@ initFIFOCache()
 static void*
 smr_fifo_monitor_thread()
 {
+    pthread_t th = pthread_self();
+    pthread_detach(th);
+    int interval = 10;
+    printf("Simulator Auto-clean thread [%lu], clean interval %d seconds.\n",th,interval);
+
     while (1)
     {
         pthread_mutex_lock(&simu_smr_fifo_mutex);
@@ -138,7 +143,7 @@ smr_fifo_monitor_thread()
         {
             ACCESS_FLAG = 0;
             pthread_mutex_unlock(&simu_smr_fifo_mutex);
-            sleep(5);
+            sleep(interval);
         }
     }
     return NULL;

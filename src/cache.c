@@ -358,7 +358,11 @@ void
 read_block(off_t offset, char *ssd_buffer)
 {
 #ifdef NO_CACHE
+    #ifdef SIMULATION
+    dev_simu_read(ssd_buffer, SSD_BUFFER_SIZE, offset);
+    #else
     dev_pread(hdd_fd, ssd_buffer, BLCKSZ, offset);
+    #endif // SIMULATION
     msec_r_hdd = TimerInterval_MICRO(&tv_start,&tv_stop);
     STT->time_read_hdd += Mirco2Sec(msec_r_hdd);
     STT->load_hdd_blocks++;
@@ -386,11 +390,11 @@ read_block(off_t offset, char *ssd_buffer)
     }
     else
     {
-#ifdef SIMULATION
+    #ifdef SIMULATION
         dev_simu_read(ssd_buffer, SSD_BUFFER_SIZE, offset);
-#else
+    #else
         dev_pread(hdd_fd, ssd_buffer, SSD_BUFFER_SIZE, offset);
-#endif // SIMULATION
+    #endif // SIMULATION
         msec_r_hdd = TimerInterval_MICRO(&tv_start,&tv_stop);
         STT->time_read_hdd += Mirco2Sec(msec_r_hdd);
         STT->load_hdd_blocks++;
@@ -413,14 +417,19 @@ read_block(off_t offset, char *ssd_buffer)
 void
 write_block(off_t offset, char *ssd_buffer)
 {
-    #ifdef NO_CACHE
-    //IO by no cache.
+#ifdef NO_CACHE
+    #ifdef SIMULATION
+    dev_simu_write(ssd_buffer, BLCKSZ, offset);
+    #else
     dev_pwrite(hdd_fd, ssd_buffer, BLCKSZ, offset);
+    #endif // SIMULATION
+    //IO by no cache.
+
     msec_w_hdd = TimerInterval_MICRO(&tv_start,&tv_stop);
     STT->time_write_hdd += Mirco2Sec(msec_w_hdd);
     STT->flush_hdd_blocks++;
     return;
-    #else
+#else
     bool	found;
 
     static SSDBufTag ssd_buf_tag;
@@ -438,7 +447,7 @@ write_block(off_t offset, char *ssd_buffer)
     STT->flush_ssd_blocks++ ;
 
     _UNLOCK(&ssd_buf_hdr->lock);
-    #endif // NO_CAHCE
+#endif // NO_CAHCE
 
 
 }
