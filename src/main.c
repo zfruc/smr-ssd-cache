@@ -45,16 +45,16 @@ void ramdisk_iotest()
     }
 }
 
-char* tracefile[] = {"/home/trace/src1_2.csv.req",
-                     "/home/trace/wdev_0.csv.req",
-                     "/home/trace/hm_0.csv.req",
-                     "/home/trace/mds_0.csv.req",
-                     "/home/trace/prn_0.csv.req",
-                     "/home/trace/rsrch_0.csv.req",
-                     "/home/trace/stg_0.csv.req",
-                     "/home/trace/ts_0.csv.req",
-                     "/home/trace/usr_0.csv.req",
-                     "/home/trace/web_0.csv.req"
+char* tracefile[] = {"/home/src1_2.csv.req",
+                     "/trace/wdev_0.csv.req",
+                     "/home/hm_0.csv.req",
+                     "/home/mds_0.csv.req",
+                     "/home/prn_0.csv.req",
+                     "/home/rsrch_0.csv.req",
+                     "/home/stg_0.csv.req",
+                     "/home/ts_0.csv.req",
+                     "/home/usr_0.csv.req",
+                     "/home/web_0.csv.req"
                     };
 
 
@@ -77,7 +77,7 @@ main(int argc, char** argv)
         NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = atol(argv[6]);
         NBLOCK_SMR_FIFO = atol(argv[7]);
         //EvictStrategy = (atoi(argv[8]) == 0)? PORE : LRU_private;//PORE;
-        EvictStrategy = PORE;
+        EvictStrategy = Most;
     }
     else
     {

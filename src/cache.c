@@ -304,7 +304,7 @@ initStrategySSDBuffer()
         case LRU_private:       return initSSDBufferFor_LRU_private();
         case PORE:              return InitPORE();
         case PORE_PLUS:        return InitPORE_plus();
-
+	case Most:		return initSSDBufferForMost();
     }
     return -1;
 }
@@ -319,6 +319,7 @@ Strategy_Desp_LogOut()
         case LRU_private:       return Unload_Buf_LRU_private();
         case PORE:              return LogOutDesp_pore();
         case PORE_PLUS:        return LogOutDesp_pore_plus();
+	case Most:		return LogOutDesp_most();
     }
     return -1;
 }
@@ -333,6 +334,7 @@ Strategy_Desp_HitIn(SSDBufDesp* desp)
 //        case LRU_batch:         return hitInBuffer_LRU_batch(desp->serial_id);
         case PORE:              return HitPoreBuffer(desp->serial_id, desp->ssd_buf_flag);
         case PORE_PLUS:         return HitPoreBuffer_plus(desp->serial_id, desp->ssd_buf_flag);
+    	case Most:		return HitMostBuffer();
     }
     return -1;
 }
@@ -348,6 +350,7 @@ Strategy_Desp_LogIn(SSDBufDesp* desp)
 //        case LRU_batch:         return insertBuffer_LRU_batch(serial_id);
         case PORE:              return LogInPoreBuffer(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
         case PORE_PLUS:         return LogInPoreBuffer_plus(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
+    	case Most:		return LogInMostBuffer(desp->serial_id,desp->ssd_buf_tag);
     }
 }
 /*
@@ -449,7 +452,7 @@ write_block(off_t offset, char *ssd_buffer)
 
 static int dev_pread(int fd, void* buf,size_t nbytes,off_t offset)
 {
-    int r;
+/*    int r;
     _TimerLap(&tv_start);
     r = pread(fd,buf,nbytes,offset);
     _TimerLap(&tv_stop);
@@ -458,12 +461,13 @@ static int dev_pread(int fd, void* buf,size_t nbytes,off_t offset)
         printf("[ERROR] read():-------read from device: fd=%d, errorcode=%d, offset=%lu\n", fd, r, offset);
         exit(-1);
     }
-    return r;
+    return r;*/
+    return 1;
 }
 
 static int dev_pwrite(int fd, void* buf,size_t nbytes,off_t offset)
 {
-    int w;
+/*    int w;
     _TimerLap(&tv_start);
     w = pwrite(fd,buf,nbytes,offset);
     _TimerLap(&tv_stop);
@@ -472,25 +476,29 @@ static int dev_pwrite(int fd, void* buf,size_t nbytes,off_t offset)
         printf("[ERROR] read():-------write to device: fd=%d, errorcode=%d, offset=%lu\n", fd, w, offset);
         exit(-1);
     }
-    return w;
+    return w;*/
+	return 1;
 }
 
 static int dev_simu_write(void* buf,size_t nbytes,off_t offset)
 {
-    int w;
+ /*   int w;
     _TimerLap(&tv_start);
     w = simu_smr_write(buf,nbytes,offset);
     _TimerLap(&tv_stop);
-    return w;
+    return w;*/
+	return 1;
 }
 
 static int dev_simu_read(void* buf,size_t nbytes,off_t offset)
 {
-    int r;
+ /*   int r;
     _TimerLap(&tv_start);
     r = simu_smr_read(buf,nbytes,offset);
     _TimerLap(&tv_stop);
-    return r;
+    return r;*/
+
+	return 1;
 }
 
 void CopySSDBufTag(SSDBufTag* objectTag, SSDBufTag* sourceTag)
@@ -502,7 +510,8 @@ bool isSamebuf(SSDBufTag *tag1, SSDBufTag *tag2)
 {
     if (tag1->offset != tag2->offset)
         return 0;
-    else return 1;
+    else 
+	return 1;
 }
 
 static SSDBufDesp*

@@ -5,6 +5,7 @@
 /*-----------------------------------band----------------------------*/
 #define bool unsigned char
 #define size_t long
+#include <global.h>
 typedef struct BandHashBucket
 {
 	long band_num;          // actual band # in SMR disk
@@ -14,7 +15,6 @@ typedef struct BandHashBucket
 
 #define GetBandHashBucket(hash_code, band_hashtable) ((BandHashBucket *)(band_hashtable +(unsigned)(hash_code)))
 
-extern unsigned long NBANDTables;
 
 extern void initBandTable(size_t size, BandHashBucket **band_hashtable);
 extern unsigned long bandtableHashcode(long band_num);
