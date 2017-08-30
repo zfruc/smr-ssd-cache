@@ -4,7 +4,7 @@
 #include "cache.h"
 #include "hashtable_utils.h"
 #include "global.h"
-
+#include "mcheck.h"
 extern void _LOCK(pthread_mutex_t* lock);
 extern void _UNLOCK(pthread_mutex_t* lock);
 
@@ -123,7 +123,7 @@ long HashTab_Delete(SSDBufTag *ssd_buf_tag, unsigned long hash_code)
         if (isSamebuf(&nowbucket->next_item->hash_key, ssd_buf_tag))
         {
             delitem = nowbucket->next_item;
-            del_id = nowbucket->next_item->desp_serial_id;
+            del_id = delitem->desp_serial_id;
             nowbucket->next_item = delitem->next_item;
             free(delitem);
             return del_id;

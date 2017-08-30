@@ -9,7 +9,7 @@ CPPFLAGS += -I$(SMR_SSD_CACHE_DIR) -I$(SMR_SSD_CACHE_DIR)/smr-simulator -I$(SMR_
 
 RM = rm -rf
 RMSHM = rm -f /dev/shm/*
-OBJS = global.o report.o timerUtils.o shmlib.o hashtable_utils.o cache.o trace2call.o main.o pore_plus.o losertree4pore.o pore.o lru.o lru_private.o lru_batch.o smr-simulator.o inner_ssd_buf_table.o simulator_logfifo.o
+OBJS = global.o report.o timerUtils.o shmlib.o hashtable_utils.o cache.o trace2call.o main.o pore_plus.o losertree4pore.o pore.o lru.o lru_private.o lru_batch.o most.o band_table.o smr-simulator.o inner_ssd_buf_table.o simulator_logfifo.o  simulator_v2.o
 
 
 all: $(OBJS) smr-ssd-cache
@@ -62,6 +62,10 @@ lru_private.o: strategy/lru_private.c
 
 lru_batch.o: strategy/lru_batch.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
+most.o: strategy/most.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
+band_table.o: strategy/band_table.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
 
 smr-simulator.o: smr-simulator/smr-simulator.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
@@ -72,6 +76,8 @@ inner_ssd_buf_table.o: smr-simulator/inner_ssd_buf_table.c
 simulator_logfifo.o: smr-simulator/simulator_logfifo.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
 
+simulator_v2.o: smr-simulator/simulator_v2.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
 clean:
 	$(RM) *.o
 	$(RM) $(SMR_SSD_CACHE_DIR)/smr-ssd-cache

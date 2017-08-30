@@ -18,6 +18,7 @@
 #include "cache.h"
 #include "smr-simulator/smr-simulator.h"
 #include "smr-simulator/simulator_logfifo.h"
+#include "smr-simulator/simulator_v2.h"
 #include "trace2call.h"
 
 extern void FunctionalTest();
@@ -49,12 +50,13 @@ char* tracefile[] = {"/home/trace/src1_2.csv.req",
                      "/home/trace/wdev_0.csv.req",
                      "/home/trace/hm_0.csv.req",
                      "/home/trace/mds_0.csv.req",
-                     "/home/trace/prn_0.csv.req",
+                     "/home/trace/prn_0.csv.req",       //1 1 4 0 0 106230 5242880 0
                      "/home/trace/rsrch_0.csv.req",
                      "/home/trace/stg_0.csv.req",
                      "/home/trace/ts_0.csv.req",
                      "/home/trace/usr_0.csv.req",
                      "/home/trace/web_0.csv.req"
+                     "/home/trace/production-LiveMap-Backend-4K.req"
                     };
 
 
@@ -76,8 +78,8 @@ main(int argc, char** argv)
         StartLBA = atol(argv[5]);
         NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = atol(argv[6]);
         NBLOCK_SMR_FIFO = atol(argv[7]);
-        //EvictStrategy = (atoi(argv[8]) == 0)? PORE : LRU_private;//PORE;
-        EvictStrategy = PORE;
+        EvictStrategy = (atoi(argv[8]) == 0)? PORE_PLUS : Most;//PORE;
+        //EvictStrategy = PORE_PLUS;
     }
     else
     {
@@ -107,8 +109,8 @@ main(int argc, char** argv)
     fd_fifo_part = open(simu_smr_fifo_device, O_RDWR | O_DIRECT);
     fd_smr_part = open(simu_smr_smr_device, O_RDWR | O_DIRECT | O_FSYNC);
     printf("Simulator Device: fifo part=%d, smr part=%d\n",fd_fifo_part,fd_smr_part);
-
-    initFIFOCache();
+    if(fd_fifo_part<0 || fd_smr_part<0) exit(-1);
+    InitSimulator();
 #else
     hdd_fd = open(smr_device, O_RDWR | O_DIRECT);
     printf("Device ID: hdd=%d, ssd=%d\n",hdd_fd,ssd_fd);
@@ -160,6 +162,7 @@ int initLog()
     if((rt = OpenLogFile(logpath)) < 0)
     {
         error("open log file failure.\n");
+        exit(1);
     }
     return rt;
 }

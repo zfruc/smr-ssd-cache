@@ -54,7 +54,7 @@ typedef enum
 //    CLOCK = 0,
     LRU,
     LRUofBand,
-//    Most,
+    Most,
 //    Most_Dirty,
 //    SCAN,
 //    CMR,
@@ -92,7 +92,7 @@ extern blkcnt_t NBLOCK_SMR_FIFO;
 //extern blkcnt_t NSMRBlocks;		// 2621952*8KB~20GB
 //extern blkcnt_t NSSDs;
 extern blkcnt_t NSSDTables;
-extern blkcnt_t NBANDTables;
+//extern blkcnt_t NBANDTables;
 extern blkcnt_t SSD_SIZE;
 extern const blksize_t BLCKSZ;
 extern const blkcnt_t  NZONES;
