@@ -300,16 +300,16 @@ redefineOpenZones()
     qsort_zone(0,nonEmptyZoneCnt-1);
 
     /** lookup sort result **/
-    int i;
-    for(i = 0; i<100; i++)
-    {
-        printf("%d: weight=%ld\t\theat=%ld\t\tndirty=%ld\t\tnclean=%ld\n",
-               i,
-               ZoneCtrlArray[ZoneSortArray[i]].weight,
-               ZoneCtrlArray[ZoneSortArray[i]].heat,
-               ZoneCtrlArray[ZoneSortArray[i]].pagecnt_dirty,
-               ZoneCtrlArray[ZoneSortArray[i]].pagecnt_clean);
-    }
+//    int i;
+//    for(i = 0; i<100; i++)
+//    {
+//        printf("%d: weight=%ld\t\theat=%ld\t\tndirty=%ld\t\tnclean=%ld\n",
+//               i,
+//               ZoneCtrlArray[ZoneSortArray[i]].weight,
+//               ZoneCtrlArray[ZoneSortArray[i]].heat,
+//               ZoneCtrlArray[ZoneSortArray[i]].pagecnt_dirty,
+//               ZoneCtrlArray[ZoneSortArray[i]].pagecnt_clean);
+//    }
 
     long n_chooseblk = 0, n = 0;
     while(n < nonEmptyZoneCnt && n_chooseblk < PeriodLenth)

@@ -55,7 +55,7 @@ char* tracefile[] = {"/home/trace/src1_2.csv.req",
                      "/home/trace/stg_0.csv.req",
                      "/home/trace/ts_0.csv.req",
                      "/home/trace/usr_0.csv.req",
-                     "/home/trace/web_0.csv.req"
+                     "/home/trace/web_0.csv.req",
                      "/home/trace/production-LiveMap-Backend-4K.req"
                     };
 
@@ -78,7 +78,7 @@ main(int argc, char** argv)
         StartLBA = atol(argv[5]);
         NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = atol(argv[6]);
         NBLOCK_SMR_FIFO = atol(argv[7]);
-        EvictStrategy = (atoi(argv[8]) == 0)? PORE_PLUS : Most;//PORE;
+        EvictStrategy = (atoi(argv[8]) == 0)? PORE  : LRU_private;//PORE;
         //EvictStrategy = PORE_PLUS;
     }
     else
