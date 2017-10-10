@@ -39,7 +39,7 @@ extern void read_block(off_t offset, char* ssd_buffer);
 extern void write_block(off_t offset, char* ssd_buffer);
 extern void read_band(off_t offset, char* ssd_buffer);
 extern void write_band(off_t offset, char* ssd_buffer);
-extern bool isSamebuf(SSDBufTag *, SSDBufTag *);
+//extern bool isSamebuf(SSDBufTag *, SSDBufTag *);
 extern int ResizeCacheUsage();
 extern void CopySSDBufTag(SSDBufTag* objectTag, SSDBufTag* sourceTag);
 

@@ -19,6 +19,11 @@
 #include "inner_ssd_buf_table.h"
 #include "timerUtils.h"
 #include "statusDef.h"
+
+#define OFF_BAND_TMP_PERSISIT   0 // The head 80MB of FIFO for temp persistence band needed to clean.
+#define OFF_FIFO                80*1024*1024
+
+
 int  fd_fifo_part;
 int  fd_smr_part;
 
@@ -194,7 +199,7 @@ simu_smr_read(char *buffer, size_t size, off_t offset)
             ssd_hdr = fifo_desp_array + despId;
 
             _TimerLap(&tv_start);
-            returnCode = pread(fd_fifo_part, buffer, BLCKSZ, ssd_hdr->despId * BLCKSZ);
+            returnCode = pread(fd_fifo_part, buffer, BLCKSZ, ssd_hdr->despId * BLCKSZ + OFF_FIFO);
             if (returnCode < 0)
             {
                 printf("[ERROR] smrread():-------read from inner ssd: fd=%d, errorcode=%d, offset=%lu\n", fd_fifo_part, returnCode, ssd_hdr->despId * BLCKSZ);
@@ -251,7 +256,7 @@ simu_smr_write(char *buffer, size_t size, off_t offset)
         removeFromArray(oldDesp); ///invalid the old desp;
 
         _TimerLap(&tv_start);
-        returnCode = pwrite(fd_fifo_part, buffer, BLCKSZ, ssd_hdr->despId * BLCKSZ);
+        returnCode = pwrite(fd_fifo_part, buffer, BLCKSZ, ssd_hdr->despId * BLCKSZ + OFF_FIFO);
         if (returnCode < 0)
         {
             printf("[ERROR] smrwrite():-------write to smr disk: fd=%d, errorcode=%d, offset=%lu\n", fd_fifo_part, returnCode, offset + i * BLCKSZ);
@@ -315,8 +320,7 @@ flushFIFO()
 
     /* read whole band from smr to buffer*/
     _TimerLap(&tv_start);
-    returnCode = pread(fd_smr_part, BandBuffer, band_size,band_offset);
-    if (returnCode < 0)
+    if(pread(fd_smr_part, BandBuffer, band_size,band_offset) != band_size)
     {
         printf("[ERROR] flushSSD():---------read from smr: fd=%d, errorcode=%d, offset=%lu\n", fd_smr_part, returnCode, band_offset);
         exit(-1);
@@ -324,6 +328,13 @@ flushFIFO()
     _TimerLap(&tv_stop);
     simu_time_read_smr += TimerInterval_SECOND(&tv_start,&tv_stop);
     simu_read_smr_bands++;
+
+    /* temp persistence whole band from buffer to smr*/
+    if(pwrite(fd_fifo_part,BandBuffer,band_size,OFF_BAND_TMP_PERSISIT) != band_size && fsync(fd_fifo_part) < 0)
+    {
+        printf("[ERROR] flushSSD():-------- temp persistence band: fd=%d, errorcode=%d, offset=%lu\n", fd_smr_part, returnCode, band_offset);
+        exit(-1);
+    }
 
     /* Combine cached pages from FIFO which are belong to the same band */
     unsigned long BandNum = GetSMRBandNumFromSSD(target->tag.offset);
@@ -355,7 +366,7 @@ flushFIFO()
             aio_read_cnt++;
 #else
             _TimerLap(&tv_start);
-            returnCode = pread(fd_fifo_part, BandBuffer + offset_inband * BLCKSZ, BLCKSZ, curPos * BLCKSZ);
+            returnCode = pread(fd_fifo_part, BandBuffer + offset_inband * BLCKSZ, BLCKSZ, curPos * BLCKSZ + OFF_FIFO);
             if (returnCode < 0)
             {
                 printf("[ERROR] flushSSD():-------read from inner ssd: fd=%d, errorcode=%d, offset=%lu\n", fd_fifo_part, returnCode, curPos * BLCKSZ);

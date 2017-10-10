@@ -54,7 +54,9 @@ long ssdtableInsert(DespTag tag, unsigned long hash_code, long despId)
 	while (nowbucket->next_item != NULL) {
 		nowbucket = nowbucket->next_item;
 	}
-    SSDHashBucket *newitem = (SSDHashBucket*)malloc(sizeof(SSDHashBucket));
+    static void* itembuf;
+    int ret = posix_memalign(&itembuf,512,sizeof(SSDHashBucket)); 
+    SSDHashBucket *newitem = (SSDHashBucket*)itembuf;
     newitem->hash_key = tag;
     newitem->despId = despId;
     newitem->next_item = NULL;
@@ -102,7 +104,9 @@ long ssdtableUpdate(DespTag tag, unsigned long hash_code, long despId)
 	}
 
 	// if not exist in table, insert one.
-    SSDHashBucket *newitem = (SSDHashBucket*)malloc(sizeof(SSDHashBucket));
+    static void* itembuf;
+    int ret = posix_memalign(&itembuf,512,sizeof(SSDHashBucket));
+    SSDHashBucket *newitem = (SSDHashBucket*)itembuf;
     newitem->hash_key = tag;
     newitem->despId = despId;
     newitem->next_item = NULL;

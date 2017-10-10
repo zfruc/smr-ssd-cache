@@ -114,6 +114,10 @@ InitPORE_plus()
 void
 LogInPoreBuffer_plus(long despId, SSDBufTag tag, unsigned flag)
 {
+    if(despId==0)
+    {
+        int a=1;
+    }
     /* activate the decriptor */
     StrategyDesp_pore* myDesp = GlobalDespArray + despId;
     ZoneCtrl* myZone = ZoneCtrlArray + getZoneNum(tag.offset);
@@ -139,6 +143,9 @@ LogInPoreBuffer_plus(long despId, SSDBufTag tag, unsigned flag)
 void
 HitPoreBuffer_plus(long despId, unsigned flag)
 {
+    if(despId==0){
+        int a=1;
+    }
     StrategyDesp_pore* myDesp = GlobalDespArray + despId;
     ZoneCtrl* myZone = ZoneCtrlArray + getZoneNum(myDesp->ssd_buf_tag.offset);
 
@@ -338,6 +345,10 @@ hit(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
 static void
 add2ArrayHead(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
 {
+    if(zoneCtrl->zoneId==3196)
+    {
+        int a=1;
+    }
     if(zoneCtrl->head < 0)
     {
         //empty
@@ -357,6 +368,9 @@ add2ArrayHead(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
 static void
 unloadfromZone(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
 {
+    if(desp->serial_id==0){
+        int a=1;
+    }
     if(desp->pre < 0)
     {
         zoneCtrl->head = desp->next;
