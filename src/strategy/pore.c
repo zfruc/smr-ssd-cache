@@ -72,7 +72,7 @@ InitPORE()
     return 0;
 }
 
-void
+int
 LogInPoreBuffer(long despId, SSDBufTag tag, unsigned flag)
 {
     /* activate the decriptor */
@@ -96,7 +96,7 @@ LogInPoreBuffer(long despId, SSDBufTag tag, unsigned flag)
     else{
         myZone->pagecnt_clean++;
     }
-
+    return 1;
 }
 
 static int periodCnt = 0;
@@ -138,7 +138,7 @@ LogOutDesp_pore()
     return evitedDesp->serial_id;
 }
 
-void
+int
 HitPoreBuffer(long despId, unsigned flag)
 {
     StrategyDesp_pore* myDesp = GlobalDespArray + despId;
@@ -152,6 +152,8 @@ HitPoreBuffer(long despId, unsigned flag)
         myZone->pagecnt_clean--;
     }
     myDesp->flag |= flag;
+
+    return 1;
 }
 
 /****************

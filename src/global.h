@@ -52,8 +52,8 @@ struct RuntimeSTAT
 typedef enum
 {
 //    CLOCK = 0,
-    LRU,
-    LRUofBand,
+//    LRU,
+//    LRUofBand,
     Most,
 //    Most_Dirty,
 //    SCAN,
@@ -65,9 +65,9 @@ typedef enum
 //    AvgBandHot,
 //    HotDivSize,
     /** add for multiuser **/
-    LRU_global,
+//    LRU_global,
     LRU_private,
-    LRU_batch,
+//    LRU_batch,
     PORE,
     PORE_PLUS
 }SSDEvictionStrategy;

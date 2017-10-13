@@ -27,7 +27,7 @@ BandDescForMost *band_descriptors_for_most;
 SSDBufferStrategyControlForMost *ssd_buf_strategy_ctrl_for_most;
 BandHashBucket *band_hashtable_for_most;
 
-extern void initSSDBufferForMost();
-extern void HitMostBuffer();
+extern int initSSDBufferForMost();
+extern int HitMostBuffer();
 extern long LogOutDesp_most();
-extern void LogInMostBuffer();
+extern int LogInMostBuffer();

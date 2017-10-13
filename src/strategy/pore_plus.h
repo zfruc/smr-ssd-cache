@@ -12,8 +12,8 @@
 
 
 extern int InitPORE_plus();
-extern void LogInPoreBuffer_plus(long despId, SSDBufTag tag, unsigned flag);
-extern void HitPoreBuffer_plus(long despId, unsigned flag);
+extern int LogInPoreBuffer_plus(long despId, SSDBufTag tag, unsigned flag);
+extern int HitPoreBuffer_plus(long despId, unsigned flag);
 extern long LogOutDesp_pore_plus();
 
 

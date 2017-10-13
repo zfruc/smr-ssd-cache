@@ -49,7 +49,6 @@ static void move2CleanArrayHead(StrategyDesp_pore* desp);
 
 /** PORE Plus**/
 static int redefineOpenZones();
-static ZoneCtrl* getEvictZone();
 static long stamp(StrategyDesp_pore* desp);
 
 static long plus_Dirty_Threshold;
@@ -111,13 +110,9 @@ InitPORE_plus()
     return 0;
 }
 
-void
+int
 LogInPoreBuffer_plus(long despId, SSDBufTag tag, unsigned flag)
 {
-    if(despId==0)
-    {
-        int a=1;
-    }
     /* activate the decriptor */
     StrategyDesp_pore* myDesp = GlobalDespArray + despId;
     ZoneCtrl* myZone = ZoneCtrlArray + getZoneNum(tag.offset);
@@ -138,14 +133,12 @@ LogInPoreBuffer_plus(long despId, SSDBufTag tag, unsigned flag)
         CleanCtrl.pagecnt_clean++;
     }
 
+    return 1;
 }
 
 void
 HitPoreBuffer_plus(long despId, unsigned flag)
 {
-    if(despId==0){
-        int a=1;
-    }
     StrategyDesp_pore* myDesp = GlobalDespArray + despId;
     ZoneCtrl* myZone = ZoneCtrlArray + getZoneNum(myDesp->ssd_buf_tag.offset);
 
@@ -192,7 +185,7 @@ LogOutDesp_pore_plus()
     static long evict_clean_cnt = 0, evict_dirty_cnt = 0;
     if(PeriodProgress % PeriodLenth == 0)
     {
-        printf("This Period Evict Info: clean:%ld, dirty:%d\n",evict_clean_cnt,evict_dirty_cnt);
+        printf("This Period Evict Info: clean:%ld, dirty:%ld\n",evict_clean_cnt,evict_dirty_cnt);
         /** 1. Searching Phase **/
         OpenZoneCnt = 0;
         PeriodProgress = 1;
@@ -236,7 +229,7 @@ LogOutDesp_pore_plus()
         periodCnt++;
 
         printf("-------------New Period!-----------\n");
-        printf("Period [%d], Non-Empty Zone_Cnt=%ld, OpenZones_cnt=%d, CleanBlks=%ld(%0.2lf) ",periodCnt, NonEmptyZoneCnt, OpenZoneCnt,CleanCtrl.pagecnt_clean, (double)CleanCtrl.pagecnt_clean/NBLOCK_SSD_CACHE);
+        printf("Period [%d], Non-Empty Zone_Cnt=%d, OpenZones_cnt=%d, CleanBlks=%ld(%0.2lf) ",periodCnt, NonEmptyZoneCnt, OpenZoneCnt,CleanCtrl.pagecnt_clean, (double)CleanCtrl.pagecnt_clean/NBLOCK_SSD_CACHE);
         switch(CurEvictModel)
         {
             case CLEAN_ONLY:    printf("Evict Model=%s\n","CLEAN-ONLY"); break;
@@ -283,10 +276,7 @@ LogOutDesp_pore_plus()
         {
             unloadfromCleanArray(cleanDesp);
             CleanCtrl.pagecnt_clean--;
-            if(CleanCtrl.pagecnt_clean == 0)
-            {
-                int a = 0;
-            }
+
             evitedDesp = cleanDesp;
             PeriodProgress++;
             evict_clean_cnt++;
@@ -345,10 +335,6 @@ hit(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
 static void
 add2ArrayHead(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
 {
-    if(zoneCtrl->zoneId==3196)
-    {
-        int a=1;
-    }
     if(zoneCtrl->head < 0)
     {
         //empty
@@ -368,9 +354,6 @@ add2ArrayHead(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
 static void
 unloadfromZone(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
 {
-    if(desp->serial_id==0){
-        int a=1;
-    }
     if(desp->pre < 0)
     {
         zoneCtrl->head = desp->next;

@@ -6,6 +6,9 @@
 #include "timerUtils.h"
 #include "cache.h"
 #include "hashtable_utils.h"
+
+#include "strategies.h"
+
 #include "smr-simulator/smr-simulator.h"
 #include "smr-simulator/simulator_logfifo.h"
 
@@ -25,7 +28,7 @@ static SSDBufDesp*  getAFreeSSDBuf();
 static int          initStrategySSDBuffer();
 static long         Strategy_Desp_LogOut();
 static int          Strategy_Desp_HitIn(SSDBufDesp* desp);
-static void         Strategy_Desp_LogIn(SSDBufDesp* desp);
+static int         Strategy_Desp_LogIn(SSDBufDesp* desp);
 //#define isSamebuf(SSDBufTag tag1, SSDBufTag tag2) (tag1 == tag2)
 #define CopySSDBufTag(objectTag,sourceTag) (objectTag = sourceTag)
 
@@ -286,7 +289,7 @@ allocSSDBuf(SSDBufTag ssd_buf_tag, bool * found, int alloc4What)
         // TODO Flush
         flushSSDBuffer(ssd_buf_hdr);
         ssd_buf_hdr->ssd_buf_flag &= ~(SSD_BUF_VALID | SSD_BUF_DIRTY);
-        
+
 #endif // _LRU_BATCH_H_
 
     }
@@ -307,7 +310,7 @@ initStrategySSDBuffer()
         case LRU_private:       return initSSDBufferFor_LRU_private();
         case Most:              return initSSDBufferForMost();
         case PORE:              return InitPORE();
-        case PORE_PLUS:        return InitPORE_plus();
+        case PORE_PLUS:         return InitPORE_plus();
 
     }
     return -1;
@@ -343,7 +346,7 @@ Strategy_Desp_HitIn(SSDBufDesp* desp)
     return -1;
 }
 
-static void
+static int
 Strategy_Desp_LogIn(SSDBufDesp* desp)
 {
     STT->cacheUsage++;

@@ -7,7 +7,7 @@
 
 BandDescForMost	EvictedBand;
 
-void
+int
 initSSDBufferForMost()
 {
 	initBandTable(NBANDTables, &band_hashtable_for_most);
@@ -38,10 +38,10 @@ initSSDBufferForMost()
 	EvictedBand.current_pages = 0;
 }
 
-void
+int
 HitMostBuffer()
 {
-	return;
+	return 1;
 }
 
 long LogOutDesp_most()
@@ -91,7 +91,7 @@ long LogOutDesp_most()
 	return ssd_buf_desps_for_most[first_page].ssd_buf_id;
 }
 
-void LogInMostBuffer(long despId, SSDBufTag tag)
+int LogInMostBuffer(long despId, SSDBufTag tag)
 {
 	long		band_num = GetSMRBandNumFromSSD(tag.offset);
 	unsigned long	band_hash = bandtableHashcode(band_num);

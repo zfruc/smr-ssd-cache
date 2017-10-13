@@ -64,7 +64,9 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     }
 
     _TimerLap(&tv_trace_start);
-    while (!feof(trace))
+    static int req_cnt = 0;
+
+    while (!feof(trace) && req_cnt++ < 84340000)
     {
 //        if(feof(trace))
 //            fseek(trace,0,SEEK_SET);
@@ -126,6 +128,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
 
         //ResizeCacheUsage();
     }
+
     _TimerLap(&tv_trace_end);
     time_trace = Mirco2Sec(TimerInterval_MICRO(&tv_trace_start,&tv_trace_end));
     reportCurInfo();

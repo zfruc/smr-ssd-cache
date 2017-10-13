@@ -105,7 +105,7 @@ long HashTab_Insert(SSDBufTag ssd_buf_tag, unsigned long hash_code, long desp_se
 {
     if (DEBUG)
         printf("[INFO] Insert buf_tag: %lu\n",ssd_buf_tag.offset);
-    
+
     insertCnt++;
     SSDBufHashBucket *nowbucket = GetSSDBufHashBucket(hash_code);
     if(nowbucket == NULL)
@@ -122,7 +122,6 @@ long HashTab_Insert(SSDBufTag ssd_buf_tag, unsigned long hash_code, long desp_se
     if((newitem  = buckect_alloc()) == NULL)
     {
         printf("hash bucket alloc failure\n");
-        printf("insertCnt:%ld, deleteCnt:%d\n");
         exit(-1);
     }
     newitem->hash_key = ssd_buf_tag;
