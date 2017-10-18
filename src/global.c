@@ -8,7 +8,7 @@ off_t StartLBA;
 int WriteOnly;
 int BatchSize;
 SSDEvictionStrategy EvictStrategy;
-
+long PeriodLenth;
 unsigned long Param1;
 unsigned long Param2;
 

@@ -10,7 +10,7 @@ static ZoneCtrl*            ZoneCtrlArray;
 static unsigned long*       ZoneSortArray;      /* The zone ID array sorted by weight(calculated customized). it is used to determine the open zones */
 static int                  OpenZoneCnt;        /* It represent the number of open zones and the first number elements in 'ZoneSortArray' is the open zones ID */
 
-static long                 PeriodLenth;        /* The period lenth which defines the times of eviction triggered */
+extern long                 PeriodLenth;        /* The period lenth which defines the times of eviction triggered */
 static long                 PeriodProgress;     /* Current times of eviction in a period lenth */
 static long                 StampGlobal;      /* Current io sequenced number in a period lenth, used to distinct the degree of heat among zones */
 static int                  IsNewPeriod;

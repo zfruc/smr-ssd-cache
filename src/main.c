@@ -71,7 +71,7 @@ main(int argc, char** argv)
 
 // 1 1 1 0 0 100000 100000
 // 1 1 0 0 0 100000 100000
-    if(argc == 9)
+    if(argc == 10)
     {
         BatchId = atoi(argv[1]);
         UserId = atoi(argv[2]);
@@ -80,6 +80,7 @@ main(int argc, char** argv)
         StartLBA = atol(argv[5]);
         NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = atol(argv[6]);
         NBLOCK_SMR_FIFO = atol(argv[7]);
+	PeriodLenth = atoi(argv[9]) * 4608;	
         EvictStrategy = (atoi(argv[8]) == 0)? PORE_PLUS  : PORE;//PORE;
         //EvictStrategy = PORE_PLUS;
     }

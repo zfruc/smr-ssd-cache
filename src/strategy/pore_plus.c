@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include "pore.h"
 #include "statusDef.h"
-#include "losertree4pore.h"
+//#include "losertree4pore.h"
 #include "report.h"
 
 #define random(x) (rand()%x)
@@ -32,7 +32,7 @@ static int                  NonEmptyZoneCnt = 0;
 static unsigned long*       OpenZoneSet;        /* The decided open zones in current period, which chosed by both the weight-sorted array and the access threshold. */
 static int                  OpenZoneCnt;        /* It represent the number of open zones and the first number elements in 'ZoneSortArray' is the open zones ID */
 
-static long                 PeriodLenth;        /* The period lenth which defines the times of eviction triggered */
+extern long                 PeriodLenth;        /* The period lenth which defines the times of eviction triggered */
 static long                 PeriodProgress;     /* Current times of eviction in a period lenth */
 static long                 StampGlobal;      /* Current io sequenced number in a period lenth, used to distinct the degree of heat among zones */
 
@@ -69,7 +69,6 @@ int
 InitPORE_plus()
 {
     ZONEBLKSZ = ZONESZ / BLCKSZ;
-    PeriodLenth = NBLOCK_SMR_FIFO;
     plus_Dirty_Threshold =  ZONEBLKSZ * 0.8;    /* Cover Rate mush be >= 80% */
     plus_Clean_LowBound =   NBLOCK_SSD_CACHE * 0.2;     /* Clean blocks number < 20% of cache size, must to adopt Hybrid Model, even if there is NONE of zones reach the dirty threshold. */
     plus_Clean_UpBound =    NBLOCK_SSD_CACHE * 0.8;     /* Clean blocks number > 80% of cache size, must to adopt Clean-Only Model, even if there EXIST zones reach the dirty threshold. */
@@ -563,13 +562,14 @@ stamp(StrategyDesp_pore* desp)
 static int
 random_choose(long stampA, long stampB, long maxStamp)
 {
-    srand((unsigned int)time(0));
-    long ran = random(1000);
+//    srand((unsigned int)time(0));
+ //   long ran = random(1000);
 
-    double weightA = (double)(maxStamp - stampA + 1) / (2*maxStamp - stampA - stampB + 2);
+   // double weightA = (double)(maxStamp - stampA + 1) / (2*maxStamp - stampA - stampB + 2);
 
-    if(ran < 1000 * weightA)
-        return 1;
-    else
-        return 0;
+   // if(ran < 1000 * weightA)
+   //     return 1;
+   // else
+   //     return 0;
+   return (stampA > stampB) ? 0 : 1;
 }
