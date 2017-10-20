@@ -12,5 +12,5 @@
 
 /** Simulator Related **/
 #define SIMULATION
-#define SIMULATOR_AIO
+#undef SIMULATOR_AIO
 

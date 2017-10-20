@@ -45,7 +45,7 @@ static long	num_each_size;
 
 static FIFODesc* getFIFODesp();
 static void* smr_fifo_monitor_thread();
-static volatile void flushFIFO();
+static void flushFIFO();
 
 static long simu_read_smr_bands;
 static long simu_flush_bands;
@@ -66,8 +66,10 @@ static double simu_time_collectFIFO = 0; /** To monitor the efficent of read all
 
 static void* smr_fifo_monitor_thread();
 
-static void removeFromArray(FIFODesc* desp);
-
+static int invalidDespInFIFO(FIFODesc* desp);
+#define isFIFOEmpty (global_fifo_ctrl.head == global_fifo_ctrl.tail)
+#define isFIFOFull  ((global_fifo_ctrl.tail + 1) % NBLOCK_SMR_FIFO == global_fifo_ctrl.head)
+ 
 static unsigned long GetSMRActualBandSizeFromSSD(unsigned long offset);
 static unsigned long GetSMRBandNumFromSSD(unsigned long offset);
 static off_t GetSMROffsetInBandFromSSD(FIFODesc * ssd_hdr);
@@ -238,7 +240,6 @@ simu_smr_write(char *buffer, size_t size, off_t offset)
     long		i;
     int		returnCode = 0;
     long		ssd_hash;
-    long		despId;
     struct timeval	tv_start,tv_stop;
 
     for (i = 0; i * BLCKSZ < size; i++)
@@ -253,7 +254,7 @@ simu_smr_write(char *buffer, size_t size, off_t offset)
         ssd_hash = ssdtableHashcode(tag);
         long old_despId = ssdtableUpdate(tag, ssd_hash, ssd_hdr->despId);
         FIFODesc* oldDesp = fifo_desp_array + old_despId;
-        removeFromArray(oldDesp); ///invalid the old desp;
+        invalidDespInFIFO(oldDesp); ///invalid the old desp
 
         _TimerLap(&tv_start);
         returnCode = pwrite(fd_fifo_part, buffer, BLCKSZ, ssd_hdr->despId * BLCKSZ + OFF_FIFO);
@@ -271,23 +272,24 @@ simu_smr_write(char *buffer, size_t size, off_t offset)
     return 0;
 }
 
-static void
-removeFromArray(FIFODesc* desp)
+static int
+invalidDespInFIFO(FIFODesc* desp)
 {
-    if(desp->despId == global_fifo_ctrl.head)
-    {
-        global_fifo_ctrl.head = (global_fifo_ctrl.head + 1) % NBLOCK_SMR_FIFO;
-    }
     desp->isValid = 0;
     global_fifo_ctrl.n_used--;
-
+    int isHeadChanged = 0;
+    while(!fifo_desp_array[global_fifo_ctrl.head].isValid && !isFIFOEmpty){
+   	global_fifo_ctrl.head = (global_fifo_ctrl.head + 1) % NBLOCK_SMR_FIFO;	
+	isHeadChanged = 1;
+    }
+    return isHeadChanged;
 }
 
 static FIFODesc *
 getFIFODesp()
 {
     FIFODesc* newDesp;
-    if((global_fifo_ctrl.tail + 1) % NBLOCK_SMR_FIFO == global_fifo_ctrl.head)
+    if(isFIFOFull)
     {
         /* Log structure array is full fill */
         flushFIFO();
@@ -301,7 +303,7 @@ getFIFODesp()
     return newDesp;
 }
 
-static volatile void
+static void
 flushFIFO()
 {
     if(global_fifo_ctrl.head == global_fifo_ctrl.tail) // Log structure array is empty.
@@ -320,7 +322,7 @@ flushFIFO()
 
     /* read whole band from smr to buffer*/
     _TimerLap(&tv_start);
-    if(pread(fd_smr_part, BandBuffer, band_size,band_offset) != band_size)
+    if((returnCode = pread(fd_smr_part, BandBuffer, band_size,band_offset)) != band_size)
     {
         printf("[ERROR] flushSSD():---------read from smr: fd=%d, errorcode=%d, offset=%lu\n", fd_smr_part, returnCode, band_offset);
         exit(-1);
@@ -380,18 +382,21 @@ flushFIFO()
             unsigned long hash_code = ssdtableHashcode(curDesp->tag);
             ssdtableDelete(curDesp->tag, hash_code);
 
-            removeFromArray(curDesp);
-        }
-        else if(!curDesp->isValid && curDesp->despId == global_fifo_ctrl.head)
-        {
-            global_fifo_ctrl.head = (global_fifo_ctrl.head + 1) % NBLOCK_SMR_FIFO;
+            int isHeadChanged = invalidDespInFIFO(curDesp);
+	    if(isHeadChanged){
+		curPos = global_fifo_ctrl.head;
+		continue;
+	    }
         }
         curPos = nextPos;
     }
     simu_n_collect_fifo += dirty_n_inBand;
 #ifdef SIMULATOR_AIO
     _TimerLap(&tv_start);
+static int cnt = 0;
+printf("start aio read [%d]...\n",++cnt);
     int ret_aio = lio_listio(LIO_WAIT,aiocb_addr_list,aio_read_cnt,NULL);
+printf("end aio\n",++cnt);
     if(ret_aio < 0)
     {
         char log[128];
