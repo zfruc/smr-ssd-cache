@@ -11,7 +11,7 @@ typedef struct StrategyDesp_pore
     unsigned 	    flag;
     long            pre,next;
     unsigned long   heat;
-    long   stamp;
+    long  	    stamp;
 }StrategyDesp_pore;
 
 //typedef struct StrategyCtrl_pore
@@ -28,6 +28,7 @@ typedef struct ZoneCtrl
     long            pagecnt_clean;
     long            weight;
     long            head,tail;
+    long	    stamp;
 }ZoneCtrl;
 
 extern int InitPORE();
