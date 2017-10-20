@@ -6,7 +6,7 @@
 #include "cache.h"
 
 static SSDHashBucket* HashTable;
-static SSDHashBucket* HashItemPool, FreeItem_hdr;
+static SSDHashBucket* HashItemPool,* FreeItem_hdr;
 static SSDHashBucket* memPop();
 static void memPush(SSDHashBucket* item);
 
@@ -128,7 +128,7 @@ long ssdtableUpdate(DespTag tag, unsigned long hash_code, long despId)
 static SSDHashBucket* memPop(){
 	if(FreeItem_hdr == NULL)
 	{
-		prtinf("SIMU: fifo hashtale poll overflow!\n");
+		printf("SIMU: fifo hashtale poll overflow!\n");
 		exit(-1);
 	}
 	SSDHashBucket* item = FreeItem_hdr;
