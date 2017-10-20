@@ -38,7 +38,10 @@ static long                 StampGlobal;      /* Current io sequenced number in 
 
 static void add2ArrayHead(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl);
 static void move2ArrayHead(StrategyDesp_pore* desp,ZoneCtrl* zoneCtrl);
-static long stamp(StrategyDesp_pore* desp);
+#define stamp(desp, zoneCtrl) \
+    StampGlobal++;\
+    desp->stamp = zoneCtrl->stamp = StampGlobal;
+
 static void unloadfromZone(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl);
 static void clearDesp(StrategyDesp_pore* desp);
 static void hit(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl);
@@ -49,7 +52,6 @@ static void move2CleanArrayHead(StrategyDesp_pore* desp);
 
 /** PORE Plus**/
 static int redefineOpenZones();
-static long stamp(StrategyDesp_pore* desp);
 
 static long plus_Dirty_Threshold;
 static long plus_Clean_LowBound, plus_Clean_UpBound;
@@ -119,7 +121,7 @@ LogInPoreBuffer_plus(long despId, SSDBufTag tag, unsigned flag)
     myDesp->flag |= flag;
 
     /* add into chain */
-    stamp(myDesp);
+    stamp(myDesp, myZone);
 
     if((flag & SSD_BUF_DIRTY) != 0){
         /* add into Zone LRU as it's dirty tag */
@@ -158,7 +160,7 @@ HitPoreBuffer_plus(long despId, unsigned flag)
         move2ArrayHead(myDesp,myZone);
         hit(myDesp,myZone);
     }
-    stamp(myDesp);
+    stamp(myDesp, myZone);
     myDesp->flag |= flag;
 }
 
@@ -549,14 +551,6 @@ redefineOpenZones()
 //    }
 
     return 0;
-}
-
-
-static long
-stamp(StrategyDesp_pore* desp)
-{
-    desp->stamp = ++StampGlobal;
-    return StampGlobal;
 }
 
 static int
