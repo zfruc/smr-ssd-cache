@@ -74,7 +74,7 @@ hitInBuffer_LRU_private(long serial_id)
     return 0;
 }
 
-void*
+int
 insertBuffer_LRU_private(long serial_id)
 {
     strategy_desp[serial_id].user_id = UserId;

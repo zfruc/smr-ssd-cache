@@ -359,6 +359,7 @@ Strategy_Desp_LogIn(SSDBufDesp* desp)
         case PORE:              return LogInPoreBuffer(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
         case PORE_PLUS:         return LogInPoreBuffer_plus(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
     }
+    return -1;
 }
 /*
  * read--return the buf_id of buffer according to buf_tag
