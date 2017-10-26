@@ -23,7 +23,11 @@
 #define OFF_BAND_TMP_PERSISIT   0 // The head 80MB of FIFO for temp persistence band needed to clean.
 #define OFF_FIFO                80*1024*1024
 
-
+#ifdef SIMU_NO_DISK_IO
+    #define DISK_WRITE(fd,buf,size,offset) (size)
+#else
+    #define DISK_WRITE(fd,buf,size,offset) (pwrite(fd,buf,size,offset))
+#endif
 int  fd_fifo_part;
 int  fd_smr_part;
 
@@ -257,7 +261,7 @@ simu_smr_write(char *buffer, size_t size, off_t offset)
         invalidDespInFIFO(oldDesp); ///invalid the old desp
 
         _TimerLap(&tv_start);
-        returnCode = pwrite(fd_fifo_part, buffer, BLCKSZ, ssd_hdr->despId * BLCKSZ + OFF_FIFO);
+        returnCode = DISK_WRITE(fd_fifo_part, buffer, BLCKSZ, ssd_hdr->despId * BLCKSZ + OFF_FIFO);
         if (returnCode < 0)
         {
             printf("[ERROR] smrwrite():-------write to smr disk: fd=%d, errorcode=%d, offset=%lu\n", fd_fifo_part, returnCode, offset + i * BLCKSZ);
@@ -332,7 +336,7 @@ flushFIFO()
     simu_read_smr_bands++;
 
     /* temp persistence whole band from buffer to smr*/
-    if(pwrite(fd_fifo_part,BandBuffer,band_size,OFF_BAND_TMP_PERSISIT) != band_size && fsync(fd_fifo_part) < 0)
+    if(DISK_WRITE(fd_fifo_part,BandBuffer,band_size,OFF_BAND_TMP_PERSISIT) != band_size && fsync(fd_fifo_part) < 0)
     {
         printf("[ERROR] flushSSD():-------- temp persistence band: fd=%d, errorcode=%d, offset=%lu\n", fd_smr_part, returnCode, band_offset);
         exit(-1);
@@ -415,7 +419,7 @@ printf("end aio\n",++cnt);
     /* flush whole band to smr */
     _TimerLap(&tv_start);
 
-    returnCode = pwrite(fd_smr_part, BandBuffer, band_size, band_offset);
+    returnCode = DISK_WRITE(fd_smr_part, BandBuffer, band_size, band_offset);
     if (returnCode < 0)
     {
         printf("[ERROR] flushSSD():-------write to smr: fd=%d, errorcode=%d, offset=%lu\n", fd_smr_part, returnCode, band_offset);
