@@ -132,8 +132,8 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     _TimerLap(&tv_trace_end);
     time_trace = Mirco2Sec(TimerInterval_MICRO(&tv_trace_start,&tv_trace_end));
     reportCurInfo();
-    free(ssd_buffer);
-    fclose(trace);
+//    free(ssd_buffer);
+//    fclose(trace);
 }
 
 static void reportCurInfo()

@@ -1,5 +1,5 @@
 
-#undef NO_REAL_DISK_IO
+#define NO_REAL_DISK_IO
 
 #undef NO_CACHE
 

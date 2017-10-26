@@ -308,7 +308,7 @@ initStrategySSDBuffer()
     switch(EvictStrategy)
     {
         case LRU_private:       return initSSDBufferFor_LRU_private();
-        case Most:              return initSSDBufferForMost();
+//        case Most:              return initSSDBufferForMost();
         case PORE:              return InitPORE();
         case PORE_PLUS:         return InitPORE_plus();
 
@@ -324,7 +324,7 @@ Strategy_Desp_LogOut()
     {
 //        case LRU_global:        return Unload_LRUBuf();
         case LRU_private:       return Unload_Buf_LRU_private();
-        case Most:              return LogOutDesp_most();
+ //       case Most:              return LogOutDesp_most();
         case PORE:              return LogOutDesp_pore();
         case PORE_PLUS:        return LogOutDesp_pore_plus();
     }
@@ -339,7 +339,7 @@ Strategy_Desp_HitIn(SSDBufDesp* desp)
 //        case LRU_global:        return hitInLRUBuffer(desp->serial_id);
         case LRU_private:       return hitInBuffer_LRU_private(desp->serial_id);
 //        case LRU_batch:         return hitInBuffer_LRU_batch(desp->serial_id);
-        case Most:              return HitMostBuffer();
+//        case Most:              return HitMostBuffer();
         case PORE:              return HitPoreBuffer(desp->serial_id, desp->ssd_buf_flag);
         case PORE_PLUS:         return HitPoreBuffer_plus(desp->serial_id, desp->ssd_buf_flag);
     }
@@ -355,7 +355,7 @@ Strategy_Desp_LogIn(SSDBufDesp* desp)
 //        case LRU_global:        return insertLRUBuffer(serial_id);
         case LRU_private:       return insertBuffer_LRU_private(desp->serial_id);
 //        case LRU_batch:         return insertBuffer_LRU_batch(serial_id);
-        case Most:              return LogInMostBuffer(desp->serial_id,desp->ssd_buf_tag);
+//        case Most:              return LogInMostBuffer(desp->serial_id,desp->ssd_buf_tag);
         case PORE:              return LogInPoreBuffer(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
         case PORE_PLUS:         return LogInPoreBuffer_plus(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
     }
@@ -469,6 +469,9 @@ write_block(off_t offset, char *ssd_buffer)
 
 static int dev_pread(int fd, void* buf,size_t nbytes,off_t offset)
 {
+#ifdef NO_REAL_DISK_IO
+    return nbytes;
+#else
     int r;
     _TimerLap(&tv_start);
     r = pread(fd,buf,nbytes,offset);
@@ -479,10 +482,14 @@ static int dev_pread(int fd, void* buf,size_t nbytes,off_t offset)
         exit(-1);
     }
     return r;
+#endif
 }
 
 static int dev_pwrite(int fd, void* buf,size_t nbytes,off_t offset)
 {
+#ifdef NO_REAL_DISK_IO
+    return nbytes;
+#else
     int w;
     _TimerLap(&tv_start);
     w = pwrite(fd,buf,nbytes,offset);
@@ -493,32 +500,25 @@ static int dev_pwrite(int fd, void* buf,size_t nbytes,off_t offset)
         exit(-1);
     }
     return w;
+#endif
 }
 
 static int dev_simu_write(void* buf,size_t nbytes,off_t offset)
 {
-#ifdef NO_REAL_DISK_IO
-    return 1;
-#else
     int w;
     _TimerLap(&tv_start);
     w = simu_smr_write(buf,nbytes,offset);
     _TimerLap(&tv_stop);
     return w;
-#endif
 }
 
 static int dev_simu_read(void* buf,size_t nbytes,off_t offset)
 {
-#ifdef NO_REAL_DISK_IO
-    return 1;
-#else
     int r;
     _TimerLap(&tv_start);
     r = simu_smr_read(buf,nbytes,offset);
     _TimerLap(&tv_stop);
     return r;
-#endif
 }
 
 static SSDBufDesp*

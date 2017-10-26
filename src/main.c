@@ -57,7 +57,7 @@ char* tracefile[] = {"/home/trace/src1_2.csv.req",
                      "/home/trace/usr_0.csv.req",
                      "/home/trace/web_0.csv.req",
                      "/home/trace/production-LiveMap-Backend-4K.req",
-                    "/home/trace/merged_traceX18.req" 
+                    "/home/trace/merged_traceX18.req"
 		    //"/home/trace/merged_trace_x1.req.csv"
                     };
 
@@ -80,8 +80,8 @@ main(int argc, char** argv)
         StartLBA = atol(argv[5]);
         NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = atol(argv[6]);
         NBLOCK_SMR_FIFO = atol(argv[7]);
-	PeriodLenth = atoi(argv[9]) * 4608;	
         EvictStrategy = (atoi(argv[8]) == 0)? PORE_PLUS  : PORE;//PORE;
+    	PeriodLenth = atoi(argv[9]) * ZONESZ / 4096;
         //EvictStrategy = PORE_PLUS;
     }
     else

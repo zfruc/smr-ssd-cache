@@ -24,8 +24,10 @@
 #define OFF_FIFO                80*1024*1024
 
 #ifdef SIMU_NO_DISK_IO
+    #define DISK_READ(fd,buf,size,offset) (size)
     #define DISK_WRITE(fd,buf,size,offset) (size)
 #else
+    #define DISK_READ(fd,buf,size,offset) (pread(fd,buf,size,offset))
     #define DISK_WRITE(fd,buf,size,offset) (pwrite(fd,buf,size,offset))
 #endif
 int  fd_fifo_part;
@@ -205,7 +207,7 @@ simu_smr_read(char *buffer, size_t size, off_t offset)
             ssd_hdr = fifo_desp_array + despId;
 
             _TimerLap(&tv_start);
-            returnCode = pread(fd_fifo_part, buffer, BLCKSZ, ssd_hdr->despId * BLCKSZ + OFF_FIFO);
+            returnCode = DISK_READ(fd_fifo_part, buffer, BLCKSZ, ssd_hdr->despId * BLCKSZ + OFF_FIFO);
             if (returnCode < 0)
             {
                 printf("[ERROR] smrread():-------read from inner ssd: fd=%d, errorcode=%d, offset=%lu\n", fd_fifo_part, returnCode, ssd_hdr->despId * BLCKSZ);
@@ -220,7 +222,7 @@ simu_smr_read(char *buffer, size_t size, off_t offset)
             simu_n_read_smr++;
             _TimerLap(&tv_start);
 
-            returnCode = pread(fd_smr_part, buffer, BLCKSZ, offset + i * BLCKSZ);
+            returnCode = DISK_READ(fd_smr_part, buffer, BLCKSZ, offset + i * BLCKSZ);
             if (returnCode < 0)
             {
                 printf("[ERROR] smrread():-------read from smr disk: fd=%d, errorcode=%d, offset=%lu\n", fd_smr_part, returnCode, offset + i * BLCKSZ);
@@ -326,7 +328,7 @@ flushFIFO()
 
     /* read whole band from smr to buffer*/
     _TimerLap(&tv_start);
-    if((returnCode = pread(fd_smr_part, BandBuffer, band_size,band_offset)) != band_size)
+    if((returnCode = DISK_READ(fd_smr_part, BandBuffer, band_size,band_offset)) != band_size)
     {
         printf("[ERROR] flushSSD():---------read from smr: fd=%d, errorcode=%d, offset=%lu\n", fd_smr_part, returnCode, band_offset);
         exit(-1);
@@ -372,7 +374,7 @@ flushFIFO()
             aio_read_cnt++;
 #else
             _TimerLap(&tv_start);
-            returnCode = pread(fd_fifo_part, BandBuffer + offset_inband * BLCKSZ, BLCKSZ, curPos * BLCKSZ + OFF_FIFO);
+            returnCode = DISK_READ(fd_fifo_part, BandBuffer + offset_inband * BLCKSZ, BLCKSZ, curPos * BLCKSZ + OFF_FIFO);
             if (returnCode < 0)
             {
                 printf("[ERROR] flushSSD():-------read from inner ssd: fd=%d, errorcode=%d, offset=%lu\n", fd_fifo_part, returnCode, curPos * BLCKSZ);
@@ -396,6 +398,7 @@ flushFIFO()
     }
     simu_n_collect_fifo += dirty_n_inBand;
 #ifdef SIMULATOR_AIO
+#ifndef SIMU_NO_DISK_IO
     _TimerLap(&tv_start);
 static int cnt = 0;
 printf("start aio read [%d]...\n",++cnt);
@@ -409,6 +412,7 @@ printf("end aio\n",++cnt);
     }
     _TimerLap(&tv_stop);
     simu_time_read_fifo += TimerInterval_SECOND(&tv_start,&tv_stop);
+#endif // SIMU_NO_DISK_IO
 #endif // SIMULATOR_AIO
     /**--------------------------------------------------- **/
     _TimerLap(&tv_collect_stop);

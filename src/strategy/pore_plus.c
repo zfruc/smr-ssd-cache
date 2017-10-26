@@ -75,7 +75,6 @@ InitPORE_plus()
     plus_Clean_LowBound =   NBLOCK_SSD_CACHE * 0.2;     /* Clean blocks number < 20% of cache size, must to adopt Hybrid Model, even if there is NONE of zones reach the dirty threshold. */
     plus_Clean_UpBound =    NBLOCK_SSD_CACHE * 0.8;     /* Clean blocks number > 80% of cache size, must to adopt Clean-Only Model, even if there EXIST zones reach the dirty threshold. */
 
-
     StampGlobal = PeriodProgress = 0;
     GlobalDespArray = (StrategyDesp_pore*)malloc(sizeof(StrategyDesp_pore) * NBLOCK_SSD_CACHE);
     ZoneCtrlArray = (ZoneCtrl*)malloc(sizeof(ZoneCtrl) * NZONES);
@@ -187,6 +186,9 @@ LogOutDesp_pore_plus()
     if(PeriodProgress % PeriodLenth == 0)
     {
         printf("This Period Evict Info: clean:%ld, dirty:%ld\n",evict_clean_cnt,evict_dirty_cnt);
+
+
+       NEWPERIOD:
         /** 1. Searching Phase **/
         OpenZoneCnt = 0;
         PeriodProgress = 1;
@@ -246,7 +248,8 @@ LogOutDesp_pore_plus()
     if(CurEvictModel == CLEAN_ONLY)
     {
         if(CleanCtrl.head < 0)
-            return -1;
+            goto NEWPERIOD;
+            //return -1;
         StrategyDesp_pore* frozenDesp = GlobalDespArray + CleanCtrl.tail;
         unloadfromCleanArray(frozenDesp);
         CleanCtrl.pagecnt_clean--;
