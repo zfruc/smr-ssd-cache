@@ -181,18 +181,24 @@ long
 LogOutDesp_pore_plus()
 {
     static int periodCnt = 0;
-    static int CurEvictZonePos = 0;
+    static int CurEvictZoneSeq = 0;
     static long evict_clean_cnt = 0, evict_dirty_cnt = 0;
-    if(PeriodProgress % PeriodLenth == 0)
+    static int isWholeZone = 0;
+    //static int curZone_evict_cnt = 0;
+
+    if(PeriodProgress >= PeriodLenth  && !isWholeZone)
     {
         printf("This Period Evict Info: clean:%ld, dirty:%ld\n",evict_clean_cnt,evict_dirty_cnt);
 
-
-       NEWPERIOD:
+NEWPERIOD:
         /** 1. Searching Phase **/
         OpenZoneCnt = 0;
         PeriodProgress = 1;
         evict_clean_cnt = evict_dirty_cnt = 0;
+
+        CurEvictZoneSeq = 0;
+        periodCnt++;
+        isWholeZone = 0;
         redefineOpenZones();
 
         /** 2. Decide Evict Model Phase **/
@@ -228,9 +234,10 @@ LogOutDesp_pore_plus()
                 CurEvictModel = CLEAN_ONLY;
         }
 
-        CurEvictZonePos = 0;
-        periodCnt++;
 
+if(periodCnt == 748){
+    int a = 1;
+}
         printf("-------------New Period!-----------\n");
         printf("Period [%d], Non-Empty Zone_Cnt=%d, OpenZones_cnt=%d, CleanBlks=%ld(%0.2lf) ",periodCnt, NonEmptyZoneCnt, OpenZoneCnt,CleanCtrl.pagecnt_clean, (double)CleanCtrl.pagecnt_clean/NBLOCK_SSD_CACHE);
         switch(CurEvictModel)
@@ -243,75 +250,38 @@ LogOutDesp_pore_plus()
     }
 
     /**3. Evict Phase **/
+    StrategyDesp_pore * evitedDesp;
+    StrategyDesp_pore * cleanDesp, * dirtyDesp;
+    ZoneCtrl* evictZone = ZoneCtrlArray + OpenZoneSet[CurEvictZoneSeq];
 
-    StrategyDesp_pore*  evitedDesp;
     if(CurEvictModel == CLEAN_ONLY)
     {
-        if(CleanCtrl.head < 0)
+        if(CleanCtrl.pagecnt_clean <= 0)
             goto NEWPERIOD;
             //return -1;
-        StrategyDesp_pore* frozenDesp = GlobalDespArray + CleanCtrl.tail;
-        unloadfromCleanArray(frozenDesp);
-        CleanCtrl.pagecnt_clean--;
-
-        evitedDesp = frozenDesp;
-        evict_clean_cnt++;
-        PeriodProgress++;
+        goto EVICT_CLEAN;
     }
     else if(CurEvictModel == HYBRID_OpZone || CurEvictModel == HYBRID_ALL)
     {
-        static int once_zone_evcit = 0;
-        static int curZone_evict_cnt = 0;
-        ZoneCtrl* evictZone = ZoneCtrlArray + OpenZoneSet[CurEvictZonePos];
+        dirtyDesp = GlobalDespArray + evictZone->tail;
+        if (isWholeZone)
+            goto EVICT_DIRTYZONE;
 
-        StrategyDesp_pore* cleanDesp;
-        StrategyDesp_pore* dirtyDesp = GlobalDespArray + evictZone->tail;
 
-        if(CleanCtrl.pagecnt_clean > 0)
+        if(CleanCtrl.pagecnt_clean <= 0)
         {
+            isWholeZone = 1;
+            goto EVICT_DIRTYZONE;
+        }
+        else
             cleanDesp = GlobalDespArray + CleanCtrl.tail;
-        }
+
+        if(random_choose(cleanDesp->stamp, dirtyDesp->stamp, StampGlobal))
+            goto EVICT_CLEAN;
         else
         {
-            once_zone_evcit = 1;
-        }
-
-        if(!once_zone_evcit && random_choose(cleanDesp->stamp, dirtyDesp->stamp, StampGlobal))
-        {
-            unloadfromCleanArray(cleanDesp);
-            CleanCtrl.pagecnt_clean--;
-
-            evitedDesp = cleanDesp;
-            PeriodProgress++;
-            evict_clean_cnt++;
-        }
-        else
-        {
-            unloadfromZone(dirtyDesp,evictZone);
-            evictZone->pagecnt_dirty--;
-            evictZone->heat -= dirtyDesp->heat;
-            PeriodProgress++;
-
-            evitedDesp = dirtyDesp;
-            once_zone_evcit = 1;
-            evict_dirty_cnt++;
-        }
-
-        /* While finish to cache out whole zone, Cache out next Open Zone or restart new period. */
-        if( evictZone->head < 0 || curZone_evict_cnt >= ZONEBLKSZ)
-        {
-            once_zone_evcit = 0;
-            if(CurEvictZonePos < OpenZoneCnt -1)
-            {
-                CurEvictZonePos++;
-                curZone_evict_cnt = 0;
-            }
-            else
-                PeriodProgress = 0; // restart
-        }
-        else if(once_zone_evcit && PeriodProgress == PeriodLenth && evictZone->head >= 0)
-        {
-            PeriodProgress--;
+            isWholeZone = 1;
+            goto EVICT_DIRTYZONE;
         }
     }
     else
@@ -319,7 +289,40 @@ LogOutDesp_pore_plus()
         return -2;
     }
 
+EVICT_CLEAN:
+    cleanDesp = GlobalDespArray + CleanCtrl.tail;
+    unloadfromCleanArray(cleanDesp);
+    CleanCtrl.pagecnt_clean--;
 
+    evict_clean_cnt++;
+    evitedDesp = cleanDesp;
+    goto EVICT_RETURN;
+
+EVICT_DIRTYZONE:
+    unloadfromZone(dirtyDesp,evictZone);
+    evictZone->pagecnt_dirty--;
+    evictZone->heat -= dirtyDesp->heat;
+
+    evict_dirty_cnt++;
+    evitedDesp = dirtyDesp;
+
+    //if( evictZone->head < 0 || curZone_evict_cnt >= ZONEBLKSZ)
+    if(evictZone->pagecnt_dirty <= 0)
+    {
+        /* While finish to cache out whole zone, Cache out next Open Zone or restart new period. */
+        isWholeZone = 0;
+        if(CurEvictZoneSeq < OpenZoneCnt -1)
+        {
+            CurEvictZoneSeq++;
+            //curZone_evict_cnt = 0;
+        }
+        else
+            PeriodProgress = PeriodLenth + 1; // restart
+    }
+    goto EVICT_RETURN;
+
+EVICT_RETURN:
+    PeriodProgress++;
     clearDesp(evitedDesp);
     return evitedDesp->serial_id;
 }

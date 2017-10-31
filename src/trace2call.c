@@ -68,7 +68,13 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
 
     while (!feof(trace) && req_cnt++ < 84340000)
     {
-//        if(feof(trace))
+
+        if(req_cnt >= 30893902)
+        {
+            int a=0;
+        }
+
+        //        if(feof(trace))
 //            fseek(trace,0,SEEK_SET);
 
 #ifdef CG_THROTTLE
@@ -107,6 +113,11 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
             STT->reqcnt_r++;
             read_block(offset,ssd_buffer);
         }
+	else if (action != ACT_READ)
+	{
+	    printf("Trace file gets a wrong result: action = %c.\n",action);
+	    exit(-1);
+	}
 #ifdef LOG_SINGLE_REQ
         _TimerLap(&tv_req_stop);
         msec_req = TimerInterval_MICRO(&tv_req_start,&tv_req_stop);
@@ -159,7 +170,7 @@ static void report_ontime()
 {
 //    _TimerLap(&tv_checkpoint);
 //    double timecost = Mirco2Sec(TimerInterval_SECOND(&tv_trace_start,&tv_checkpoint));
-   
+
 //     printf("totalreq:%lu, readreq:%lu, hit:%lu, readhit:%lu, flush_ssd_blk:%lu flush_hdd_blk:%lu, hashmiss:%lu, readhassmiss:%lu writehassmiss:%lu\n",
 //           STT->reqcnt_s,STT->reqcnt_r, STT->hitnum_s, STT->hitnum_r, STT->flush_ssd_blocks, STT->flush_hdd_blocks, STT->hashmiss_sum, STT->hashmiss_read, STT->hashmiss_write);
         printf("totalreq:%lu, readreq:%lu, hit:%lu, readhit:%lu, flush_ssd_blk:%lu flush_hdd_blk:%lu\n",

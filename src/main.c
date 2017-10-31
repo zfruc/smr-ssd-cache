@@ -124,8 +124,7 @@ main(int argc, char** argv)
 
 #ifdef SIMULATION
     PrintSimulatorStatistic();
-#endif
-    close(hdd_fd);
+#endif    close(hdd_fd);
     close(ssd_fd);
     CloseLogFile();
 

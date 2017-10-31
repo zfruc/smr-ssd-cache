@@ -75,7 +75,7 @@ static void* smr_fifo_monitor_thread();
 static int invalidDespInFIFO(FIFODesc* desp);
 #define isFIFOEmpty (global_fifo_ctrl.head == global_fifo_ctrl.tail)
 #define isFIFOFull  ((global_fifo_ctrl.tail + 1) % NBLOCK_SMR_FIFO == global_fifo_ctrl.head)
- 
+
 static unsigned long GetSMRActualBandSizeFromSSD(unsigned long offset);
 static unsigned long GetSMRBandNumFromSSD(unsigned long offset);
 static off_t GetSMROffsetInBandFromSSD(FIFODesc * ssd_hdr);
@@ -130,13 +130,13 @@ void InitSimulator()
 
     initSSDTable(NBLOCK_SMR_FIFO);
 
-    pthread_t tid;
-    int err = pthread_create(&tid, NULL, smr_fifo_monitor_thread, NULL);
-    if (err != 0)
-    {
-        printf("[ERROR] initSSD: fail to create thread: %s\n", strerror(err));
-        exit(-1);
-    }
+//    pthread_t tid;
+//    int err = pthread_create(&tid, NULL, smr_fifo_monitor_thread, NULL);
+//    if (err != 0)
+//    {
+//        printf("[ERROR] initSSD: fail to create thread: %s\n", strerror(err));
+//        exit(-1);
+//    }
     /* cgroup write fifo throttle */
 //    pid_t mypid = getpid();
 //    int bps_write = 1048576 * 11;
@@ -285,7 +285,7 @@ invalidDespInFIFO(FIFODesc* desp)
     global_fifo_ctrl.n_used--;
     int isHeadChanged = 0;
     while(!fifo_desp_array[global_fifo_ctrl.head].isValid && !isFIFOEmpty){
-   	global_fifo_ctrl.head = (global_fifo_ctrl.head + 1) % NBLOCK_SMR_FIFO;	
+   	global_fifo_ctrl.head = (global_fifo_ctrl.head + 1) % NBLOCK_SMR_FIFO;
 	isHeadChanged = 1;
     }
     return isHeadChanged;

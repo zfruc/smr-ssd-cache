@@ -64,6 +64,8 @@ initSSD()
     int r_initstt           =   init_StatisticObj();
     printf("init_Strategy: %d, init_table: %d, init_desp: %d, inti_Stt: %d\n",r_initstrategybuf, r_initbuftb, r_initdesp, r_initstt);
 
+    if(r_initdesp==-1 || r_initstrategybuf==-1 || r_initbuftb==-1 || r_initstt==-1)
+        exit(-1);
     int returnCode;
     returnCode = posix_memalign(&ssd_buffer, 512, sizeof(char) * BLCKSZ);
     if (returnCode < 0)
