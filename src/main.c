@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include "report.h"
 #include "shmlib.h"
@@ -20,8 +21,6 @@
 #include "smr-simulator/simulator_logfifo.h"
 #include "smr-simulator/simulator_v2.h"
 #include "trace2call.h"
-
-extern void FunctionalTest();
 
 unsigned int INIT_PROCESS = 0;
 void ramdisk_iotest()
@@ -61,7 +60,30 @@ char* tracefile[] = {"/home/trace/src1_2.csv.req",
 		    //"/home/trace/merged_trace_x1.req.csv"
                     };
 
+blksize_t trace_req_total[] = {14024860,2654824,8985487,2916662,17635766,3254278,6098667,4216457,12873274,9642398};
 
+
+void* daemon_thread()
+{
+    pthread_t th = pthread_self();
+    pthread_detach(th);
+
+    blkcnt_t last_req_cnt = 0;
+    while(1)
+    {
+	sleep(1);
+    /* Load runtime arverage IO speed(MB/s) */
+        blksize_t cur_req_cnt = STT->reqcnt_s;
+	double speed =(double)(cur_req_cnt - last_req_cnt) * 4 / 1000;
+        last_req_cnt = cur_req_cnt;
+    /* Current WrtAmp */
+	double wrtamp = STT->wtrAmp_cur;
+    /* Process Percentage */
+	double percentage = (double)STT->reqcnt_s / trace_req_total[TraceId] * 100;
+    
+	printf("-------------------------------------------SPEED:%.2f(MB/s), Percenage:%d\%, WriteAmp:%d\n", speed, (int)percentage, (int)wrtamp);
+    }
+}
 
 int
 main(int argc, char** argv)
@@ -80,7 +102,7 @@ main(int argc, char** argv)
         StartLBA = atol(argv[5]);
         NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = atol(argv[6]);
         NBLOCK_SMR_FIFO = atol(argv[7]);
-        EvictStrategy = (atoi(argv[8]) == 0)? PORE_PLUS  : PORE;//PORE;
+        EvictStrategy = (atoi(argv[8]) == 0)? PORE_PLUS  : LRU_private;//PORE;
     	PeriodLenth = atoi(argv[9]) * ZONESZ / 4096;
         //EvictStrategy = PORE_PLUS;
     }
@@ -120,6 +142,14 @@ main(int argc, char** argv)
 
 #endif
 
+    pthread_t tid;
+    int err = pthread_create(&tid, NULL, daemon_thread, NULL);
+    if (err != 0)
+    {
+        printf("[ERROR] initSSD: fail to create thread: %s\n", strerror(err));
+        exit(-1);
+    }
+
     trace_to_iocall(tracefile[TraceId],WriteOnly,StartLBA);
 
 #ifdef SIMULATION
@@ -145,6 +175,8 @@ int initRuntimeInfo()
     STT->isWriteOnly = WriteOnly;
     STT->cacheUsage = 0;
     STT->cacheLimit = 0x7fffffffffffffff;
+    
+    STT->wtrAmp_cur = 0;
     return 0;
 }
 

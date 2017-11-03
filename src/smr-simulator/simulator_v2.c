@@ -434,8 +434,10 @@ printf("end aio\n",++cnt);
     simu_time_write_smr += TimerInterval_SECOND(&tv_start,&tv_stop);
     simu_flush_bands++;
     simu_flush_band_size += band_size;
-
+    
     wtrAmp = (double)band_size / (dirty_n_inBand * BLCKSZ);
+    STT->wtrAmp_cur = wtrAmp;
+
     char log[256];
     sprintf(log,"flush [%ld] times from fifo to smr,collect time:%lf, cnt=%ld,WtrAmp = %lf\n",simu_flush_bands,collect_time,dirty_n_inBand,wtrAmp);
     WriteLog(log);

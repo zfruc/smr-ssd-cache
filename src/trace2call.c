@@ -30,6 +30,7 @@ extern microsecond_t    msec_r_hdd,msec_w_hdd,msec_r_ssd,msec_w_ssd;
 extern int IsHit;
 char logbuf[512];
 
+ 
 void
 trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
 {
@@ -68,11 +69,6 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
 
     while (!feof(trace) && req_cnt++ < 84340000)
     {
-
-        if(req_cnt >= 30893902)
-        {
-            int a=0;
-        }
 
         //        if(feof(trace))
 //            fseek(trace,0,SEEK_SET);

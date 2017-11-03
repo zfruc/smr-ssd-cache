@@ -47,6 +47,9 @@ struct RuntimeSTAT
     blksize_t hashmiss_sum;
     blksize_t hashmiss_read;
     blksize_t hashmiss_write;
+    
+    /* simulator */
+    double wtrAmp_cur;
 };
 
 typedef enum
