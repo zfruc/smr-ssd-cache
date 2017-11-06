@@ -42,40 +42,6 @@ int HashTab_Init()
     }
     hashitem_freelist[NBLOCK_SSD_CACHE - 1].next_item = NULL;
     return 0;
-//    int stat = SHM_lock_n_check("LOCK_SSDBUF_HASHTABLE");
-//    if(stat == 0)
-//    {
-//        ssd_buf_hash_ctrl = (SSDBufHashCtrl*)SHM_alloc(SHM_SSDBUF_HASHTABLE_CTRL,sizeof(SSDBufHashCtrl));
-//        ssd_buf_hashtable = (SSDBufHashBucket*)SHM_alloc(SHM_SSDBUF_HASHTABLE,sizeof(SSDBufHashBucket)*size);
-//        ssd_buf_hashdesps = (SSDBufHashBucket*)SHM_alloc(SHM_SSDBUF_HASHDESPS,sizeof(SSDBufHashBucket)*NBLOCK_SSD_CACHE);
-//
-//        SHM_mutex_init(&ssd_buf_hash_ctrl->lock);
-//
-//        size_t i;
-//        SSDBufHashBucket *ssd_buf_hash = ssd_buf_hashtable;
-//        for (i = 0; i < size; ssd_buf_hash++, i++)
-//        {
-//            ssd_buf_hash->ssd_buf_id = -1;
-//            ssd_buf_hash->hash_key.offset = -1;
-//            ssd_buf_hash->next_item = NULL;
-//        }
-//        SSDBufHashBucket *hash_desp = ssd_buf_hashdesps;
-//        for(i = 0; i <NBLOCK_SSD_CACHE; i++)
-//        {
-//            ssd_buf_hash->ssd_buf_id = i;
-//            ssd_buf_hash->hash_key.offset = -1;
-//            ssd_buf_hash->next_item = NULL;
-//        }
-//    }
-//    else
-//    {
-//        ssd_buf_hash_ctrl = (SSDBufHashCtrl*)SHM_get(SHM_SSDBUF_HASHTABLE_CTRL,sizeof(SSDBufHashCtrl));
-//        ssd_buf_hashtable = (SSDBufHashBucket *)SHM_get(SHM_SSDBUF_HASHTABLE,sizeof(SSDBufHashBucket)*size);
-//        ssd_buf_hashdesps = (SSDBufHashBucket*)SHM_get(SHM_SSDBUF_HASHDESPS,sizeof(SSDBufHashBucket)*NBLOCK_SSD_CACHE);
-//
-//    }
-//    SHM_unlock("LOCK_SSDBUF_HASHTABLE");
-//    return stat;
 }
 
 unsigned long HashTab_GetHashCode(SSDBufTag ssd_buf_tag)

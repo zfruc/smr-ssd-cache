@@ -1,7 +1,7 @@
 
 #undef NO_REAL_DISK_IO
 
-#undef NO_CACHE
+#define NO_CACHE
 
 #undef CG_THROTTLE     // CGroup throttle.
 #undef MULTIUSER

@@ -52,6 +52,8 @@ static char* ssd_buffer;
 
 extern struct RuntimeSTAT* STT;
 extern struct InitUsrInfo UsrInfo;
+
+
 /*
  * init buffer hash table, strategy_control, buffer, work_mem
  */
@@ -79,15 +81,15 @@ initSSD()
 static int
 init_SSDDescriptorBuffer()
 {
-    int stat = SHM_lock_n_check("LOCK_SSDBUF_DESP");
+    int stat = multi_SHM_lock_n_check("LOCK_SSDBUF_DESP");
     if(stat == 0)
     {
-        ssd_buf_desp_ctrl = (SSDBufDespCtrl*)SHM_alloc(SHM_SSDBUF_DESP_CTRL,sizeof(SSDBufDespCtrl));
-        ssd_buf_desps = (SSDBufDesp *)SHM_alloc(SHM_SSDBUF_DESPS,sizeof(SSDBufDesp) * NBLOCK_SSD_CACHE);
+        ssd_buf_desp_ctrl = (SSDBufDespCtrl*)multi_SHM_alloc(SHM_SSDBUF_DESP_CTRL,sizeof(SSDBufDespCtrl));
+        ssd_buf_desps = (SSDBufDesp *)multi_SHM_alloc(SHM_SSDBUF_DESPS,sizeof(SSDBufDesp) * NBLOCK_SSD_CACHE);
 
         ssd_buf_desp_ctrl->n_usedssd = 0;
         ssd_buf_desp_ctrl->first_freessd = 0;
-        SHM_mutex_init(&ssd_buf_desp_ctrl->lock);
+        multi_SHM_mutex_init(&ssd_buf_desp_ctrl->lock);
 
         long i;
         SSDBufDesp  *ssd_buf_hdr = ssd_buf_desps;
@@ -97,16 +99,16 @@ init_SSDDescriptorBuffer()
             ssd_buf_hdr->ssd_buf_id = i;
             ssd_buf_hdr->ssd_buf_flag = 0;
             ssd_buf_hdr->next_freessd = i + 1;
-            SHM_mutex_init(&ssd_buf_hdr->lock);
+            multi_SHM_mutex_init(&ssd_buf_hdr->lock);
         }
         ssd_buf_desps[NBLOCK_SSD_CACHE - 1].next_freessd = -1;
     }
     else
     {
-        ssd_buf_desp_ctrl = (SSDBufDespCtrl *)SHM_get(SHM_SSDBUF_DESP_CTRL,sizeof(SSDBufDespCtrl));
-        ssd_buf_desps = (SSDBufDesp *)SHM_get(SHM_SSDBUF_DESPS,sizeof(SSDBufDesp) * NBLOCK_SSD_CACHE);
+        ssd_buf_desp_ctrl = (SSDBufDespCtrl *)multi_SHM_get(SHM_SSDBUF_DESP_CTRL,sizeof(SSDBufDespCtrl));
+        ssd_buf_desps = (SSDBufDesp *)multi_SHM_get(SHM_SSDBUF_DESPS,sizeof(SSDBufDesp) * NBLOCK_SSD_CACHE);
     }
-    SHM_unlock("LOCK_SSDBUF_DESP");
+    multi_SHM_unlock("LOCK_SSDBUF_DESP");
     return stat;
 }
 

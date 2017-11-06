@@ -65,6 +65,8 @@ blksize_t trace_req_total[] = {14024860,2654824,8985487,2916662,17635766,3254278
 
 void* daemon_thread()
 {
+    int fd = open("/tmp/smr_web_show/da.json", O_RDWR|O_CREAT|O_FSYNC);
+    char str_runtime[4096];
     pthread_t th = pthread_self();
     pthread_detach(th);
 
@@ -80,8 +82,13 @@ void* daemon_thread()
 	double wrtamp = STT->wtrAmp_cur;
     /* Process Percentage */
 	double percentage = (double)STT->reqcnt_s / trace_req_total[TraceId] * 100;
-    
-	printf("-------------------------------------------SPEED:%.2f(MB/s), Percenage:%d\%, WriteAmp:%d\n", speed, (int)percentage, (int)wrtamp);
+	sprintf(str_runtime, "[{\"speed_pore\":\"%.2f\",\"wrtamp_pore\":\"%d\",\"percent_pore\":\"%d\"}]",speed, (int)percentage, (int)wrtamp);
+	int n  = pwrite(fd,str_runtime,strlen(str_runtime),0);
+	if(n<0){
+		error("deamon thead log failed.\n");
+		exit(-1);
+	}
+	printf("fd:%d,n:%d-------------------------------------------SPEED:%.2f(MB/s), Percenage:%d\%, WriteAmp:%d\n",fd,n, speed, (int)percentage, (int)wrtamp);
     }
 }
 
@@ -165,7 +172,7 @@ int initRuntimeInfo()
 {
     char str_STT[50];
     sprintf(str_STT,"STAT_b%d_u%d_t%d",BatchId,UserId,TraceId);
-    if((STT = (struct RuntimeSTAT*)SHM_alloc(str_STT,sizeof(struct RuntimeSTAT))) == NULL)
+    if((STT = (struct RuntimeSTAT*)multi_SHM_alloc(str_STT,sizeof(struct RuntimeSTAT))) == NULL)
         return errno;
 
     STT->batchId = BatchId;
@@ -175,7 +182,7 @@ int initRuntimeInfo()
     STT->isWriteOnly = WriteOnly;
     STT->cacheUsage = 0;
     STT->cacheLimit = 0x7fffffffffffffff;
-    
+
     STT->wtrAmp_cur = 0;
     return 0;
 }
