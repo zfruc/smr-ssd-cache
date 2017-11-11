@@ -20,41 +20,44 @@ void* daemon_proc()
     time_t rawtime;
     struct tm * timeinfo;
 
+    struct RuntimeSTAT lastSTT, curSTT;
+    lastSTT = *STT;
+
     /* Bandwidth */
     int bw_s, bw_r, bw_w; // KB/s
-    blkcnt_t lastcnt_s,lastcnt_r,lastcnt_w;
-    lastcnt_s = lastcnt_r = lastcnt_w = 0;
+    int bw_smr_r, bw_smr_w;
 
     while(1)
     {
         sleep(1);
-    /* Load runtime arverage IO speed(KB/s) */
-        blksize_t reqcnt_s = STT->reqcnt_s;
-        blksize_t reqcnt_r = STT->reqcnt_r;
-        blksize_t reqcnt_w = STT->reqcnt_w;
+        /* Load runtime arverage IO speed(KB/s) */
+        curSTT = *STT;
 
-        bw_s = (reqcnt_s - lastcnt_s) * 4;
-	bw_r = (reqcnt_r - lastcnt_r) * 4;
-	bw_w = (reqcnt_w - lastcnt_w) * 4;
-        lastcnt_s = reqcnt_s;
-	lastcnt_r = reqcnt_r;
-	lastcnt_w = reqcnt_w;
+        bw_s = (curSTT.reqcnt_s - lastSTT.reqcnt_s) * 4;
+        bw_r = (curSTT.reqcnt_r - lastSTT.reqcnt_r) * 4;
+        bw_w = (curSTT.reqcnt_w - lastSTT.reqcnt_w) * 4;
 
-    /* Current WrtAmp */
+        bw_smr_r = (curSTT.load_hdd_blocks - lastSTT.load_hdd_blocks) *4;
+        bw_smr_w = (curSTT.flush_hdd_blocks - lastSTT.flush_hdd_blocks) * 4;
+
+        lastSTT = curSTT;
+
+        /* Current WrtAmp */
         double wrtamp = STT->wtrAmp_cur;
-    /* Process Percentage */
+        /* Process Percentage */
         double progress = (double)STT->reqcnt_s / STT->trace_req_amount * 100;
 
-    /* Output */
-        char timebuf [128];
+        /* Output */
+        time(&rawtime);
         timeinfo = localtime (&rawtime);
-        strftime (timebuf,sizeof(timebuf),"%Y/%m/%d %H:%M:%S",timeinfo);
 
-	sprintf(str_runtime, "[%s]bandwidth(s,r,w):%d,\t%d,\t%d\nreqcnt(s,r,w):%ld\t%ld\t%ld\n",timebuf,bw_s,bw_r,bw_w,reqcnt_s,reqcnt_r,reqcnt_w);
+        sprintf(str_runtime, "%sReqcnt(s,r,w):\t%ld\t%ld\t%ld\nbandwidth(s,r,w):\t%d,\t%d,\t%d\n",asctime(timeinfo),curSTT.reqcnt_s,curSTT.reqcnt_r,curSTT.reqcnt_w,bw_s,bw_r,bw_w);
         fwrite(str_runtime,strlen(str_runtime),1,file);
-	sprintf(str_runtime, "wrtAmp:%d\tprogress:%d\%\n",(int)wrtamp,(int)progress);
+        sprintf(str_runtime, "\tSMR(r,w):\t\t%d,\t%d\n", bw_smr_r,bw_smr_w);
         fwrite(str_runtime,strlen(str_runtime),1,file);
-	fflush(file);
+        sprintf(str_runtime, "\twrtAmp:%d\tprogress:%d\%\n",(int)wrtamp,(int)progress);
+        fwrite(str_runtime,strlen(str_runtime),1,file);
+        fflush(file);
     }
 }
 

@@ -67,7 +67,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     _TimerLap(&tv_trace_start);
     static int req_cnt = 0;
 
-    while (!feof(trace) && req_cnt++ < 84340000)
+    while (!feof(trace))
     {
 
         //        if(feof(trace))

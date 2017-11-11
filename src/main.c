@@ -61,7 +61,7 @@ char* tracefile[] = {"/home/trace/src1_2.csv.req",
 		    //"/home/trace/merged_trace_x1.req.csv"
                     };
 
-blksize_t trace_req_total[] = {14024860,2654824,8985487,2916662,17635766,3254278,6098667,4216457,12873274,9642398};
+blksize_t trace_req_total[] = {14024860,2654824,8985487,2916662,17635766,3254278,6098667,4216457,12873274,9642398,1,1481448114};
 
 int
 main(int argc, char** argv)
@@ -97,6 +97,7 @@ main(int argc, char** argv)
 
     //initLog();
     initRuntimeInfo();
+    STT->trace_req_amount = trace_req_total[TraceId];
     initSSD();
 
     ssd_fd = open(ssd_device, O_RDWR | O_DIRECT);
