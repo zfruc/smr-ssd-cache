@@ -17,7 +17,7 @@ struct RuntimeSTAT
     unsigned int traceId;
     unsigned long startLBA;
     unsigned int isWriteOnly;
-
+    unsigned long trace_req_amount;
     /** Runtime strategy refered parameter **/
     //union StratetyUnion strategyRef;
 

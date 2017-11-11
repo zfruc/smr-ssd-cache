@@ -9,7 +9,7 @@ CPPFLAGS += -I$(SMR_SSD_CACHE_DIR) -I$(SMR_SSD_CACHE_DIR)/smr-simulator -I$(SMR_
 
 RM = rm -rf
 RMSHM = rm -f /dev/shm/*
-OBJS = global.o report.o timerUtils.o shmlib.o hashtable_utils.o cache.o trace2call.o main.o pore_plus.o losertree4pore.o pore.o lru_private.o band_table.o smr-simulator.o inner_ssd_buf_table.o simulator_logfifo.o  simulator_v2.o
+OBJS = global.o report.o timerUtils.o shmlib.o hashtable_utils.o cache.o trace2call.o daemon.o main.o pore_plus.o losertree4pore.o pore.o lru_private.o band_table.o smr-simulator.o inner_ssd_buf_table.o simulator_logfifo.o  simulator_v2.o
 
 
 all: $(OBJS) smr-ssd-cache
@@ -38,6 +38,9 @@ cahce.o: cache.c
 
 trace2call.o: trace2call.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
+
+daemon.o: daemon.c 
+	$(CC) $(CPPFLAGS) $(CFLAGE) -c $?
 
 main.o: main.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
