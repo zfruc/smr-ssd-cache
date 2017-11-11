@@ -65,7 +65,7 @@ blksize_t trace_req_total[] = {14024860,2654824,8985487,2916662,17635766,3254278
 
 void* daemon_thread()
 {
-    int fd = open("/tmp/smr_web_show/da.json", O_RDWR|O_CREAT|O_FSYNC);
+    int fd = open("/tmp/model/da1.json", O_RDWR|O_CREAT|O_FSYNC);
     char str_runtime[4096];
     pthread_t th = pthread_self();
     pthread_detach(th);
@@ -82,7 +82,7 @@ void* daemon_thread()
 	double wrtamp = STT->wtrAmp_cur;
     /* Process Percentage */
 	double percentage = (double)STT->reqcnt_s / trace_req_total[TraceId] * 100;
-	sprintf(str_runtime, "[{\"speed_pore\":\"%.2f\",\"wrtamp_pore\":\"%d\",\"percent_pore\":\"%d\"}]",speed, (int)percentage, (int)wrtamp);
+	sprintf(str_runtime, "[{\"speed_pore\":\"%.2f\",\"wrtamp_pore\":\"%d\",\"percent_pore\":\"%d\"}]                                     ",speed, (int)wrtamp, (int)percentage);
 	int n  = pwrite(fd,str_runtime,strlen(str_runtime),0);
 	if(n<0){
 		error("deamon thead log failed.\n");
@@ -129,7 +129,7 @@ main(int argc, char** argv)
     init_cgdev();
 #endif // CG_THROTTLE
 
-    initLog();
+    //initLog();
     initRuntimeInfo();
     initSSD();
 
@@ -149,21 +149,21 @@ main(int argc, char** argv)
 
 #endif
 
-    pthread_t tid;
+/*    pthread_t tid;
     int err = pthread_create(&tid, NULL, daemon_thread, NULL);
     if (err != 0)
     {
         printf("[ERROR] initSSD: fail to create thread: %s\n", strerror(err));
         exit(-1);
     }
-
+*/
     trace_to_iocall(tracefile[TraceId],WriteOnly,StartLBA);
 
 #ifdef SIMULATION
     PrintSimulatorStatistic();
 #endif    close(hdd_fd);
     close(ssd_fd);
-    CloseLogFile();
+    //CloseLogFile();
 
     return 0;
 }
