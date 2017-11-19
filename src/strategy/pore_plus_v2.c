@@ -6,20 +6,21 @@
 
 #define random(x) (rand()%x)
 
-
+#define EVICT_DITRY_GRAIN 64 // The grain of once dirty blocks eviction
 
 typedef struct
 {
     long            pagecnt_clean;
     long            head,tail;
     pthread_mutex_t lock;
-}CleanDespCtrl;
+} CleanDespCtrl;
 
-typedef enum{
+typedef enum
+{
     CLEAN_ONLY,
     HYBRID_OpZone,
     HYBRID_ALL
-}EnumEvictModel;
+} EnumEvictModel;
 
 static blkcnt_t  ZONEBLKSZ;
 
@@ -33,7 +34,7 @@ static unsigned long*       OpenZoneSet;        /* The decided open zones in cur
 static int                  OpenZoneCnt;        /* It represent the number of open zones and the first number elements in 'ZoneSortArray' is the open zones ID */
 
 extern long                 PeriodLenth;        /* The period lenth which defines the times of eviction triggered */
-static long                 PeriodProgress;     /* Current times of eviction in a period lenth */
+static long                 Progress_Clean, Progress_Dirty;     /* Current times to evict clean/dirty block in a period lenth */
 static long                 StampGlobal;      /* Current io sequenced number in a period lenth, used to distinct the degree of heat among zones */
 
 static void add2ArrayHead(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl);
@@ -58,7 +59,7 @@ static long plus_Clean_LowBound, plus_Clean_UpBound;
 
 static EnumEvictModel       CurEvictModel;
 static int random_choose(long stampA, long stampB, long minStamp);
-
+static int get_FrozenOpZone_Seq();
 
 static volatile unsigned long
 getZoneNum(size_t offset)
@@ -68,14 +69,14 @@ getZoneNum(size_t offset)
 
 /* Process Function */
 int
-InitPORE_plus()
+Init_poreplus_v2()
 {
     ZONEBLKSZ = ZONESZ / BLCKSZ;
     plus_Dirty_Threshold =  ZONEBLKSZ * 0.8;    /* Cover Rate mush be >= 80% */
     plus_Clean_LowBound =   NBLOCK_SSD_CACHE * 0.2;     /* Clean blocks number < 20% of cache size, must to adopt Hybrid Model, even if there is NONE of zones reach the dirty threshold. */
     plus_Clean_UpBound =    NBLOCK_SSD_CACHE * 0.8;     /* Clean blocks number > 80% of cache size, must to adopt Clean-Only Model, even if there EXIST zones reach the dirty threshold. */
 
-    StampGlobal = PeriodProgress = 0;
+    StampGlobal = Progress_Clean = Progress_Dirty = 0;
     GlobalDespArray = (StrategyDesp_pore*)malloc(sizeof(StrategyDesp_pore) * NBLOCK_SSD_CACHE);
     ZoneCtrlArray = (ZoneCtrl*)malloc(sizeof(ZoneCtrl) * NZONES);
 
@@ -111,7 +112,7 @@ InitPORE_plus()
 }
 
 int
-LogInPoreBuffer_plus(long despId, SSDBufTag tag, unsigned flag)
+LogIn_poreplus_v2(long despId, SSDBufTag tag, unsigned flag)
 {
     /* activate the decriptor */
     StrategyDesp_pore* myDesp = GlobalDespArray + despId;
@@ -122,12 +123,14 @@ LogInPoreBuffer_plus(long despId, SSDBufTag tag, unsigned flag)
     /* add into chain */
     stamp(myDesp, myZone);
 
-    if((flag & SSD_BUF_DIRTY) != 0){
+    if((flag & SSD_BUF_DIRTY) != 0)
+    {
         /* add into Zone LRU as it's dirty tag */
         add2ArrayHead(myDesp, myZone);
         myZone->pagecnt_dirty++;
     }
-    else{
+    else
+    {
         /* add into Global Clean LRU as it's clean tag */
         add2CleanArrayHead(myDesp);
         CleanCtrl.pagecnt_clean++;
@@ -137,12 +140,13 @@ LogInPoreBuffer_plus(long despId, SSDBufTag tag, unsigned flag)
 }
 
 void
-HitPoreBuffer_plus(long despId, unsigned flag)
+Hit_poreplus_v2(long despId, unsigned flag)
 {
     StrategyDesp_pore* myDesp = GlobalDespArray + despId;
     ZoneCtrl* myZone = ZoneCtrlArray + getZoneNum(myDesp->ssd_buf_tag.offset);
 
-    if((myDesp->flag & SSD_BUF_DIRTY) == 0 && (flag & SSD_BUF_DIRTY) != 0){
+    if((myDesp->flag & SSD_BUF_DIRTY) == 0 && (flag & SSD_BUF_DIRTY) != 0)
+    {
         /* clean --> dirty */
         unloadfromCleanArray(myDesp);
         add2ArrayHead(myDesp,myZone);
@@ -150,11 +154,13 @@ HitPoreBuffer_plus(long despId, unsigned flag)
         CleanCtrl.pagecnt_clean--;
         hit(myDesp,myZone);
     }
-    else if((myDesp->flag & SSD_BUF_DIRTY) == 0 && (flag & SSD_BUF_DIRTY) == 0){
+    else if((myDesp->flag & SSD_BUF_DIRTY) == 0 && (flag & SSD_BUF_DIRTY) == 0)
+    {
         /* clean --> clean */
         move2CleanArrayHead(myDesp);
     }
-    else{
+    else
+    {
         /* dirty hit again*/
         move2ArrayHead(myDesp,myZone);
         hit(myDesp,myZone);
@@ -177,28 +183,32 @@ HitPoreBuffer_plus(long despId, unsigned flag)
         If in the Clean-Only model, evicting clean blocks by global LRU.
         If else the Hybrid model, evicting both of global clean blocks and dirty block in open zones.
  */
-long
-LogOutDesp_pore_plus()
+int
+LogOut_poreplus_v2(long * out_despid_array, int max_n_batch)
 {
     static int periodCnt = 0;
-    static int CurEvictZoneSeq = 0;
+    static int CurEvictZoneSeq = -1;
     static long evict_clean_cnt = 0, evict_dirty_cnt = 0;
-    static int isWholeZone = 0;
+    //static int isWholeZone = 0;
     //static int curZone_evict_cnt = 0;
 
-    if(PeriodProgress >= PeriodLenth  && !isWholeZone)
+    /* The condition to restart a new OpenZone period is
+        1. flushed enough dirty block by zone
+        2. or flushed enough clean block when the OpenZone flushing has still not start.
+    */
+    if(Progress_Clean >= PeriodLenth || Progress_Dirty >= PeriodLenth)
     {
+NEWPERIOD:
         printf("This Period Evict Info: clean:%ld, dirty:%ld\n",evict_clean_cnt,evict_dirty_cnt);
 
-NEWPERIOD:
         /** 1. Searching Phase **/
         OpenZoneCnt = 0;
-        PeriodProgress = 1;
+        Progress_Clean = Progress_Dirty = 0;
         evict_clean_cnt = evict_dirty_cnt = 0;
 
-        CurEvictZoneSeq = 0;
+        CurEvictZoneSeq = -1;
         periodCnt++;
-        isWholeZone = 0;
+        //isWholeZone = 0;
         redefineOpenZones();
 
         /** 2. Decide Evict Model Phase **/
@@ -238,35 +248,49 @@ NEWPERIOD:
         printf("Period [%d], Non-Empty Zone_Cnt=%d, OpenZones_cnt=%d, CleanBlks=%ld(%0.2lf) ",periodCnt, NonEmptyZoneCnt, OpenZoneCnt,CleanCtrl.pagecnt_clean, (double)CleanCtrl.pagecnt_clean/NBLOCK_SSD_CACHE);
         switch(CurEvictModel)
         {
-            case CLEAN_ONLY:    printf("Evict Model=%s\n","CLEAN-ONLY"); break;
-            case HYBRID_ALL:    printf("Evict Model=%s\n","HYBRID_ALL"); break;
-            case HYBRID_OpZone: printf("Evict Model=%s\n","HYBRID_OPZ"); break;
+        case CLEAN_ONLY:
+            printf("Evict Model=%s\n","CLEAN-ONLY");
+            break;
+        case HYBRID_ALL:
+            printf("Evict Model=%s\n","HYBRID_ALL");
+            break;
+        case HYBRID_OpZone:
+            printf("Evict Model=%s\n","HYBRID_OPZ");
+            break;
 
         }
     }
 
     /**3. Evict Phase **/
-    StrategyDesp_pore * evitedDesp;
-    StrategyDesp_pore * cleanDesp, * dirtyDesp;
-    ZoneCtrl* evictZone = ZoneCtrlArray + OpenZoneSet[CurEvictZoneSeq];
-
     if(CurEvictModel == CLEAN_ONLY)
     {
         if(CleanCtrl.pagecnt_clean <= 0)
             goto NEWPERIOD;
-            //return -1;
+        //return -1;
         goto EVICT_CLEAN;
     }
     else if(CurEvictModel == HYBRID_OpZone || CurEvictModel == HYBRID_ALL)
     {
-        dirtyDesp = GlobalDespArray + evictZone->tail;
-        if (isWholeZone)
+        if(Progress_Dirty > 0)
             goto EVICT_DIRTYZONE;
+        //else
 
+        if(CurEvictZoneSeq < 0) // first time to compare time stamp of dirty and clean block.
+        {
+            CurEvictZoneSeq = get_FrozenOpZone_Seq();
+            if(CurEvictZoneSeq < 0)
+            {
+                error("errorcode:P01\n");
+                exit(-1);
+            }
+        }
 
+        // Compare time stamp;
+        StrategyDesp_pore * cleanDesp, * dirtyDesp;
+        ZoneCtrl* evictZone = ZoneCtrlArray + OpenZoneSet[CurEvictZoneSeq];
+        dirtyDesp = GlobalDespArray + evictZone->tail;
         if(CleanCtrl.pagecnt_clean <= 0)
         {
-            isWholeZone = 1;
             goto EVICT_DIRTYZONE;
         }
         else
@@ -275,10 +299,7 @@ NEWPERIOD:
         if(random_choose(cleanDesp->stamp, dirtyDesp->stamp, StampGlobal))
             goto EVICT_CLEAN;
         else
-        {
-            isWholeZone = 1;
             goto EVICT_DIRTYZONE;
-        }
     }
     else
     {
@@ -286,41 +307,39 @@ NEWPERIOD:
     }
 
 EVICT_CLEAN:
-    cleanDesp = GlobalDespArray + CleanCtrl.tail;
+    Progress_Clean ++;
+    StrategyDesp_pore * cleanDesp = GlobalDespArray + CleanCtrl.tail;
     unloadfromCleanArray(cleanDesp);
     CleanCtrl.pagecnt_clean--;
 
     evict_clean_cnt++;
-    evitedDesp = cleanDesp;
-    goto EVICT_RETURN;
+    out_despid_array[0] = cleanDesp->serial_id;
+    clearDesp(cleanDesp);
+    return 1;
 
 EVICT_DIRTYZONE:
-    unloadfromZone(dirtyDesp,evictZone);
-    evictZone->pagecnt_dirty--;
-    evictZone->heat -= dirtyDesp->heat;
+    CurEvictZoneSeq = get_FrozenOpZone_Seq();
+    if(CurEvictZoneSeq < 0)
+        goto NEWPERIOD;
 
-    evict_dirty_cnt++;
-    evitedDesp = dirtyDesp;
+    ZoneCtrl* evictZone = ZoneCtrlArray + OpenZoneSet[CurEvictZoneSeq];
 
-    //if( evictZone->head < 0 || curZone_evict_cnt >= ZONEBLKSZ)
-    if(evictZone->pagecnt_dirty <= 0)
+    int k = 0; // batch cache out
+    while(k < EVICT_DITRY_GRAIN && evictZone->pagecnt_dirty > 0)
     {
-        /* While finish to cache out whole zone, Cache out next Open Zone or restart new period. */
-        isWholeZone = 0;
-        if(CurEvictZoneSeq < OpenZoneCnt -1)
-        {
-            CurEvictZoneSeq++;
-            //curZone_evict_cnt = 0;
-        }
-        else
-            PeriodProgress = PeriodLenth + 1; // restart
-    }
-    goto EVICT_RETURN;
+        Progress_Dirty ++;
+        StrategyDesp_pore* frozenDesp = GlobalDespArray + evictZone->tail;
 
-EVICT_RETURN:
-    PeriodProgress++;
-    clearDesp(evitedDesp);
-    return evitedDesp->serial_id;
+        unloadfromZone(frozenDesp,evictZone);
+        evictZone->pagecnt_dirty--;
+        evictZone->heat -= frozenDesp->heat;
+        evict_dirty_cnt++;
+        out_despid_array[k] = frozenDesp->serial_id;
+        clearDesp(frozenDesp);
+        k++;
+    }
+    printf("pore+V2: batch flush dirty cnt [%d] from zone[%lu]\n", k,evictZone->zoneId);
+    return k;
 }
 
 /****************
@@ -559,13 +578,39 @@ static int
 random_choose(long stampA, long stampB, long maxStamp)
 {
 //    srand((unsigned int)time(0));
- //   long ran = random(1000);
+//   long ran = random(1000);
 
-   // double weightA = (double)(maxStamp - stampA + 1) / (2*maxStamp - stampA - stampB + 2);
+    // double weightA = (double)(maxStamp - stampA + 1) / (2*maxStamp - stampA - stampB + 2);
 
-   // if(ran < 1000 * weightA)
-   //     return 1;
-   // else
-   //     return 0;
-   return (stampA > stampB) ? 0 : 1;
+    // if(ran < 1000 * weightA)
+    //     return 1;
+    // else
+    //     return 0;
+    return (stampA > stampB) ? 0 : 1;
+}
+
+static int
+get_FrozenOpZone_Seq()
+{
+    int seq = 0;
+    long frozenSeq = -1;
+    long frozenStamp = StampGlobal;
+    while(seq < OpenZoneCnt)
+    {
+        ZoneCtrl* ctrl = ZoneCtrlArray + OpenZoneSet[seq];
+        if(ctrl->pagecnt_dirty <= 0){
+            seq ++;
+            continue;
+        }
+
+        StrategyDesp_pore* tail = GlobalDespArray + ctrl->tail;
+        if(tail->stamp < frozenStamp)
+        {
+            frozenStamp = tail->stamp;
+            frozenSeq = seq;
+        }
+        seq ++;
+    }
+
+    return frozenSeq;
 }

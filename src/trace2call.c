@@ -30,7 +30,7 @@ extern microsecond_t    msec_r_hdd,msec_w_hdd,msec_r_ssd,msec_w_ssd;
 extern int IsHit;
 char logbuf[512];
 
- 
+
 void
 trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
 {
@@ -67,7 +67,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     _TimerLap(&tv_trace_start);
     static int req_cnt = 0;
 
-    while (!feof(trace))
+    while (!feof(trace))//&& STT->reqcnt_s < 84340000)
     {
 
         //        if(feof(trace))
@@ -160,6 +160,8 @@ static void reportCurInfo()
     printf(" total run time (s) : %lf\n time_read_ssd : %lf\n time_write_ssd : %lf\n time_read_smr : %lf\n time_write_smr : %lf\n",
            time_trace, STT->time_read_ssd, STT->time_write_ssd, STT->time_read_hdd, STT->time_write_hdd);
     printf("Batch flush HDD time:%lu\n",msec_bw_hdd);
+
+    printf(" wt_hit_rd: %lu\n rd_hit_wt: %lu\n",STT->wt_hit_rd, STT->rd_hit_wt);
 }
 
 static void report_ontime()
@@ -176,9 +178,9 @@ static void report_ontime()
 static void resetStatics()
 {
 
-    STT->hitnum_s = 0;
-    STT->hitnum_r = 0;
-    STT->hitnum_w = 0;
+//    STT->hitnum_s = 0;
+//    STT->hitnum_r = 0;
+//    STT->hitnum_w = 0;
     STT->load_ssd_blocks = 0;
     STT->flush_ssd_blocks = 0;
     STT->load_hdd_blocks = 0;

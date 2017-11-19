@@ -47,7 +47,9 @@ struct RuntimeSTAT
     blksize_t hashmiss_sum;
     blksize_t hashmiss_read;
     blksize_t hashmiss_write;
-    
+
+    blkcnt_t wt_hit_rd, rd_hit_wt;
+
     /* simulator */
     double wtrAmp_cur;
 };
@@ -72,7 +74,8 @@ typedef enum
     LRU_private,
 //    LRU_batch,
     PORE,
-    PORE_PLUS
+    PORE_PLUS,
+    PORE_PLUS_V2
 }SSDEvictionStrategy;
 
 /** This user basic info */

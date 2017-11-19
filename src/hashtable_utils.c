@@ -73,6 +73,8 @@ long HashTab_Insert(SSDBufTag ssd_buf_tag, unsigned long hash_code, long desp_se
         printf("[INFO] Insert buf_tag: %lu\n",ssd_buf_tag.offset);
 
     insertCnt++;
+    //printf("hashitem alloc times:%d\n",insertCnt);
+
     SSDBufHashBucket *nowbucket = GetSSDBufHashBucket(hash_code);
     if(nowbucket == NULL)
     {
@@ -102,7 +104,10 @@ long HashTab_Delete(SSDBufTag ssd_buf_tag, unsigned long hash_code)
 {
     if (DEBUG)
         printf("[INFO] Delete buf_tag: %lu\n",ssd_buf_tag.offset);
+
     deleteCnt++;
+    //printf("hashitem free times:%d\n",deleteCnt++);
+
     long del_id;
     SSDBufHashBucket *delitem;
     SSDBufHashBucket *nowbucket = GetSSDBufHashBucket(hash_code);

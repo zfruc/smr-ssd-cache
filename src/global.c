@@ -12,7 +12,7 @@ long PeriodLenth;
 unsigned long Param1;
 unsigned long Param2;
 
-/** All users basic setup **/
+/** All users basic setup **/           /** NEED TO BE '#DEFINE' **/
 blksize_t NBLOCK_SSD_CACHE;
 blksize_t NTABLE_SSD_CACHE;
 blksize_t SSD_BUFFER_SIZE = 4096;

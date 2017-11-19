@@ -328,9 +328,10 @@ flushFIFO()
 
     /* read whole band from smr to buffer*/
     _TimerLap(&tv_start);
-    if((returnCode = DISK_READ(fd_smr_part, BandBuffer, band_size,band_offset)) != band_size)
+    returnCode = DISK_READ(fd_smr_part, BandBuffer, band_size, band_offset);
+    if((returnCode) != band_size)
     {
-        printf("[ERROR] flushSSD():---------read from smr: fd=%d, errorcode=%d, offset=%lu\n", fd_smr_part, returnCode, band_offset);
+        printf("[ERROR] flushFIFO():---------read from smr: fd=%d, errorcode=%d, offset=%lu\n", fd_smr_part, returnCode, band_offset);
         exit(-1);
     }
     _TimerLap(&tv_stop);
@@ -340,7 +341,7 @@ flushFIFO()
     /* temp persistence whole band from buffer to smr*/
     if(DISK_WRITE(fd_fifo_part,BandBuffer,band_size,OFF_BAND_TMP_PERSISIT) != band_size && fsync(fd_fifo_part) < 0)
     {
-        printf("[ERROR] flushSSD():-------- temp persistence band: fd=%d, errorcode=%d, offset=%lu\n", fd_smr_part, returnCode, band_offset);
+        printf("[ERROR] flushFIFO():-------- temp persistence band: fd=%d, errorcode=%d, offset=%lu\n", fd_smr_part, returnCode, band_offset);
         exit(-1);
     }
 
@@ -377,7 +378,7 @@ flushFIFO()
             returnCode = DISK_READ(fd_fifo_part, BandBuffer + offset_inband * BLCKSZ, BLCKSZ, curPos * BLCKSZ + OFF_FIFO);
             if (returnCode < 0)
             {
-                printf("[ERROR] flushSSD():-------read from inner ssd: fd=%d, errorcode=%d, offset=%lu\n", fd_fifo_part, returnCode, curPos * BLCKSZ);
+                printf("[ERROR] flushFIFO():-------read from inner ssd: fd=%d, errorcode=%d, offset=%lu\n", fd_fifo_part, returnCode, curPos * BLCKSZ);
                 exit(-1);
             }
             _TimerLap(&tv_stop);
@@ -426,7 +427,7 @@ printf("end aio\n",++cnt);
     returnCode = DISK_WRITE(fd_smr_part, BandBuffer, band_size, band_offset);
     if (returnCode < 0)
     {
-        printf("[ERROR] flushSSD():-------write to smr: fd=%d, errorcode=%d, offset=%lu\n", fd_smr_part, returnCode, band_offset);
+        printf("[ERROR] flushFIFO():-------write to smr: fd=%d, errorcode=%d, offset=%lu\n", fd_smr_part, returnCode, band_offset);
         exit(-1);
     }
     _TimerLap(&tv_stop);
@@ -434,7 +435,7 @@ printf("end aio\n",++cnt);
     simu_time_write_smr += TimerInterval_SECOND(&tv_start,&tv_stop);
     simu_flush_bands++;
     simu_flush_band_size += band_size;
-    
+
     wtrAmp = (double)band_size / (dirty_n_inBand * BLCKSZ);
     STT->wtrAmp_cur = wtrAmp;
 

@@ -80,7 +80,7 @@ main(int argc, char** argv)
         StartLBA = atol(argv[5]);
         NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = atol(argv[6]);
         NBLOCK_SMR_FIFO = atol(argv[7]);
-        EvictStrategy = (atoi(argv[8]) == 0)? PORE_PLUS  : LRU_private;//PORE;
+        EvictStrategy = (atoi(argv[8]) == 0)? PORE_PLUS_V2  : LRU_private;//PORE;
     	PeriodLenth = atoi(argv[9]) * ZONESZ / 4096;
         //EvictStrategy = PORE_PLUS;
     }
@@ -120,12 +120,13 @@ main(int argc, char** argv)
         printf("[ERROR] initSSD: fail to create thread: %s\n", strerror(err));
         exit(-1);
     }
-#endif // DAEMON 
+#endif // DAEMON
     trace_to_iocall(tracefile[TraceId],WriteOnly,StartLBA);
 
 #ifdef SIMULATION
     PrintSimulatorStatistic();
-#endif    close(hdd_fd);
+#endif
+    close(hdd_fd);
     close(ssd_fd);
     //CloseLogFile();
 
@@ -136,7 +137,8 @@ int initRuntimeInfo()
 {
     char str_STT[50];
     sprintf(str_STT,"STAT_b%d_u%d_t%d",BatchId,UserId,TraceId);
-    if((STT = (struct RuntimeSTAT*)multi_SHM_alloc(str_STT,sizeof(struct RuntimeSTAT))) == NULL)
+    STT = (struct RuntimeSTAT*)multi_SHM_alloc(str_STT,sizeof(struct RuntimeSTAT));
+    if(STT == NULL)
         return errno;
 
     STT->batchId = BatchId;
@@ -156,6 +158,7 @@ int init_cgdev()
     sprintf(ram_device,"/mnt/ramdisk/ramdisk_%d",STT->userId);
     ram_fd = open(ram_device,O_RDWR | O_DIRECT);
     printf("fdram=%d\n",ram_fd);
+    return ram_fd;
 }
 
 
