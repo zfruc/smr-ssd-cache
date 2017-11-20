@@ -36,13 +36,13 @@ typedef struct WDBucket
 } WDBucket;
 
 static WDBucket * WDBucketPool, * WDBucket_Top;
-static int WDPush_Bucket();
-static WDBucket * WDPop_Bucket();
+static int          push_WDBucket();
+static WDBucket *   pop_WDBucket();
 
 static WDBucket ** HashIndex;
-static blkcnt_t hashGet_WDItemId(off_t key);
-static int      hashInsert_WDItem(WDItem * item);
-static int      hashRemove_WDItem(WDItem * item);
+static blkcnt_t indexGet_WDItemId(off_t key);
+static int      indexInsert_WDItem(hashkey_t key, hashvalue_t value);
+static int      indexRemove_WDItem(hashkey_t key);
 #define HashMap_KeytoValue(key) ((key / BLCKSZ) % WindowSize)
 
 /** MAIN FUNCTIONS **/
@@ -80,7 +80,25 @@ int CM_CHOOSE()
     return 0;
 }
 
-/** Utilities **/
+/** Utilities of the Window Array**/
+static int insertWDItem(off_t offset, unsigned flag)
+{
+    if(IsFull_WDArray())
+    {
+        /* Clean all the information related to the oldest block(the head block)  */
+    }
+
+    WDItem* tail = WindowArray + WDArray_Tail;
+    tail->blk_offset = offset;
+    tail->flag = flag;
+    tail->isCallBack = 0;
+    WDArray_Tail = (WDArray_Tail + 1) % WindowSize;
+
+
+}
+
+
+/** Utilities of Hash Index **/
 static int push_WDBucket(WDBucket * freeBucket)
 {
     freeBucket->next = WDBucket_Top;
@@ -96,30 +114,7 @@ static WDBucket * pop_WDBucket()
     return bucket;
 }
 
-static regIndex(off_t key)
-{
-    WDBucket * bucket = pop_WDBucket();
-}
-
-static int insertItem(off_t offset, unsigned flag)
-{
-    if(IsFull_WDArray())
-    {
-        /* clean the oldest block(the head block) information */
-    }
-
-    WDItem* tail = WindowArray + WDArray_Tail;
-    tail->blk_offset = offset;
-    tail->flag = flag;
-    tail->isCallBack = 0;
-    WDArray_Tail = (WDArray_Tail + 1) % WindowSize;
-
-
-}
-
-
-/** Utilities of hash index **/
-static blkcnt_t hashGet_WDItemId(hashkey_t key)
+static blkcnt_t indexGet_WDItemId(hashkey_t key)
 {
     blkcnt_t hashcode = HashMap_KeytoValue(key);
     WDBucket * bucket = HashIndex[hashcode];
@@ -135,7 +130,7 @@ static blkcnt_t hashGet_WDItemId(hashkey_t key)
     return -1;
 }
 
-static int hashInsert_WDItem(hashkey_t key, hashvalue_t value)
+static int indexInsert_WDItem(hashkey_t key, hashvalue_t value)
 {
     WDBucket* newBucket = pop_WDBucket();
     newBucket->key = key;
@@ -154,7 +149,7 @@ static int hashInsert_WDItem(hashkey_t key, hashvalue_t value)
     return 0;
 }
 
-static int hashRemove_WDItem(hashkey_t key)
+static int indexRemove_WDItem(hashkey_t key)
 {
     blkcnt_t hashcode = HashMap_KeytoValue(key);
     WDBucket * bucket = HashIndex[hashcode];
@@ -165,6 +160,7 @@ static int hashRemove_WDItem(hashkey_t key)
         exit(-1);
     }
 
+    // if is the first bucket
     if(bucket->key == key)
     {
         HashIndex[hashcode] = bucket->next;
@@ -172,6 +168,7 @@ static int hashRemove_WDItem(hashkey_t key)
         return 0;
     }
 
+    // else
     WDBucket * next_bucket = bucket->next;
     while(next_bucket != NULL)
     {
@@ -184,7 +181,7 @@ static int hashRemove_WDItem(hashkey_t key)
         next_bucket = bucket->next;
     }
 
-        error("[CostModel]: Trying to remove unexisted hash index!\n");
-        exit(-1);
+    error("[CostModel]: Trying to remove unexisted hash index!\n");
+    exit(-1);
 }
 
