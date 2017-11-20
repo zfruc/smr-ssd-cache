@@ -102,7 +102,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         if (action == ACT_WRITE) // Write = 1
         {
             STT->reqcnt_w++;
-            write_block(offset, ssd_buffer);
+            //write_block(offset, ssd_buffer);
         }
         else if (!isWriteOnly && action == ACT_READ)    // read = 9
         {
