@@ -15,6 +15,8 @@
 #include "shmlib.h"
 #include "report.h"
 
+#include "costmodel.h"
+
 SSDBufDespCtrl*     ssd_buf_desp_ctrl;
 SSDBufDesp*         ssd_buf_desps;
 
@@ -65,9 +67,12 @@ initSSD()
     int r_initstrategybuf   =   initStrategySSDBuffer();
     int r_initbuftb         =   HashTab_Init();
     int r_initstt           =   init_StatisticObj();
-    printf("init_Strategy: %d, init_table: %d, init_desp: %d, inti_Stt: %d\n",r_initstrategybuf, r_initbuftb, r_initdesp, r_initstt);
+    int r_initCostModel     =   CM_Init(NBLOCK_SSD_CACHE);
 
-    if(r_initdesp==-1 || r_initstrategybuf==-1 || r_initbuftb==-1 || r_initstt==-1)
+    printf("init_Strategy: %d, init_table: %d, init_desp: %d, inti_Stt: %d, init_COstModel: %d\n",
+           r_initstrategybuf, r_initbuftb, r_initdesp, r_initstt, r_initCostModel);
+
+    if(r_initdesp==-1 || r_initstrategybuf==-1 || r_initbuftb==-1 || r_initstt==-1 || r_initCostModel == -1)
         exit(-1);
     int returnCode;
     returnCode = posix_memalign(&ssd_buffer, 512, sizeof(char) * BLCKSZ);
@@ -143,6 +148,7 @@ flushSSDBuffer(SSDBufDesp * ssd_buf_hdr)
     if ((ssd_buf_hdr->ssd_buf_flag & SSD_BUF_DIRTY) == 0)
     {
         STT->flush_clean_blocks++;
+        CM_Reg_EvictBlk(ssd_buf_hdr->ssd_buf_tag, ssd_buf_hdr->ssd_buf_flag, 0);
         return;
     }
 
@@ -158,6 +164,9 @@ flushSSDBuffer(SSDBufDesp * ssd_buf_hdr)
     msec_w_hdd = TimerInterval_MICRO(&tv_start,&tv_stop);
     STT->time_write_hdd += Mirco2Sec(msec_w_hdd);
     STT->flush_hdd_blocks++;
+
+    CM_Reg_EvictBlk(ssd_buf_hdr->ssd_buf_tag, ssd_buf_hdr->ssd_buf_flag, msec_w_hdd);
+
 }
 
 int ResizeCacheUsage()
@@ -241,6 +250,7 @@ allocSSDBuf(SSDBufTag ssd_buf_tag, bool * found, int alloc4What)
 
     /* Cache MISS */
     *found = 0;
+    CM_TryCallBack(ssd_buf_tag);
 
     _LOCK(&ssd_buf_desp_ctrl->lock);
     ssd_buf_hdr = pop_freebuf();
@@ -430,6 +440,7 @@ read_block(off_t offset, char *ssd_buffer)
         msec_r_hdd = TimerInterval_MICRO(&tv_start,&tv_stop);
         STT->time_read_hdd += Mirco2Sec(msec_r_hdd);
         STT->load_hdd_blocks++;
+        CM_T_rand_Reg(msec_r_hdd);
 
         dev_pwrite(ssd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_id * SSD_BUFFER_SIZE);
         msec_w_ssd = TimerInterval_MICRO(&tv_start,&tv_stop);

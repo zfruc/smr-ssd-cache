@@ -6,8 +6,8 @@
 
 #endif // _PORE_H
 
-#ifndef _PORE_PLUS_H_
-#define _PORE_PLUS_H_
+#ifndef _PORE_PLUS_V2_H_
+#define _PORE_PLUS_V2_H_
 
 
 

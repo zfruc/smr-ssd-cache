@@ -59,7 +59,7 @@ typedef enum
 //    CLOCK = 0,
 //    LRU,
 //    LRUofBand,
-    Most,
+//    Most,
 //    Most_Dirty,
 //    SCAN,
 //    CMR,

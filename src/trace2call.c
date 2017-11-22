@@ -67,7 +67,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     _TimerLap(&tv_trace_start);
     static int req_cnt = 0;
 
-    while (!feof(trace))//&& STT->reqcnt_s < 84340000)
+    while (!feof(trace)&& STT->reqcnt_s < 84340000)
     {
 
         //        if(feof(trace))
@@ -102,7 +102,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         if (action == ACT_WRITE) // Write = 1
         {
             STT->reqcnt_w++;
-            //write_block(offset, ssd_buffer);
+            write_block(offset, ssd_buffer);
         }
         else if (!isWriteOnly && action == ACT_READ)    // read = 9
         {

@@ -5,7 +5,7 @@
 /** configure of system structure **/
 #undef NO_REAL_DISK_IO
 
-#define NO_CACHE
+#undef NO_CACHE
 
 #undef CG_THROTTLE     // CGroup throttle.
 #undef MULTIUSER
@@ -17,7 +17,7 @@
 /** Simulator Related **/
 #undef SIMULATION
 #undef SIMULATOR_AIO
-#define SIMU_NO_DISK_IO
+#undef SIMU_NO_DISK_IO
 
 /** Daemon process **/
 #define DAEMON_PROC
@@ -25,4 +25,4 @@
 #define DAEMON_CACHE_RUNTIME
 #define DAEON_SMR_RUNTIME
 
-#undef PORE_PLUS_V2_BATCH
+#define PORE_PLUS_V2_BATCH

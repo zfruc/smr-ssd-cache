@@ -36,7 +36,7 @@ int  fd_smr_part;
 static FIFOCtrl global_fifo_ctrl;
 static FIFODesc* fifo_desp_array;
 
-char* BandBuffer;
+static char* BandBuffer;
 static blksize_t NSMRBands = 194180;		// smr band cnt = 194180;
 static unsigned long BNDSZ = 36*1024*1024;      // bandsize = 36MB  (18MB~36MB)
 
@@ -108,7 +108,7 @@ void InitSimulator()
         fifo_hdr->isValid = 0;
     }
 
-    posix_memalign(&BandBuffer, 512, sizeof(char) * BNDSZ);
+    posix_memalign(&BandBuffer, 512, sizeof(char) * BNDSZ * 50);
 
     pthread_mutex_init(&simu_smr_fifo_mutex, NULL);
 
