@@ -5,6 +5,8 @@
 #include "costmodel.h"
 
 //#define random(x) (rand()%x)
+#define IsDirty(flag) ( (flag & SSD_BUF_DIRTY) != 0 )
+#define IsClean(flag) ( (flag & SSD_BUF_DIRTY) == 0 )
 
 #define EVICT_DITRY_GRAIN 64 // The grain of once dirty blocks eviction
 
@@ -123,7 +125,7 @@ LogIn_poreplus_v3(long despId, SSDBufTag tag, unsigned flag)
     /* add into chain */
     stamp(myDesp, myZone);
 
-    if((flag & SSD_BUF_DIRTY) != 0)
+    if(IsDirty(flag))
     {
         /* add into Zone LRU as it's dirty tag */
         add2ArrayHead(myDesp, myZone);
@@ -145,7 +147,7 @@ Hit_poreplus_v3(long despId, unsigned flag)
     StrategyDesp_pore* myDesp = GlobalDespArray + despId;
     ZoneCtrl* myZone = ZoneCtrlArray + getZoneNum(myDesp->ssd_buf_tag.offset);
 
-    if((myDesp->flag & SSD_BUF_DIRTY) == 0 && (flag & SSD_BUF_DIRTY) != 0)
+    if (IsClean(myDesp->flag) && IsDirty(flag))
     {
         /* clean --> dirty */
         unloadfromCleanArray(myDesp);
@@ -154,7 +156,7 @@ Hit_poreplus_v3(long despId, unsigned flag)
         CleanCtrl.pagecnt_clean--;
         hit(myDesp,myZone);
     }
-    else if((myDesp->flag & SSD_BUF_DIRTY) == 0 && (flag & SSD_BUF_DIRTY) == 0)
+    else if (IsClean(myDesp->flag) && IsClean(flag))
     {
         /* clean --> clean */
         move2CleanArrayHead(myDesp);

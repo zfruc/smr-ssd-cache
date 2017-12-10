@@ -157,10 +157,11 @@ static void reportCurInfo()
 //    printf(" hash_miss:%lu\n hashmiss_read:%lu\n hashmiss_write:%lu\n",
 //           STT->hashmiss_sum, STT->hashmiss_read, STT->hashmiss_write);
 
-    printf(" total run time (s) : %lf\n time_read_ssd : %lf\n time_write_ssd : %lf\n time_read_smr : %lf\n time_write_smr : %lf\n",
+    printf(" total run time (s): %lf\n time_read_ssd : %lf\n time_write_ssd : %lf\n time_read_smr : %lf\n time_write_smr : %lf\n",
            time_trace, STT->time_read_ssd, STT->time_write_ssd, STT->time_read_hdd, STT->time_write_hdd);
-    printf("Batch flush HDD time:%lu\n",msec_bw_hdd);
+    printf(" Batch flush HDD time:%lu\n",msec_bw_hdd);
 
+    printf(" Cache Proportion(R/W): [%ld/%ld]\n", STT->incache_n_clean,STT->incache_n_dirty);
     printf(" wt_hit_rd: %lu\n rd_hit_wt: %lu\n",STT->wt_hit_rd, STT->rd_hit_wt);
 }
 

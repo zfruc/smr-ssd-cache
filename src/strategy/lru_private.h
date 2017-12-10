@@ -17,6 +17,7 @@ typedef struct
     long        first_self_lru;          // Head of list of LRU
     long        last_self_lru;           // Tail of list of LRU
     pthread_mutex_t lock;
+    blkcnt_t    count;
 } StrategyCtrl_LRU_private;
 
 extern int initSSDBufferFor_LRU_private();

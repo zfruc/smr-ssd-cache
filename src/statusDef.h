@@ -5,10 +5,12 @@
 /** configure of system structure **/
 #define NO_REAL_DISK_IO
 
-#define NO_CACHE
+#undef NO_CACHE
 
 #undef CG_THROTTLE     // CGroup throttle.
 #undef MULTIUSER
+
+#define CACHE_PROPORTIOIN_STATIC
 
 /**< Statistic information requirments defination */
 #undef  LOG_ALLOW
@@ -20,9 +22,9 @@
 #define SIMU_NO_DISK_IO
 
 /** Daemon process **/
-#define DAEMON_PROC
-#define DAEMON_BANDWIDHT
-#define DAEMON_CACHE_RUNTIME
-#define DAEON_SMR_RUNTIME
+#undef DAEMON_PROC
+#undef DAEMON_BANDWIDHT
+#undef DAEMON_CACHE_RUNTIME
+#undef DAEON_SMR_RUNTIME
 
-#define PORE_BATCH
+#undef PORE_BATCH

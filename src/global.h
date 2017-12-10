@@ -49,7 +49,7 @@ struct RuntimeSTAT
     blksize_t hashmiss_write;
 
     blkcnt_t wt_hit_rd, rd_hit_wt;
-
+    blkcnt_t incache_n_clean, incache_n_dirty;
     /* simulator */
     double wtrAmp_cur;
 };
@@ -72,6 +72,7 @@ typedef enum
     /** add for multiuser **/
 //    LRU_global,
     LRU_private,
+    LRU_rw,
 //    LRU_batch,
     PORE,
     PORE_PLUS,

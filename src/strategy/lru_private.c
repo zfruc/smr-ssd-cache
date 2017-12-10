@@ -48,6 +48,7 @@ initSSDBufferFor_LRU_private()
     self_strategy_ctrl = (StrategyCtrl_LRU_private *)malloc(sizeof(StrategyCtrl_LRU_private));
     self_strategy_ctrl->first_self_lru = -1;
     self_strategy_ctrl->last_self_lru = -1;
+
     return stat;
 }
 
@@ -58,12 +59,6 @@ Unload_Buf_LRU_private()
     deleteFromLRU(&strategy_desp[frozen_id]);
 
     return frozen_id;
-}
-
-long
-Unload_Self_Strategy_Buf()
-{
-    return Unload_Buf_LRU_private();
 }
 
 int

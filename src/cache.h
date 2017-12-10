@@ -32,6 +32,9 @@
 
 #define bool    unsigned char
 
+#ifdef CACHE_PROPORTIOIN_STATIC
+extern double Proportion_Dirty;
+#endif // CACHE_PROPORTIOIN_STATIC
 
 typedef struct
 {
