@@ -24,12 +24,15 @@
 #define OFF_FIFO                80*1024*1024
 
 #ifdef SIMU_NO_DISK_IO
-    #define DISK_READ(fd,buf,size,offset) (size)
-    #define DISK_WRITE(fd,buf,size,offset) (size)
+#define DISK_READ(fd,buf,size,offset) (size)
+#define DISK_WRITE(fd,buf,size,offset) (size)
 #else
-    #define DISK_READ(fd,buf,size,offset) (pread(fd,buf,size,offset))
-    #define DISK_WRITE(fd,buf,size,offset) (pwrite(fd,buf,size,offset))
+#define DISK_READ(fd,buf,size,offset) (pread(fd,buf,size,offset))
+#define DISK_WRITE(fd,buf,size,offset) (pwrite(fd,buf,size,offset))
 #endif
+
+/* Default set by configure, fd_fifo_part and fd_smr_part is seperately a partation  of a CMR disk
+ * I set the head 0 to 5G of the disk as the partition 1m for fifo, and the rest part of disk is partiton 2 for smr*/
 int  fd_fifo_part;
 int  fd_smr_part;
 
@@ -284,9 +287,10 @@ invalidDespInFIFO(FIFODesc* desp)
     desp->isValid = 0;
     global_fifo_ctrl.n_used--;
     int isHeadChanged = 0;
-    while(!fifo_desp_array[global_fifo_ctrl.head].isValid && !isFIFOEmpty){
-   	global_fifo_ctrl.head = (global_fifo_ctrl.head + 1) % NBLOCK_SMR_FIFO;
-	isHeadChanged = 1;
+    while(!fifo_desp_array[global_fifo_ctrl.head].isValid && !isFIFOEmpty)
+    {
+        global_fifo_ctrl.head = (global_fifo_ctrl.head + 1) % NBLOCK_SMR_FIFO;
+        isHeadChanged = 1;
     }
     return isHeadChanged;
 }
@@ -390,10 +394,11 @@ flushFIFO()
             ssdtableDelete(curDesp->tag, hash_code);
 
             int isHeadChanged = invalidDespInFIFO(curDesp);
-	    if(isHeadChanged){
-		curPos = global_fifo_ctrl.head;
-		continue;
-	    }
+            if(isHeadChanged)
+            {
+                curPos = global_fifo_ctrl.head;
+                continue;
+            }
         }
         curPos = nextPos;
     }
@@ -401,10 +406,10 @@ flushFIFO()
 #ifdef SIMULATOR_AIO
 #ifndef SIMU_NO_DISK_IO
     _TimerLap(&tv_start);
-static int cnt = 0;
-printf("start aio read [%d]...\n",++cnt);
+    static int cnt = 0;
+    printf("start aio read [%d]...\n",++cnt);
     int ret_aio = lio_listio(LIO_WAIT,aiocb_addr_list,aio_read_cnt,NULL);
-printf("end aio\n",++cnt);
+    printf("end aio\n",++cnt);
     if(ret_aio < 0)
     {
         char log[128];

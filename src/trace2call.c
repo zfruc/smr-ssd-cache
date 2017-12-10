@@ -183,9 +183,6 @@ static void resetStatics()
 //    STT->hitnum_w = 0;
     STT->load_ssd_blocks = 0;
     STT->flush_ssd_blocks = 0;
-    STT->load_hdd_blocks = 0;
-    STT->flush_hdd_blocks = 0;
-    STT->flush_clean_blocks = 0;
 
     STT->time_read_hdd = 0.0;
     STT->time_write_hdd = 0.0;

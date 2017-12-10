@@ -75,7 +75,8 @@ typedef enum
 //    LRU_batch,
     PORE,
     PORE_PLUS,
-    PORE_PLUS_V2
+    PORE_PLUS_V2,
+    PV3
 }SSDEvictionStrategy;
 
 /** This user basic info */

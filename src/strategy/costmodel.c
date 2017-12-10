@@ -10,6 +10,7 @@ static blkcnt_t Evict_Cnt_Clean, Evict_Cnt_Dirty;
 
 /* RELATED PARAMETER OF COST MODEL */
 static double   CC, CD;                 /* Cost of Clean/Dirty blocks. */
+static double   CC_avg, CD_avg;
 static double   PCB_Clean, PCB_Dirty;   /* Possibility of CallBack the clean/dirty blocks */
 static double   WtrAmp;                 /* The write amp of blocks i'm going to evict. */
 
@@ -20,13 +21,18 @@ static double   WtrAmp;                 /* The write amp of blocks i'm going to 
  * T_fifo should be a hardware parameter, but it's inner metadata management can't be seen, so I mearsure it from evicted dirty block.
  * T_avg is the average time cost, which is (dirty evicted time sum / evicted count)
  */
-static int  T_rand, T_fifo, T_avg, T_seq = 40;
+static int  T_rand, T_fifo, T_avg, T_seq = 20;
 static microsecond_t T_rand_sum = 0;
 static microsecond_t T_fifo_sum = 0;
+static microsecond_t T_hitmiss_sum = 0;
+
 static blkcnt_t T_rand_cnt = 0;
+static blkcnt_t T_hitmiss_cnt = 0;
+
 static blkcnt_t T_fifo_cnt = 0;
 static blkcnt_t T_evict_cnt = 0;
 static microsecond_t * t_randcollect;
+static microsecond_t * t_hitmisscollect;
 
 /** The relavant objs of evicted blocks array belonged the current window. **/
 static blkcnt_t WindowSize;
@@ -84,6 +90,7 @@ int CM_Init(blkcnt_t windowSize)
     CallBack_Cnt_Clean = CallBack_Cnt_Dirty = Evict_Cnt_Clean = Evict_Cnt_Dirty = 0;
 
     t_randcollect = (microsecond_t *)malloc(WindowSize * sizeof(microsecond_t));
+    t_hitmisscollect  = (microsecond_t *)malloc(WindowSize * sizeof(microsecond_t));
 
     if(WindowArray == NULL ||WDBucketPool == NULL || HashIndex == NULL || t_randcollect == NULL)
         return -1;
@@ -175,6 +182,7 @@ int CM_TryCallBack(SSDBufTag blktag)
     return 0;
 }
 
+static int DirtyWinTimes = 0, CleanWinTimes = 0;
 /* brief
  * return:
  * 0 : Clean BLock
@@ -185,7 +193,7 @@ int CM_CHOOSE(cm_token token)
     static blkcnt_t counter = 0;
     counter ++ ;
 
-    if(counter % 1000 == 0)
+    if(counter % 100 == 0)
         ReportCM();
     PCB_Clean = (double)CallBack_Cnt_Clean / Evict_Cnt_Clean;
     PCB_Dirty = (double)CallBack_Cnt_Dirty / Evict_Cnt_Dirty;
@@ -194,15 +202,30 @@ int CM_CHOOSE(cm_token token)
     int dirty_cnt = token.will_evict_dirty_blkcnt;
     WtrAmp = token.wtramp;
 
-    T_rand = T_rand_sum / T_rand_cnt;
-    T_fifo = T_fifo_sum / T_fifo_cnt;
-    T_avg = T_fifo_sum / T_evict_cnt;
+    T_rand = T_rand_sum / (T_rand_cnt + 1);
+    T_fifo = T_fifo_sum / (T_fifo_cnt + 1);
+    double t_avg_fifo = T_fifo_sum / T_evict_cnt;
 
-    CC = (0 + PCB_Clean * (T_rand + T_avg)) * clean_cnt;
-    CD = (T_fifo + PCB_Dirty * T_avg + WtrAmp * T_seq) * dirty_cnt;
+    double pcb_all = (double)(PCB_Clean + PCB_Dirty) / (Evict_Cnt_Clean + Evict_Cnt_Dirty);
+    double t_avg_hitmiss =  T_hitmiss_sum / (T_hitmiss_cnt + 1);
+    T_avg = t_avg_fifo + ((pcb_all)/(1-pcb_all)) * t_avg_hitmiss;
 
+    CC = (0 + PCB_Clean * (T_rand + T_avg));
+    CD = (T_fifo + PCB_Dirty * T_avg + WtrAmp * T_seq);
 
-    return CC < CD ? 0 : 1;
+    CC_avg = CC;
+    CD_avg = CD;
+
+    if( CC_avg < CD_avg )
+    {
+        CleanWinTimes ++;
+        return 0;
+    }
+    else
+    {
+        DirtyWinTimes ++;
+        return 1;
+    }
 }
 
 int CM_T_rand_Reg(microsecond_t usetime)
@@ -224,22 +247,42 @@ int CM_T_rand_Reg(microsecond_t usetime)
     return 0;
 }
 
+int CM_T_hitmiss_Reg(microsecond_t usetime)
+{
+    static blkcnt_t head = 0, tail = 0;
+    if(head == (tail + 1) % WindowSize)
+    {
+        // full
+        T_hitmiss_sum -= t_hitmisscollect[head];
+        T_hitmiss_cnt --;
+        head = (head + 1) % WindowSize;
+    }
+
+    T_hitmiss_sum += usetime;
+    T_hitmiss_cnt ++;
+    t_hitmisscollect[tail] = usetime;
+    tail = (tail + 1) % WindowSize;
+
+    return 0;
+}
+
 void ReportCM()
 {
     printf("---------- Cost Model Runtime Report ----------\n");
-    printf("current evited block count: clean / dirty:");
-    printf("%ld / %ld\n", Evict_Cnt_Clean, Evict_Cnt_Dirty);
+    printf("Count C / D:\t");
+    printf("[%ld / %ld]\n", Evict_Cnt_Clean, Evict_Cnt_Dirty);
 
-    printf("current possibility of call-back: clean / dirty:\n");
-    printf("%.2f\% / %.2f\%\n", PCB_Clean*100, PCB_Dirty*100);
+    printf("PCB C / D:\t");
+    printf("[%.2f\% / %.2f\%]\n", PCB_Clean*100, PCB_Dirty*100);
 
-    printf("T_rand,\tT_fifo,\tT_avg,\tT_seq\n");
-    printf("%d,\t%d,\t%d,\t%d\n", T_rand, T_fifo, T_avg, T_seq);
+    printf("T_rand,\tT_fifo,\tT_avg,\tT_seq:\t");
+    printf("[%d,%d,%d,%d]\n", T_rand, T_fifo, T_avg, T_seq);
 
-    printf("Cost of evict clean blocks (0 + PCB_Clean * (T_rand + T_avg))\n");
-    printf("%.2f * clean_cnt\n", PCB_Clean * (T_rand + T_avg));
-    printf("Cost of evict dirty blocks ((T_fifo + PCB_Dirty * T_avg + WtrAmp * T_seq) * dirty_cnt)\n");
-    printf("%.2f * dirty_cnt\n", T_fifo + PCB_Dirty * T_avg + WtrAmp * T_seq);
+    printf("WrtAmp:\t[%.2f]\n", WtrAmp);
+    printf("Whole Cost C / D:\t[%.2f / %.2f]\n", PCB_Clean * (T_rand + T_avg), T_fifo + PCB_Dirty * T_avg + WtrAmp * T_seq);
+    printf("Effict Cost C / D:\t[%.2f / %.2f]\n", CC_avg, CD_avg);
+
+    printf("Win Times C / D:\t[%d / %d]\n",CleanWinTimes, DirtyWinTimes);
 
 }
 /** Utilities of Hash Index **/
@@ -276,10 +319,6 @@ static blkcnt_t indexGet_WDItemId(hashkey_t key)
 
 static int indexInsert_WDItem(hashkey_t key, hashvalue_t value)
 {
-    if(key == 140735284549392)
-    {
-        int a = 1;
-    }
     WDBucket* newBucket = pop_WDBucket();
     newBucket->key = key;
     newBucket->itemId = value;

@@ -71,7 +71,7 @@ main(int argc, char** argv)
 
 // 1 1 1 0 0 100000 100000
 // 1 1 0 0 0 100000 100000
-    if(argc == 10)
+    if (argc == 10)
     {
         BatchId = atoi(argv[1]);
         UserId = atoi(argv[2]);

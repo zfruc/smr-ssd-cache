@@ -19,7 +19,7 @@ extern int CM_Reg_EvictBlk(SSDBufTag blktag, unsigned flag, microsecond_t usetim
 extern int CM_TryCallBack(SSDBufTag blktag);
 
 extern int CM_T_rand_Reg(microsecond_t usetime);
-
+extern int CM_T_hitmiss_Reg(microsecond_t usetime);
 /** Calling for Strategy **/
 extern int CM_CHOOSE(cm_token token);
 extern void ReportCM();

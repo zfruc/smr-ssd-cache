@@ -3,9 +3,9 @@
  * All the switch is turn-off by default.
  */
 /** configure of system structure **/
-#undef NO_REAL_DISK_IO
+#define NO_REAL_DISK_IO
 
-#undef NO_CACHE
+#define NO_CACHE
 
 #undef CG_THROTTLE     // CGroup throttle.
 #undef MULTIUSER
@@ -15,9 +15,9 @@
 #undef  LOG_SINGLE_REQ  // Print detail time information of each single request.
 
 /** Simulator Related **/
-#undef SIMULATION
+#define SIMULATION
 #undef SIMULATOR_AIO
-#undef SIMU_NO_DISK_IO
+#define SIMU_NO_DISK_IO
 
 /** Daemon process **/
 #define DAEMON_PROC
@@ -25,4 +25,4 @@
 #define DAEMON_CACHE_RUNTIME
 #define DAEON_SMR_RUNTIME
 
-#define PORE_PLUS_V2_BATCH
+#define PORE_BATCH

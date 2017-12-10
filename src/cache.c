@@ -24,7 +24,7 @@ SSDBufDesp*         ssd_buf_desps;
 static int          init_SSDDescriptorBuffer();
 static int          init_StatisticObj();
 static void         flushSSDBuffer(SSDBufDesp * ssd_buf_hdr);
-static SSDBufDesp*  allocSSDBuf(SSDBufTag ssd_buf_tag, bool * found, int alloc4What);
+static SSDBufDesp*  allocSSDBuf(SSDBufTag ssd_buf_tag, bool * found, int alloc4What, int * isCallBack);
 static SSDBufDesp*  pop_freebuf();
 static int          push_freebuf(SSDBufDesp* freeDesp);
 
@@ -41,7 +41,7 @@ void                _UNLOCK(pthread_mutex_t* lock);
 /* stopwatch */
 static timeval tv_start, tv_stop;
 static timeval tv_bastart, tv_bastop;
-
+static timeval tv_cmstart, tv_cmstop;
 int IsHit;
 microsecond_t msec_r_hdd,msec_w_hdd,msec_r_ssd,msec_w_ssd,msec_bw_hdd=0;
 
@@ -165,7 +165,7 @@ flushSSDBuffer(SSDBufDesp * ssd_buf_hdr)
     STT->time_write_hdd += Mirco2Sec(msec_w_hdd);
     STT->flush_hdd_blocks++;
 
-    CM_Reg_EvictBlk(ssd_buf_hdr->ssd_buf_tag, ssd_buf_hdr->ssd_buf_flag, msec_w_hdd);
+    CM_Reg_EvictBlk(ssd_buf_hdr->ssd_buf_tag, ssd_buf_hdr->ssd_buf_flag, msec_w_hdd + msec_r_ssd);
 
 }
 
@@ -208,7 +208,7 @@ static void flagOp(SSDBufDesp * ssd_buf_hdr, int opType)
 }
 
 static SSDBufDesp*
-allocSSDBuf(SSDBufTag ssd_buf_tag, bool * found, int alloc4What)
+allocSSDBuf(SSDBufTag ssd_buf_tag, bool * found, int alloc4What, int * isCallBack)
 {
     /* Lookup if already cached. */
     SSDBufDesp      *ssd_buf_hdr; //returned value.
@@ -250,7 +250,7 @@ allocSSDBuf(SSDBufTag ssd_buf_tag, bool * found, int alloc4What)
 
     /* Cache MISS */
     *found = 0;
-    CM_TryCallBack(ssd_buf_tag);
+    *isCallBack = CM_TryCallBack(ssd_buf_tag);
 
     _LOCK(&ssd_buf_desp_ctrl->lock);
     ssd_buf_hdr = pop_freebuf();
@@ -265,11 +265,17 @@ allocSSDBuf(SSDBufTag ssd_buf_tag, bool * found, int alloc4What)
     {
         /** When there is NO free SSD space for cache **/
         // TODO Choose a buffer by strategy/
-#ifdef PORE_PLUS_V2_BATCH
+#ifdef PORE_BATCH
 
         static int max_n_batch = 8192;
         long buf_despid_array[max_n_batch];
-        int n_evict =  LogOut_poreplus_v2(buf_despid_array,max_n_batch);
+        int n_evict;
+        switch (EvictStrategy)
+        {
+            case PORE_PLUS_V2 : n_evict = LogOut_poreplus_v2(buf_despid_array, max_n_batch); break;
+            case PV3 : n_evict = LogOut_poreplus_v3(buf_despid_array, max_n_batch); break;
+        }
+
         int k = 0;
         while(k < n_evict)
         {
@@ -302,7 +308,7 @@ allocSSDBuf(SSDBufTag ssd_buf_tag, bool * found, int alloc4What)
         flushSSDBuffer(ssd_buf_hdr);
         ssd_buf_hdr->ssd_buf_flag &= ~(SSD_BUF_VALID | SSD_BUF_DIRTY);
 
-#endif // _LRU_BATCH_H_
+#endif // PORE_BATCH
 
     }
     flagOp(ssd_buf_hdr,alloc4What);
@@ -328,6 +334,8 @@ initStrategySSDBuffer()
         return InitPORE_plus();
     case PORE_PLUS_V2:
         return Init_poreplus_v2();
+    case PV3:
+        return Init_poreplus_v3();
     }
     return -1;
 }
@@ -347,6 +355,8 @@ Strategy_Desp_LogOut()
     case PORE_PLUS:
         return LogOutDesp_pore_plus();
     case PORE_PLUS_V2:
+        error("PORE_PLUS_V2 wrong time function revoke\n");
+    case PV3:
         error("PORE_PLUS_V2 wrong time function revoke\n");
     }
     return -1;
@@ -368,6 +378,8 @@ Strategy_Desp_HitIn(SSDBufDesp* desp)
         return HitPoreBuffer_plus(desp->serial_id, desp->ssd_buf_flag);
     case PORE_PLUS_V2:
         return Hit_poreplus_v2(desp->serial_id, desp->ssd_buf_flag);
+    case PV3:
+        return Hit_poreplus_v3(desp->serial_id, desp->ssd_buf_flag);
     }
     return -1;
 }
@@ -389,6 +401,8 @@ Strategy_Desp_LogIn(SSDBufDesp* desp)
         return LogInPoreBuffer_plus(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
     case PORE_PLUS_V2:
         return LogIn_poreplus_v2(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
+    case PV3:
+        return LogIn_poreplus_v3(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
     }
     return -1;
 }
@@ -410,7 +424,9 @@ read_block(off_t offset, char *ssd_buffer)
     STT->load_hdd_blocks++;
     return;
 #else
+    _TimerLap(&tv_cmstart);
     bool found = 0;
+    int isCallBack;
     static SSDBufTag ssd_buf_tag;
     static SSDBufDesp* ssd_buf_hdr;
 
@@ -418,7 +434,7 @@ read_block(off_t offset, char *ssd_buffer)
     if (DEBUG)
         printf("[INFO] read():-------offset=%lu\n", offset);
 
-    ssd_buf_hdr = allocSSDBuf(ssd_buf_tag, &found, 0);
+    ssd_buf_hdr = allocSSDBuf(ssd_buf_tag, &found, 0, &isCallBack);
 
     IsHit = found;
     if (found)
@@ -440,12 +456,22 @@ read_block(off_t offset, char *ssd_buffer)
         msec_r_hdd = TimerInterval_MICRO(&tv_start,&tv_stop);
         STT->time_read_hdd += Mirco2Sec(msec_r_hdd);
         STT->load_hdd_blocks++;
-        CM_T_rand_Reg(msec_r_hdd);
+        /* ----- Cost Model Reg------------- */
+        if(isCallBack)
+        {
+            CM_T_rand_Reg(msec_r_hdd);
+            _TimerLap(&tv_cmstop);
+            microsecond_t miss_usetime = TimerInterval_MICRO(&tv_cmstart, &tv_cmstop);
+            CM_T_hitmiss_Reg(miss_usetime);
+        }
+
+        /* ------------------ */
 
         dev_pwrite(ssd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_id * SSD_BUFFER_SIZE);
         msec_w_ssd = TimerInterval_MICRO(&tv_start,&tv_stop);
         STT->time_write_ssd += Mirco2Sec(msec_w_ssd);
         STT->flush_ssd_blocks++;
+
     }
     ssd_buf_hdr->ssd_buf_flag &= ~SSD_BUF_DIRTY;
     ssd_buf_hdr->ssd_buf_flag |= SSD_BUF_VALID;
@@ -473,16 +499,27 @@ write_block(off_t offset, char *ssd_buffer)
     STT->flush_hdd_blocks++;
     return;
 #else
+    _TimerLap(&tv_cmstop);
     bool	found;
-
+    int isCallBack;
     static SSDBufTag ssd_buf_tag;
     static SSDBufDesp   *ssd_buf_hdr;
 
     ssd_buf_tag.offset = offset;
-    ssd_buf_hdr = allocSSDBuf(ssd_buf_tag, &found, 1);
+    ssd_buf_hdr = allocSSDBuf(ssd_buf_tag, &found, 1, &isCallBack);
+
+    if(!found && isCallBack)
+    {
+        /* ----- Cost Model Reg------------- */
+        _TimerLap(&tv_cmstop);
+        microsecond_t miss_usetime = TimerInterval_MICRO(&tv_cmstart, &tv_cmstop);
+        CM_T_hitmiss_Reg(miss_usetime);
+        /* ------------------ */
+    }
+
 
     IsHit = found;
-    STT->hitnum_w += found;
+    STT->hitnum_w += IsHit;
 
     dev_pwrite(ssd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_id * SSD_BUFFER_SIZE);
     msec_w_ssd = TimerInterval_MICRO(&tv_start,&tv_stop);
