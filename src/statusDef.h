@@ -10,10 +10,10 @@
 #undef CG_THROTTLE     // CGroup throttle.
 #undef MULTIUSER
 
-#define CACHE_PROPORTIOIN_STATIC
+#undef CACHE_PROPORTIOIN_STATIC
 
 /**< Statistic information requirments defination */
-#undef  LOG_ALLOW
+#define  LOG_ALLOW
 #undef  LOG_SINGLE_REQ  // Print detail time information of each single request.
 
 /** Simulator Related **/

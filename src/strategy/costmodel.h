@@ -11,7 +11,7 @@ typedef struct cm_token
 {
 	int will_evict_dirty_blkcnt;
 	int will_evict_clean_blkcnt;
-	double wtramp;
+	double wrtamp;
 }cm_token;
 
 extern int CM_Init(blkcnt_t windowSize);
@@ -23,6 +23,7 @@ extern int CM_T_hitmiss_Reg(microsecond_t usetime);
 /** Calling for Strategy **/
 extern int CM_CHOOSE(cm_token token);
 extern void ReportCM();
+extern void CM_Report_PCB();
 #endif // COSTMODEL_H
 
 

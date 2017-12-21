@@ -267,6 +267,11 @@ allocSSDBuf(SSDBufTag ssd_buf_tag, bool * found, int alloc4What, int * isCallBac
     }
 
     /* Cache MISS */
+    if(STT->flush_hdd_blocks + STT->flush_clean_blocks > NBLOCK_SSD_CACHE)
+    {
+        cm_token token;
+        CM_CHOOSE(token);
+    }
     *found = 0;
     *isCallBack = CM_TryCallBack(ssd_buf_tag);
 #ifdef CACHE_PROPORTIOIN_STATIC

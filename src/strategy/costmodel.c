@@ -3,7 +3,7 @@
 
 */
 #include "costmodel.h"
-
+#include "report.h"
 /** Statistic Objects **/
 static blkcnt_t CallBack_Cnt_Clean, CallBack_Cnt_Dirty;
 static blkcnt_t Evict_Cnt_Clean, Evict_Cnt_Dirty;
@@ -12,7 +12,7 @@ static blkcnt_t Evict_Cnt_Clean, Evict_Cnt_Dirty;
 static double   CC, CD;                 /* Cost of Clean/Dirty blocks. */
 static double   CC_avg, CD_avg;
 static double   PCB_Clean, PCB_Dirty;   /* Possibility of CallBack the clean/dirty blocks */
-static double   WtrAmp;                 /* The write amp of blocks i'm going to evict. */
+static double   WrtAmp;                 /* The write amp of blocks i'm going to evict. */
 
 /* time of random, sequence, into fifo, average.
  * And each of these collects from different way, such as:
@@ -193,14 +193,14 @@ int CM_CHOOSE(cm_token token)
     static blkcnt_t counter = 0;
     counter ++ ;
 
-    if(counter % 100 == 0)
-        ReportCM();
+    if(counter % 10000 == 0)
+        CM_Report_PCB();
     PCB_Clean = (double)CallBack_Cnt_Clean / Evict_Cnt_Clean;
     PCB_Dirty = (double)CallBack_Cnt_Dirty / Evict_Cnt_Dirty;
 
     int clean_cnt = token.will_evict_clean_blkcnt;
     int dirty_cnt = token.will_evict_dirty_blkcnt;
-    WtrAmp = token.wtramp;
+    WrtAmp = token.wrtamp;
 
     T_rand = T_rand_sum / (T_rand_cnt + 1);
     T_fifo = T_fifo_sum / (T_fifo_cnt + 1);
@@ -211,7 +211,7 @@ int CM_CHOOSE(cm_token token)
     T_avg = t_avg_fifo + ((pcb_all)/(1-pcb_all)) * t_avg_hitmiss;
 
     CC = (0 + PCB_Clean * (T_rand + T_avg));
-    CD = (T_fifo + PCB_Dirty * T_avg + WtrAmp * T_seq);
+    CD = (T_fifo + PCB_Dirty * T_avg + WrtAmp * T_seq);
 
     CC_avg = CC;
     CD_avg = CD;
@@ -278,12 +278,19 @@ void ReportCM()
     printf("T_rand,\tT_fifo,\tT_avg,\tT_seq:\t");
     printf("[%d,%d,%d,%d]\n", T_rand, T_fifo, T_avg, T_seq);
 
-    printf("WrtAmp:\t[%.2f]\n", WtrAmp);
-    printf("Whole Cost C / D:\t[%.2f / %.2f]\n", PCB_Clean * (T_rand + T_avg), T_fifo + PCB_Dirty * T_avg + WtrAmp * T_seq);
+    printf("WrtAmp:\t[%.2f]\n", WrtAmp);
+    printf("Whole Cost C / D:\t[%.2f / %.2f]\n", PCB_Clean * (T_rand + T_avg), T_fifo + PCB_Dirty * T_avg + WrtAmp * T_seq);
     printf("Effict Cost C / D:\t[%.2f / %.2f]\n", CC_avg, CD_avg);
 
     printf("Win Times C / D:\t[%d / %d]\n",CleanWinTimes, DirtyWinTimes);
 
+}
+
+void CM_Report_PCB()
+{
+    static char buf[50];
+    sprintf(buf,"%d,%d\n",(int)(PCB_Clean*100), (int)(PCB_Dirty*100));
+    WriteLog(buf);
 }
 /** Utilities of Hash Index **/
 static int push_WDBucket(WDBucket * freeBucket)

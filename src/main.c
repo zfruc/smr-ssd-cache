@@ -80,7 +80,7 @@ main(int argc, char** argv)
         StartLBA = atol(argv[5]);
         NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = atol(argv[6]);
         NBLOCK_SMR_FIFO = atol(argv[7]);
-        EvictStrategy = (atoi(argv[8]) == 0)? PORE_PLUS_V2  : LRU_rw;//PORE;
+        EvictStrategy = (atoi(argv[8]) == 0)? PORE_PLUS_V2  : LRU_private;//PORE;
     	PeriodLenth = atoi(argv[9]) * ZONESZ / 4096;
     	#ifdef CACHE_PROPORTIOIN_STATIC
     	Proportion_Dirty = atof(argv[10]);
@@ -99,7 +99,7 @@ main(int argc, char** argv)
     init_cgdev();
 #endif // CG_THROTTLE
 
-    //initLog();
+    initLog();
     initRuntimeInfo();
     STT->trace_req_amount = trace_req_total[TraceId];
     initSSD();
@@ -132,7 +132,7 @@ main(int argc, char** argv)
 #endif
     close(hdd_fd);
     close(ssd_fd);
-    //CloseLogFile();
+    CloseLogFile();
 
     return 0;
 }
@@ -169,7 +169,7 @@ int init_cgdev()
 int initLog()
 {
     char logpath[50];
-    sprintf(logpath,"%s/mergedtrace_lru.log",PATH_LOG);
+    sprintf(logpath,"%s/pcb.log",PATH_LOG);
     int rt = 0;
     if((rt = OpenLogFile(logpath)) < 0)
     {
