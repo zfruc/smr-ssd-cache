@@ -80,7 +80,16 @@ main(int argc, char** argv)
         StartLBA = atol(argv[5]);
         NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = atol(argv[6]);
         NBLOCK_SMR_FIFO = atol(argv[7]);
-        EvictStrategy = (atoi(argv[8]) == 0)? PORE_PLUS_V2  : LRU_private;//PORE;
+
+        if (strcmp(argv[8],"LRU") == 0)
+            EvictStrategy = LRU_private;
+        else if (strcmp(argv[8],"LRU_RW") == 0)
+            EvictStrategy = LRU_rw;
+        else if (strcmp(argv[8],"PV3") == 0)
+            EvictStrategy = PV3;
+        else if (strcmp(argv[8],"PORE") == 0)
+            EvictStrategy = PORE;
+
     	PeriodLenth = atoi(argv[9]) * ZONESZ / 4096;
     	#ifdef CACHE_PROPORTIOIN_STATIC
     	Proportion_Dirty = atof(argv[10]);
@@ -154,6 +163,8 @@ int initRuntimeInfo()
     STT->cacheLimit = 0x7fffffffffffffff;
 
     STT->wtrAmp_cur = 0;
+    STT->WA_sum = 0;
+    STT->n_RMW = 0;
     return 0;
 }
 
@@ -169,7 +180,7 @@ int init_cgdev()
 int initLog()
 {
     char logpath[50];
-    sprintf(logpath,"%s/pcb.log",PATH_LOG);
+    sprintf(logpath,"%s/WAtracker_NOCACHE_%d.log",PATH_LOG,TraceId);
     int rt = 0;
     if((rt = OpenLogFile(logpath)) < 0)
     {

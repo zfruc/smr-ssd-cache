@@ -50,8 +50,11 @@ struct RuntimeSTAT
 
     blkcnt_t wt_hit_rd, rd_hit_wt;
     blkcnt_t incache_n_clean, incache_n_dirty;
-    /* simulator */
+
+    /* Emulator infos*/
     double wtrAmp_cur;
+    double WA_sum;
+    unsigned long n_RMW;
 };
 
 typedef enum

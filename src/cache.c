@@ -333,15 +333,15 @@ allocSSDBuf(SSDBufTag ssd_buf_tag, bool * found, int alloc4What, int * isCallBac
 #else
         long out_despId;
 FLAG_CACHEOUT:
-        if(STT->incache_n_clean <= 0)
-        {
-             int a = 0;
-        }
+//        if(STT->incache_n_clean <= 0)
+//        {
+//             int a = 0;
+//        }
         out_despId = Strategy_Desp_LogOut(flag); //need look
-        if(out_despId == 5249)
-        {
-            int b = 0;
-        }
+//        if(out_despId == 5249)
+//        {
+//            int b = 0;
+//        }
         ssd_buf_hdr = &ssd_buf_desps[out_despId];
         _LOCK(&ssd_buf_hdr->lock);
         // Clear Hashtable item.

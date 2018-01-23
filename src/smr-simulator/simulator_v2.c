@@ -313,6 +313,7 @@ getFIFODesp()
     return newDesp;
 }
 
+/** Persistent Buffer write-back dirty blocks using RMW Model: Read->Modify->Write. **/
 static void
 flushFIFO()
 {
@@ -330,25 +331,27 @@ flushFIFO()
     long		band_size = GetSMRActualBandSizeFromSSD(target->tag.offset);
     off_t		band_offset = target->tag.offset - GetSMROffsetInBandFromSSD(target) * BLCKSZ;
 
+    /** R **/
     /* read whole band from smr to buffer*/
     _TimerLap(&tv_start);
     returnCode = DISK_READ(fd_smr_part, BandBuffer, band_size, band_offset);
     if((returnCode) != band_size)
     {
-        printf("[ERROR] flushFIFO():---------read from smr: fd=%d, errorcode=%d, offset=%lu\n", fd_smr_part, returnCode, band_offset);
+        printf("[ERROR] flushFIFO():---------read from smr: fd=%d, errorcode=%d, offset=%lu\n",
+               fd_smr_part, returnCode, band_offset);
         exit(-1);
     }
     _TimerLap(&tv_stop);
     simu_time_read_smr += TimerInterval_SECOND(&tv_start,&tv_stop);
     simu_read_smr_bands++;
 
-    /* temp persistence whole band from buffer to smr*/
-    if(DISK_WRITE(fd_fifo_part,BandBuffer,band_size,OFF_BAND_TMP_PERSISIT) != band_size && fsync(fd_fifo_part) < 0)
-    {
-        printf("[ERROR] flushFIFO():-------- temp persistence band: fd=%d, errorcode=%d, offset=%lu\n", fd_smr_part, returnCode, band_offset);
-        exit(-1);
-    }
-
+//    /* temp persistence whole band from buffer to smr*/
+//    if(DISK_WRITE(fd_fifo_part,BandBuffer,band_size,OFF_BAND_TMP_PERSISIT) != band_size && fsync(fd_fifo_part) < 0)
+//    {
+//        printf("[ERROR] flushFIFO():-------- temp persistence band: fd=%d, errorcode=%d, offset=%lu\n", fd_smr_part, returnCode, band_offset);
+//        exit(-1);
+//    }
+    /** M **/
     /* Combine cached pages from FIFO which are belong to the same band */
     unsigned long BandNum = GetSMRBandNumFromSSD(target->tag.offset);
 
@@ -367,7 +370,6 @@ flushFIFO()
         {
             /* The block belongs the same band with the header of fifo. */
             off_t offset_inband = GetSMROffsetInBandFromSSD(curDesp);
-
 #ifdef SIMULATOR_AIO
             struct aiocb* aio_n = aiolist + aio_read_cnt;
             aio_n->aio_fildes = fd_fifo_part;
@@ -414,7 +416,7 @@ flushFIFO()
     {
         char log[128];
         sprintf(log,"Flush [%ld] times ERROR: AIO read list from FIFO Failure[%d].\n",simu_flush_bands+1,ret_aio);
-        WriteLog(log);
+//        WriteLog(log);
     }
     _TimerLap(&tv_stop);
     simu_time_read_fifo += TimerInterval_SECOND(&tv_start,&tv_stop);
@@ -429,6 +431,7 @@ flushFIFO()
     /* flush whole band to smr */
     _TimerLap(&tv_start);
 
+    /** W **/
     returnCode = DISK_WRITE(fd_smr_part, BandBuffer, band_size, band_offset);
     if (returnCode < 0)
     {
@@ -443,12 +446,13 @@ flushFIFO()
 
     wtrAmp = (double)band_size / (dirty_n_inBand * BLCKSZ);
     STT->wtrAmp_cur = wtrAmp;
+    STT->WA_sum += wtrAmp;
+    STT->n_RMW ++;
 
-//    char log[256];
-//    sprintf(log,"flush [%ld] times from fifo to smr,collect time:%lf, cnt=%ld,WtrAmp = %lf\n",simu_flush_bands,collect_time,dirty_n_inBand,wtrAmp);
-//    WriteLog(log);
+    char log[256];
+    sprintf(log,"%d\n",(int)wtrAmp);
+    WriteLog(log);
 }
-
 
 static unsigned long
 GetSMRActualBandSizeFromSSD(unsigned long offset)
@@ -510,5 +514,5 @@ void PrintSimulatorStatistic()
     printf("Read Bands:\t%ld\nFlush Bands:\t%ld\nFlush BandSize:\t%ld\n",simu_read_smr_bands, simu_flush_bands, simu_flush_band_size);
 
 
-    printf("Total WrtAmp:\t%lf\n",(double)simu_flush_band_size / (simu_n_write_fifo * BLCKSZ));
+    printf("WA AVG:\t%lf\n",STT->WA_sum / STT->n_RMW);
 }
