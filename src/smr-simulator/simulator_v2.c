@@ -262,9 +262,11 @@ simu_smr_write(char *buffer, size_t size, off_t offset)
         /* Update HashTable and Descriptor array */
         ssd_hash = ssdtableHashcode(tag);
         long old_despId = ssdtableUpdate(tag, ssd_hash, ssd_hdr->despId);
-        FIFODesc* oldDesp = fifo_desp_array + old_despId;
-        invalidDespInFIFO(oldDesp); ///invalid the old desp
-
+        if(old_despId>=0){
+          FIFODesc* oldDesp = fifo_desp_array + old_despId;
+          invalidDespInFIFO(oldDesp); ///invalid the old desp
+        }
+      
         _TimerLap(&tv_start);
         returnCode = DISK_WRITE(fd_fifo_part, buffer, BLCKSZ, ssd_hdr->despId * BLCKSZ + OFF_FIFO);
         if (returnCode < 0)
