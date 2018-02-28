@@ -10,8 +10,8 @@
 #undef CG_THROTTLE     // CGroup throttle.
 #undef MULTIUSER
 
-#define CACHE_PROPORTIOIN_STATIC
-
+#undef CACHE_PROPORTIOIN_STATIC
+#undef NO_READ_CACHE
 /**< Statistic information requirments defination */
 
 #define  LOG_ALLOW // Log allowed EXCLUSIVELY for 1. Print the pcb by CM. 2. Print the WA by Emulator.

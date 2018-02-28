@@ -150,7 +150,9 @@ init_StatisticObj()
 
     STT->wt_hit_rd = STT->rd_hit_wt = 0;
     STT->incache_n_clean = STT->incache_n_dirty = 0;
-
+#ifdef NO_READ_CACHE
+    STT->incache_n_clean = -1;
+#endif
     return 0;
 }
 
@@ -245,8 +247,8 @@ allocSSDBuf(SSDBufTag ssd_buf_tag, bool * found, int alloc4What, int * isCallBac
             STT->incache_n_dirty ++;
         }
 
-        flagOp(ssd_buf_hdr,alloc4What);
-        Strategy_Desp_HitIn(ssd_buf_hdr); //need lock
+        flagOp(ssd_buf_hdr,alloc4What);   // tell strategy block's flag changes.
+        Strategy_Desp_HitIn(ssd_buf_hdr); // need lock.
 
         STT->hitnum_s++;
         *found = 1;
@@ -275,6 +277,12 @@ allocSSDBuf(SSDBufTag ssd_buf_tag, bool * found, int alloc4What, int * isCallBac
     *found = 0;
     *isCallBack = CM_TryCallBack(ssd_buf_tag);
 #ifdef CACHE_PROPORTIOIN_STATIC
+#ifdef NO_READ_CACHE
+    if(alloc4What == 0){
+        static char read_buf[8192];
+        return read_buf;
+    }
+#endif
     if (STT->incache_n_clean >= Max_Clean_Cache)
     {
         flag = 0;

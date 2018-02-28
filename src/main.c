@@ -56,9 +56,9 @@ char* tracefile[] = {"/home/trace/src1_2.csv.req",
                      "/home/trace/ts_0.csv.req",
                      "/home/trace/usr_0.csv.req",
                      "/home/trace/web_0.csv.req",
-                     "/home/trace/production-LiveMap-Backend-4K.req",
-                    "/home/trace/merged_traceX18.req"
-		    //"/home/trace/merged_trace_x1.req.csv"
+                     "/home/trace/production-LiveMap-Backend-4K.req", // --> not in used.
+                     "/home/trace/merged_traceX18.req"  // default set: cache size = 8M*blksize; persistent buffer size = 1.6M*blksize.
+                    //"/home/trace/merged_trace_x1.req.csv"
                     };
 
 blksize_t trace_req_total[] = {14024860,2654824,8985487,2916662,17635766,3254278,6098667,4216457,12873274,9642398,1,1481448114};
