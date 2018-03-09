@@ -101,7 +101,7 @@ InitPORE_plus()
         ctrl->zoneId = i;
         ctrl->heat = ctrl->pagecnt_clean = ctrl->pagecnt_dirty = 0;
         ctrl->head = ctrl->tail = -1;
-        ctrl->weight = -1;
+        ctrl->score = -1;
         ZoneSortArray[i] = 0;
         i++;
     }
@@ -446,7 +446,7 @@ move2CleanArrayHead(StrategyDesp_pore* desp)
 
 /* Decision Method */
 /** \brief
- *  Quick-Sort method to sort the zones by weight.
+ *  Quick-Sort method to sort the zones by score.
     NOTICE!
         If the gap between variable 'start' and 'end', it will PROBABLY cause call stack OVERFLOW!
         So this function need to modify for better.
@@ -459,16 +459,16 @@ qsort_zone(long start, long end)
 
     long S = ZoneSortArray[start];
     ZoneCtrl* curCtrl = ZoneCtrlArray + S;
-    long sWeight = curCtrl->weight;
+    long sWeight = curCtrl->score;
     while (i < j)
     {
-        while (!(ZoneCtrlArray[ZoneSortArray[j]].weight > sWeight) && i<j)
+        while (!(ZoneCtrlArray[ZoneSortArray[j]].score > sWeight) && i<j)
         {
             j--;
         }
         ZoneSortArray[i] = ZoneSortArray[j];
 
-        while (!(ZoneCtrlArray[ZoneSortArray[i]].weight < sWeight) && i<j)
+        while (!(ZoneCtrlArray[ZoneSortArray[i]].score < sWeight) && i<j)
         {
             i++;
         }
@@ -510,7 +510,7 @@ pause_and_caculate_weight_sizedivhot()
     while( n < NZONES )
     {
         ZoneCtrl* ctrl = ZoneCtrlArray + n;
-        ctrl->weight = ((ctrl->pagecnt_dirty) * (ctrl->pagecnt_dirty)) * 1000000 / (ctrl->heat+1);
+        ctrl->score = ((ctrl->pagecnt_dirty) * (ctrl->pagecnt_dirty)) * 1000000 / (ctrl->heat+1);
         n++;
     }
 }

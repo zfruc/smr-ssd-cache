@@ -190,6 +190,8 @@ static int DirtyWinTimes = 0, CleanWinTimes = 0;
  */
 int CM_CHOOSE(cm_token token)
 {
+    if(WriteOnly) return 1;
+
     static blkcnt_t counter = 0;
     counter ++ ;
 

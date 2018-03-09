@@ -22,7 +22,7 @@
 #include "smr-simulator/simulator_v2.h"
 #include "trace2call.h"
 #include "daemon.h"
-
+#include "timerUtils.h"
 unsigned int INIT_PROCESS = 0;
 void ramdisk_iotest()
 {
@@ -71,7 +71,9 @@ main(int argc, char** argv)
 
 // 1 1 1 0 0 100000 100000
 // 1 1 0 0 0 100000 100000
-    if (argc == 11)
+
+// trace11: 0 0 11 1 0 8000000 35 PV3
+    if (argc == 10)
     {
         BatchId = atoi(argv[1]);
         UserId = atoi(argv[2]);
@@ -79,7 +81,7 @@ main(int argc, char** argv)
         WriteOnly = atoi(argv[4]);
         StartLBA = atol(argv[5]);
         NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = atol(argv[6]);
-        NBLOCK_SMR_FIFO = atol(argv[7]);
+        NBLOCK_SMR_FIFO = atol(argv[7]) * (ZONESZ / BLCKSZ);
 
         if (strcmp(argv[8],"LRU") == 0)
             EvictStrategy = LRU_private;
@@ -89,8 +91,12 @@ main(int argc, char** argv)
             EvictStrategy = PV3;
         else if (strcmp(argv[8],"PORE") == 0)
             EvictStrategy = PORE;
-
-    	PeriodLenth = atoi(argv[9]) * ZONESZ / 4096;
+	else if(strcmp(argv[8],"MOST") == 0)
+	    EvictStrategy = MOST;
+	if(atoi(argv[9]) < 0)
+	    PeriodLenth = NBLOCK_SMR_FIFO;
+	else
+    	    PeriodLenth =  atoi(argv[9]) * (ZONESZ / BLCKSZ);
     	#ifdef CACHE_PROPORTIOIN_STATIC
     	Proportion_Dirty = atof(argv[10]);
     	#endif // Proportion_Dirty

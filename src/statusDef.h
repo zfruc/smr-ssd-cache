@@ -3,25 +3,21 @@
  * All the switch is turn-off by default.
  */
 /** configure of system structure **/
-#undef NO_REAL_DISK_IO
+#define NO_REAL_DISK_IO
 
 #undef NO_CACHE
-
-#undef CG_THROTTLE     // CGroup throttle.
-#undef MULTIUSER
 
 #undef CACHE_PROPORTIOIN_STATIC
 #undef NO_READ_CACHE
 /**< Statistic information requirments defination */
 
-#define  LOG_ALLOW // Log allowed EXCLUSIVELY for 1. Print the pcb by CM. 2. Print the WA by Emulator.
-
+#undef  LOG_ALLOW // Log allowed EXCLUSIVELY for 1. Print the pcb by CM. 2. Print the WA by Emulator.
 #undef  LOG_SINGLE_REQ  // Print detail time information of each single request.
 
 /** Simulator Related **/
-#undef SIMULATION
+#define SIMULATION
 #undef SIMULATOR_AIO
-#undef SIMU_NO_DISK_IO
+#define SIMU_NO_DISK_IO
 
 /** Daemon process **/
 #undef DAEMON_PROC
@@ -30,3 +26,7 @@
 #undef DAEON_SMR_RUNTIME
 
 #undef PORE_BATCH
+
+/* Future Features */
+#undef CG_THROTTLE     // CGroup throttle.
+#undef MULTIUSER

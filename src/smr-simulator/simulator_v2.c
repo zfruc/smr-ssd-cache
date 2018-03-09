@@ -38,12 +38,10 @@ int  fd_smr_part;
 
 static FIFOCtrl global_fifo_ctrl;
 static FIFODesc* fifo_desp_array;
-
 static char* BandBuffer;
 static blksize_t NSMRBands = 194180;		// smr band cnt = 194180;
 static unsigned long BNDSZ = 36*1024*1024;      // bandsize = 36MB  (18MB~36MB)
 
-static off_t SMR_DISK_OFFSET;
 
 int ACCESS_FLAG = 1;
 
@@ -77,7 +75,7 @@ static void* smr_fifo_monitor_thread();
 
 static int invalidDespInFIFO(FIFODesc* desp);
 #define isFIFOEmpty (global_fifo_ctrl.head == global_fifo_ctrl.tail)
-#define isFIFOFull  ((global_fifo_ctrl.tail + 1) % NBLOCK_SMR_FIFO == global_fifo_ctrl.head)
+#define isFIFOFull  ((global_fifo_ctrl.tail + 1) % (NBLOCK_SMR_FIFO + 1) == global_fifo_ctrl.head)
 
 static unsigned long GetSMRActualBandSizeFromSSD(unsigned long offset);
 static unsigned long GetSMRBandNumFromSSD(unsigned long offset);
@@ -95,17 +93,18 @@ struct aiocb* aiocb_addr_list[max_aio_count];/* >= band block size */
 void InitSimulator()
 {
     /* initialliz related constants */
-    SMR_DISK_OFFSET = NBLOCK_SMR_FIFO * BLCKSZ;
     band_size_num = BNDSZ / 1024 / 1024 / 2 + 1;
     num_each_size = NSMRBands / band_size_num;
 
     global_fifo_ctrl.n_used = 0;
     global_fifo_ctrl.head = global_fifo_ctrl.tail = 0;
 
-    fifo_desp_array = (FIFODesc *)malloc(sizeof(FIFODesc) * NBLOCK_SMR_FIFO);
+    posix_memalign(&fifo_desp_array, 1024,sizeof(FIFODesc) * (NBLOCK_SMR_FIFO + 1));
+
+
     FIFODesc* fifo_hdr = fifo_desp_array;
     long i;
-    for (i = 0; i < NBLOCK_SMR_FIFO; fifo_hdr++, i++)
+    for (i = 0; i < (NBLOCK_SMR_FIFO + 1); fifo_hdr++, i++)
     {
         fifo_hdr->despId = i;
         fifo_hdr->isValid = 0;
@@ -131,7 +130,7 @@ void InitSimulator()
     simu_time_write_smr = 0;
     simu_time_write_fifo = 0;
 
-    initSSDTable(NBLOCK_SMR_FIFO);
+    initSSDTable(NBLOCK_SMR_FIFO + 1);
 
 //    pthread_t tid;
 //    int err = pthread_create(&tid, NULL, smr_fifo_monitor_thread, NULL);
@@ -266,7 +265,7 @@ simu_smr_write(char *buffer, size_t size, off_t offset)
           FIFODesc* oldDesp = fifo_desp_array + old_despId;
           invalidDespInFIFO(oldDesp); ///invalid the old desp
         }
-      
+
         _TimerLap(&tv_start);
         returnCode = DISK_WRITE(fd_fifo_part, buffer, BLCKSZ, ssd_hdr->despId * BLCKSZ + OFF_FIFO);
         if (returnCode < 0)
@@ -291,7 +290,7 @@ invalidDespInFIFO(FIFODesc* desp)
     int isHeadChanged = 0;
     while(!fifo_desp_array[global_fifo_ctrl.head].isValid && !isFIFOEmpty)
     {
-        global_fifo_ctrl.head = (global_fifo_ctrl.head + 1) % NBLOCK_SMR_FIFO;
+        global_fifo_ctrl.head = (global_fifo_ctrl.head + 1) % (NBLOCK_SMR_FIFO + 1);
         isHeadChanged = 1;
     }
     return isHeadChanged;
@@ -310,7 +309,7 @@ getFIFODesp()
     /* Append to tail */
     newDesp = fifo_desp_array + global_fifo_ctrl.tail;
     newDesp->isValid = 1;
-    global_fifo_ctrl.tail = (global_fifo_ctrl.tail + 1) % NBLOCK_SMR_FIFO;
+    global_fifo_ctrl.tail = (global_fifo_ctrl.tail + 1) % (NBLOCK_SMR_FIFO + 1);
 
     return newDesp;
 }
@@ -367,7 +366,7 @@ flushFIFO()
     while(curPos != global_fifo_ctrl.tail)
     {
         FIFODesc* curDesp = fifo_desp_array + curPos;
-        long nextPos = (curDesp->despId + 1) % NBLOCK_SMR_FIFO;
+        long nextPos = (curDesp->despId + 1) % (NBLOCK_SMR_FIFO + 1);
         if (curDesp->isValid && GetSMRBandNumFromSSD(curDesp->tag.offset) == BandNum)
         {
             /* The block belongs the same band with the header of fifo. */
@@ -450,6 +449,7 @@ flushFIFO()
     STT->wtrAmp_cur = wtrAmp;
     STT->WA_sum += wtrAmp;
     STT->n_RMW ++;
+
 
     char log[256];
     sprintf(log,"%d\n",(int)wtrAmp);
