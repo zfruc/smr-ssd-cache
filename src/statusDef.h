@@ -3,7 +3,7 @@
  * All the switch is turn-off by default.
  */
 /** configure of system structure **/
-#define NO_REAL_DISK_IO
+#undef NO_REAL_DISK_IO
 
 #undef NO_CACHE
 
@@ -11,21 +11,24 @@
 #undef NO_READ_CACHE
 /**< Statistic information requirments defination */
 
-#undef  LOG_ALLOW // Log allowed EXCLUSIVELY for 1. Print the pcb by CM. 2. Print the WA by Emulator.
+#define  LOG_ALLOW // Log allowed EXCLUSIVELY for 1. Print the pcb by CM. 2. Print the WA by Emulator.
 #undef  LOG_SINGLE_REQ  // Print detail time information of each single request.
 
 /** Simulator Related **/
-#define SIMULATION
+#undef SIMULATION
 #undef SIMULATOR_AIO
 #define SIMU_NO_DISK_IO
 
 /** Daemon process **/
 #undef DAEMON_PROC
 #undef DAEMON_BANDWIDHT
-#undef DAEMON_CACHE_RUNTIME
+#undef DAEMON_CACHE_RUNTIME:q
 #undef DAEON_SMR_RUNTIME
 
-#undef PORE_BATCH
+#define PORE_BATCH
+
+/** T-Switcher **/
+#define T_SWITCHER_ON
 
 /* Future Features */
 #undef CG_THROTTLE     // CGroup throttle.

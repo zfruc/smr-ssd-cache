@@ -516,5 +516,5 @@ void PrintSimulatorStatistic()
     printf("Read Bands:\t%ld\nFlush Bands:\t%ld\nFlush BandSize:\t%ld\n",simu_read_smr_bands, simu_flush_bands, simu_flush_band_size);
 
 
-    printf("WA AVG:\t%lf\n",STT->WA_sum / STT->n_RMW);
+    printf("WA AVG:\t%lf\n",(float)(simu_flush_band_size / BLCKSZ) / STT->flush_hdd_blocks);
 }

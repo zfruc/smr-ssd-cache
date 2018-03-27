@@ -72,12 +72,12 @@ initSSD()
     int r_initstrategybuf   =   initStrategySSDBuffer();
     int r_initbuftb         =   HashTab_Init();
     int r_initstt           =   init_StatisticObj();
-    int r_initCostModel     =   CM_Init(NBLOCK_SSD_CACHE);
+    int r_initTSwitcher     =   CM_Init();
 
-    printf("init_Strategy: %d, init_table: %d, init_desp: %d, inti_Stt: %d, init_COstModel: %d\n",
-           r_initstrategybuf, r_initbuftb, r_initdesp, r_initstt, r_initCostModel);
+    printf("init_Strategy: %d, init_table: %d, init_desp: %d, inti_Stt: %d, init_TSwitcher: %d\n",
+           r_initstrategybuf, r_initbuftb, r_initdesp, r_initstt, r_initTSwitcher);
 
-    if(r_initdesp==-1 || r_initstrategybuf==-1 || r_initbuftb==-1 || r_initstt==-1 || r_initCostModel == -1)
+    if(r_initdesp==-1 || r_initstrategybuf==-1 || r_initbuftb==-1 || r_initstt==-1 || r_initTSwitcher == -1)
         exit(-1);
     int returnCode;
     returnCode = posix_memalign(&ssd_buffer, 512, sizeof(char) * BLCKSZ);
@@ -325,6 +325,8 @@ allocSSDBuf(SSDBufTag ssd_buf_tag, bool * found, int alloc4What, int * isCallBac
         case MOST :
             n_evict = LogOut_most(buf_despid_array, max_n_batch);
             break;
+            case LRU_private:
+            n_evict = Unload_Buf_LRU_private(buf_despid_array, max_n_batch);
         }
 
         int k = 0;
@@ -418,7 +420,7 @@ Strategy_Desp_LogOut(unsigned flag)
     {
 //        case LRU_global:        return Unload_LRUBuf();
     case LRU_private:
-        return Unload_Buf_LRU_private();
+        error("LRU wrong time function revoke, please use BATHCH configure.\n");
     case LRU_rw:
         return Unload_Buf_LRU_rw(flag);
 //       case Most:              return LogOutDesp_most();
@@ -544,11 +546,10 @@ read_block(off_t offset, char *ssd_buffer)
         if(isCallBack)
         {
             CM_T_rand_Reg(msec_r_hdd);
-            _TimerLap(&tv_cmstop);
-            microsecond_t miss_usetime = TimerInterval_MICRO(&tv_cmstart, &tv_cmstop);
-            CM_T_hitmiss_Reg(miss_usetime);
         }
-
+        _TimerLap(&tv_cmstop);
+        microsecond_t miss_usetime = TimerInterval_MICRO(&tv_cmstart, &tv_cmstop);
+        CM_T_hitmiss_Reg(miss_usetime);
         /* ------------------ */
 
         dev_pwrite(ssd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_id * SSD_BUFFER_SIZE);
@@ -590,7 +591,8 @@ write_block(off_t offset, char *ssd_buffer)
     ssd_buf_tag.offset = offset;
     ssd_buf_hdr = allocSSDBuf(ssd_buf_tag, &found, 1, &isCallBack);
 
-    if(!found && isCallBack)
+    //if(!found && isCallBack)
+    if(!found)
     {
         /* ----- Cost Model Reg------------- */
         _TimerLap(&tv_cmstop);

@@ -14,7 +14,9 @@ typedef struct cm_token
 	double wrtamp;
 }cm_token;
 
-extern int CM_Init(blkcnt_t windowSize);
+extern blkcnt_t TS_WindowSize;
+
+extern int CM_Init();
 extern int CM_Reg_EvictBlk(SSDBufTag blktag, unsigned flag, microsecond_t usetime);
 extern int CM_TryCallBack(SSDBufTag blktag);
 

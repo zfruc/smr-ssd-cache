@@ -12,9 +12,9 @@
 #include "strategy/lru.h"
 #include "trace2call.h"
 #include "report.h"
-
+#include "strategy/strategies.h"
 extern struct RuntimeSTAT* STT;
-#define REPORT_INTERVAL 10000
+#define REPORT_INTERVAL 50000
 
 static void reportCurInfo();
 static void report_ontime();
@@ -67,7 +67,8 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     _TimerLap(&tv_trace_start);
     static int req_cnt = 0;
 
-    while (!feof(trace)&& STT->reqcnt_w < 100000000) // 84340000
+    blkcnt_t total_n_req = isWriteOnly ? 100000000 : 200000000;
+    while (!feof(trace)&& STT->reqcnt_s < total_n_req) // 84340000
     {
 
         //        if(feof(trace))
@@ -95,25 +96,35 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
             resetStatics();        // Because we do not care about the statistic while the process of filling SSD cache.
             isFullSSDcache = 1;
         }
+#ifdef T_SWITCHER_ON
+        static int tk = 1;
+        if(tk && (STT->flush_clean_blocks + STT->flush_hdd_blocks) >= TS_WindowSize)
+        {
+            reportCurInfo();
+            tk = 0;
+        }
+#endif // T_SWITCHER_ON
 
 #ifdef LOG_SINGLE_REQ
         _TimerLap(&tv_req_start);
 #endif // TIMER_SINGLE_REQ
         if (action == ACT_WRITE) // Write = 1
         {
-            STT->reqcnt_w++;
+            STT->reqcnt_w ++;
+            STT->reqcnt_s ++;
             write_block(offset, ssd_buffer);
         }
         else if (!isWriteOnly && action == ACT_READ)    // read = 9
         {
-            STT->reqcnt_r++;
+            STT->reqcnt_r ++;
+            STT->reqcnt_s ++;
             read_block(offset,ssd_buffer);
         }
-	else if (action != ACT_READ)
-	{
-	    printf("Trace file gets a wrong result: action = %c.\n",action);
-	    exit(-1);
-	}
+        else if (action != ACT_READ)
+        {
+            printf("Trace file gets a wrong result: action = %c.\n",action);
+            exit(-1);
+        }
 #ifdef LOG_SINGLE_REQ
         _TimerLap(&tv_req_stop);
         msec_req = TimerInterval_MICRO(&tv_req_start,&tv_req_stop);
@@ -127,7 +138,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         msec_r_ssd = msec_w_ssd = msec_r_hdd = msec_w_hdd = 0;
 #endif // TIMER_SINGLE_REQ
 
-        if (++STT->reqcnt_s % REPORT_INTERVAL == 0)
+        if (STT->reqcnt_s % REPORT_INTERVAL == 0)
         {
             report_ontime();
         }
@@ -174,6 +185,9 @@ static void report_ontime()
 //           STT->reqcnt_s,STT->reqcnt_r, STT->hitnum_s, STT->hitnum_r, STT->flush_ssd_blocks, STT->flush_hdd_blocks, STT->hashmiss_sum, STT->hashmiss_read, STT->hashmiss_write);
         printf("totalreq:%lu, readreq:%lu, wrtreq:%lu, hit:%lu, readhit:%lu, flush_ssd_blk:%lu flush_hdd_blk:%lu\n",
            STT->reqcnt_s, STT->reqcnt_r, STT->reqcnt_w, STT->hitnum_s, STT->hitnum_r, STT->flush_ssd_blocks, STT->flush_hdd_blocks);
+        _TimerLap(&tv_trace_end);
+        int timecost = Mirco2Sec(TimerInterval_MICRO(&tv_trace_start,&tv_trace_end));
+        printf("current run time: %d\n",timecost);
 }
 
 static void resetStatics()

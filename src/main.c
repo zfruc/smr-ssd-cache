@@ -23,6 +23,8 @@
 #include "trace2call.h"
 #include "daemon.h"
 #include "timerUtils.h"
+//static char str_program_config[];
+
 unsigned int INIT_PROCESS = 0;
 void ramdisk_iotest()
 {
@@ -148,7 +150,7 @@ main(int argc, char** argv)
     close(hdd_fd);
     close(ssd_fd);
     CloseLogFile();
-
+	ReportCM();
     return 0;
 }
 
@@ -186,7 +188,7 @@ int init_cgdev()
 int initLog()
 {
     char logpath[50];
-    sprintf(logpath,"%s/WAtracker_NOCACHE_%d.log",PATH_LOG,TraceId);
+    sprintf(logpath,"%s/20180317-RWcost.log",PATH_LOG,TraceId);
     int rt = 0;
     if((rt = OpenLogFile(logpath)) < 0)
     {

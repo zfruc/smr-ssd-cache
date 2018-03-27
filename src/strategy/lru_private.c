@@ -6,6 +6,9 @@
 #include "cache.h"
 #include "lru_private.h"
 #include "shmlib.h"
+
+#define EVICT_DITRY_GRAIN 64
+
 /********
  ** SHM**
  ********/
@@ -52,13 +55,19 @@ initSSDBufferFor_LRU_private()
     return stat;
 }
 
-long
-Unload_Buf_LRU_private()
+int
+Unload_Buf_LRU_private(long * out_despid_array, int max_n_batch)
 {
-    long frozen_id = self_strategy_ctrl->last_self_lru;
-    deleteFromLRU(&strategy_desp[frozen_id]);
+    int cnt = 0;
+    while(cnt < EVICT_DITRY_GRAIN && cnt < max_n_batch)
+    {
+        long frozen_id = self_strategy_ctrl->last_self_lru;
+        deleteFromLRU(&strategy_desp[frozen_id]);
+        out_despid_array[cnt] = frozen_id;
+        cnt ++ ;
+    }
 
-    return frozen_id;
+    return cnt;
 }
 
 int

@@ -264,7 +264,7 @@ FLAG_NEWPERIOD:
         dirtyDesp = GlobalDespArray + evictZone->tail;
 
         /* T-Switcher will start working after a while of been evicted NBLOCK_SSD_CACHE blocks. */
-        if(Evicted_Blk_Cnt < NBLOCK_SSD_CACHE)
+        if(Evicted_Blk_Cnt < TS_WindowSize)
         {
             if(choose_colder(cleanDesp->stamp, dirtyDesp->stamp, StampGlobal))
                 goto FLAG_EVICT_CLEAN;
@@ -331,7 +331,7 @@ FLAG_EVICT_DIRTYZONE:
     //printf("pore+V2: batch flush dirty cnt [%d] from zone[%lu]\n", j,evictZone->zoneId);
 
     Evicted_Blk_Cnt += j;
-    printf("SCORE REPORT: zone id[%d], score[%lu]\n", evictZone->zoneId, evictZone->score);
+//    printf("SCORE REPORT: zone id[%d], score[%lu]\n", evictZone->zoneId, evictZone->score);
     return j;
 }
 
