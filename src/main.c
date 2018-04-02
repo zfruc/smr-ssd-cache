@@ -68,6 +68,7 @@ blksize_t trace_req_total[] = {14024860,2654824,8985487,2916662,17635766,3254278
 int
 main(int argc, char** argv)
 {
+
     //FunctionalTest();
     //ramdisk_iotest();
 

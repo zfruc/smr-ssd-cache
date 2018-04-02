@@ -4,7 +4,7 @@
 //#include "losertree4pore.h"
 #include "report.h"
 
-#define random(x) (rand()%x)
+#define random(x) (rand() % x)
 
 
 

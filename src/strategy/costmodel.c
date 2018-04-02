@@ -14,6 +14,9 @@ static double   CC_avg, CD_avg;
 static double   PCB_Clean, PCB_Dirty;   /* Possibility of CallBack the clean/dirty blocks */
 static double   WrtAmp;                 /* The write amp of blocks i'm going to evict. */
 
+#define rand_init() (srand((unsigned int)time(0)))
+#define random(x) (rand() % x)
+
 /* time of random, sequence, into fifo, average.
  * And each of these collects from different way, such as:
  * T_rand from when calling the 'CM_CallBack' func and sending a parameter of read block time.
@@ -68,6 +71,7 @@ static blkcnt_t indexGet_WDItemId(off_t key);
 static int      indexInsert_WDItem(hashkey_t key, hashvalue_t value);
 static int      indexRemove_WDItem(hashkey_t key);
 #define HashMap_KeytoValue(key) ((key / BLCKSZ) % TS_WindowSize)
+static int random_pick(float weight1, float weight2, float obey);
 
 /** MAIN FUNCTIONS **/
 int CM_Init()
@@ -197,7 +201,6 @@ int CM_CHOOSE(cm_token token)
 
     if(counter % 10000 == 0)
     {
-    	CM_Report_PCB();
 	ReportCM();
     }
 
@@ -222,7 +225,8 @@ int CM_CHOOSE(cm_token token)
     CC_avg = CC;
     CD_avg = CD;
 
-    if( CC_avg < CD_avg )
+    int pick = random_pick(CC, CD, 0.5);
+    if(pick == 1)
     {
         CleanWinTimes ++;
         return 0;
@@ -277,6 +281,8 @@ void ReportCM()
     printf("---------- Cost Model Runtime Report ----------\n");
     printf("Count C / D:\t");
     printf("[%ld / %ld]\n", Evict_Cnt_Clean, Evict_Cnt_Dirty);
+    printf("in cache C / D:\t");
+    printf("[%ld / %ld]\n", STT->incache_n_clean, STT->incache_n_dirty);
 
     printf("PCB C / D:\t");
     printf("[%.2f\% / %.2f\%]\n", PCB_Clean*100, PCB_Dirty*100);
@@ -384,3 +390,20 @@ static int indexRemove_WDItem(hashkey_t key)
     exit(-1);
 }
 
+static int random_pick(float weight1, float weight2, float obey)
+{
+    // let weight as the standard, set as 1,
+    float inc_times = (weight2 / weight1) - 1;
+    inc_times *= obey;
+
+    float de_point = 1000 * (1 / (2 + inc_times));
+//    rand_init();
+    int token = random(1000);
+    static char buf[50];
+    sprintf(buf,">>w1,w2,pick:%.1f,%.1f\n",1,1 + inc_times);
+    WriteLog(buf);
+
+    if(token < de_point)
+        return 2;
+    return 1;
+}

@@ -176,10 +176,8 @@ Hit_poreplus_v3(long despId, unsigned flag)
     There is 3 following phases of the implement:
     1.  Searching phase:
         search and redefine the Open Zones: those dirty blocks content > threshold.
-
     2.  Deciding phase:
         decieding evicted model according the open zones and the ratio of clean blocks. Hybrid / Clean-Only
-
     3.  Evicting phase:
         If in the Clean-Only model, evicting clean blocks by global LRU.
         If else the Hybrid model, evicting both of global clean blocks and dirty block in open zones.

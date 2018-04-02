@@ -296,9 +296,9 @@ allocSSDBuf(SSDBufTag ssd_buf_tag, bool * found, int alloc4What, int * isCallBac
     }
 #endif // CACHE_PROPORTIOIN_STATIC
 
-    _LOCK(&ssd_buf_desp_ctrl->lock);
+//    _LOCK(&ssd_buf_desp_ctrl->lock);
     ssd_buf_hdr = pop_freebuf();
-    _UNLOCK(&ssd_buf_desp_ctrl->lock);
+//    _UNLOCK(&ssd_buf_desp_ctrl->lock);
 
     if (ssd_buf_hdr != NULL)
     {
