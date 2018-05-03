@@ -63,6 +63,7 @@ typedef enum
 //    LRU,
 //    LRUofBand,
       MOST,
+      MOST_RW,
 //    Most_Dirty,
 //    SCAN,
 //    CMR,
@@ -95,6 +96,7 @@ extern unsigned long Param2;
 extern int BatchSize;
 extern long PeriodLenth;
 /** All users basic setup **/
+extern blksize_t NBLOCK_MAX_CACHE_SIZE;
 extern blkcnt_t NBLOCK_SSD_CACHE;
 extern blkcnt_t NTABLE_SSD_CACHE;
 extern blkcnt_t SSD_BUFFER_SIZE;
@@ -136,4 +138,10 @@ extern char* SHM_SSDBUF_HASHDESPS;
 extern char* SHM_PROCESS_REQ_LOCK;
 
 extern char* PATH_LOG;
+
+/** Pipes for HRC processes **/
+extern int PipeEnds_of_MAIN[];
+extern int PipeEnd_of_HRC;
+extern pid_t Fork_Pid; /* Default 0. If is a HRC process, this must be large than 0 */
+#define I_AM_HRC_PROC Fork_Pid
 #endif

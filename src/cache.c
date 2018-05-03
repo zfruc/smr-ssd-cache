@@ -66,7 +66,7 @@ extern struct InitUsrInfo UsrInfo;
  * init buffer hash table, strategy_control, buffer, work_mem
  */
 void
-initSSD()
+CacheLayer_Init()
 {
     int r_initdesp          =   init_SSDDescriptorBuffer();
     int r_initstrategybuf   =   initStrategySSDBuffer();
@@ -78,14 +78,13 @@ initSSD()
            r_initstrategybuf, r_initbuftb, r_initdesp, r_initstt, r_initTSwitcher);
 
     if(r_initdesp==-1 || r_initstrategybuf==-1 || r_initbuftb==-1 || r_initstt==-1 || r_initTSwitcher == -1)
-        exit(-1);
-    int returnCode;
-    returnCode = posix_memalign(&ssd_buffer, 512, sizeof(char) * BLCKSZ);
+        exit(EXIT_FAILURE);
+
+    int returnCode = posix_memalign(&ssd_buffer, 512, sizeof(char) * BLCKSZ);
     if (returnCode < 0)
     {
         printf("[ERROR] flushSSDBuffer():--------posix memalign\n");
-        free(ssd_buffer);
-        exit(-1);
+        exit(EXIT_FAILURE);
     }
 
 #ifdef CACHE_PROPORTIOIN_STATIC
@@ -309,8 +308,25 @@ allocSSDBuf(SSDBufTag ssd_buf_tag, bool * found, int alloc4What, int * isCallBac
     {
         /** When there is NO free SSD space for cache **/
         // TODO Choose a buffer by strategy/
-#ifdef PORE_BATCH
+        enum_t_vict suggest_type = Any;
 
+#ifdef T_SWITCHER_ON
+        if((STT->flush_hdd_blocks + STT->flush_clean_blocks) >= TS_StartSize)
+        {   /* Decide victim type by T_Switcher */
+            int type = CM_CHOOSE();
+            if(type == 0)
+                suggest_type = Clean;
+            else
+                suggest_type = Dirty;
+        }
+#endif // T_SWITCHER_ON
+
+        if(STT->incache_n_clean == 0)
+            suggest_type = Dirty;
+        else if(STT->incache_n_dirty == 0)
+            suggest_type = Clean;
+
+#ifdef PORE_BATCH
         static int max_n_batch = 8 * 1024;
         long buf_despid_array[max_n_batch];
         int n_evict;
@@ -320,12 +336,15 @@ allocSSDBuf(SSDBufTag ssd_buf_tag, bool * found, int alloc4What, int * isCallBac
             n_evict = LogOut_poreplus_v2(buf_despid_array, max_n_batch);
             break;
         case PV3 :
-            n_evict = LogOut_poreplus_v3(buf_despid_array, max_n_batch);
+            n_evict = LogOut_poreplus_v3(buf_despid_array, max_n_batch, suggest_type);
             break;
         case MOST :
             n_evict = LogOut_most(buf_despid_array, max_n_batch);
             break;
-            case LRU_private:
+        case MOST_RW :
+            n_evict = LogOut_most_rw(buf_despid_array,max_n_batch,suggest_type);
+            break;
+        case LRU_private:
             n_evict = Unload_Buf_LRU_private(buf_despid_array, max_n_batch);
         }
 
@@ -393,21 +412,24 @@ initStrategySSDBuffer()
 {
     switch(EvictStrategy)
     {
-        case LRU_private:
-            return initSSDBufferFor_LRU_private();
-        case LRU_rw:
-            return initSSDBufferFor_LRU_rw();
+    case LRU_private:
+        return initSSDBufferFor_LRU_private();
+    case LRU_rw:
+        return initSSDBufferFor_LRU_rw();
 //        case Most:              return initSSDBufferForMost();
-        case PORE:
-            return InitPORE();
-        case PORE_PLUS:
-            return InitPORE_plus();
-        case PORE_PLUS_V2:
-            return Init_poreplus_v2();
-        case PV3:
-            return Init_poreplus_v3();
-        case MOST:
-            return Init_most();
+    case PORE:
+        return InitPORE();
+    case PORE_PLUS:
+        return InitPORE_plus();
+    case PORE_PLUS_V2:
+        return Init_poreplus_v2();
+    case PV3:
+        return Init_poreplus_v3();
+    case MOST:
+        return Init_most();
+    case MOST_RW:
+        return Init_most_rw();
+
     }
     return -1;
 }
@@ -458,8 +480,10 @@ Strategy_Desp_HitIn(SSDBufDesp* desp)
         return Hit_poreplus_v2(desp->serial_id, desp->ssd_buf_flag);
     case PV3:
         return Hit_poreplus_v3(desp->serial_id, desp->ssd_buf_flag);
-        case MOST:
+    case MOST:
         return Hit_most(desp->serial_id, desp->ssd_buf_flag);
+    case MOST_RW:
+        return Hit_most_rw(desp->serial_id, desp->ssd_buf_flag);
 
     }
     return -1;
@@ -487,8 +511,10 @@ Strategy_Desp_LogIn(SSDBufDesp* desp)
         return LogIn_poreplus_v2(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
     case PV3:
         return LogIn_poreplus_v3(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
-        case MOST:
+    case MOST:
         return LogIn_most(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
+    case MOST_RW:
+        return LogIn_most_rw(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
     }
     return -1;
 }
@@ -499,6 +525,7 @@ Strategy_Desp_LogIn(SSDBufDesp* desp)
 void
 read_block(off_t offset, char *ssd_buffer)
 {
+
 #ifdef NO_CACHE
 #ifdef SIMULATION
     dev_simu_read(ssd_buffer, SSD_BUFFER_SIZE, offset);
@@ -582,6 +609,7 @@ write_block(off_t offset, char *ssd_buffer)
     STT->flush_hdd_blocks++;
     return;
 #else
+
     _TimerLap(&tv_cmstop);
     bool	found;
     int isCallBack;
@@ -622,6 +650,8 @@ write_block(off_t offset, char *ssd_buffer)
 
 static int dev_pread(int fd, void* buf,size_t nbytes,off_t offset)
 {
+    if(I_AM_HRC_PROC)
+        return nbytes;
 #ifdef NO_REAL_DISK_IO
     return nbytes;
 #else
@@ -640,6 +670,8 @@ static int dev_pread(int fd, void* buf,size_t nbytes,off_t offset)
 
 static int dev_pwrite(int fd, void* buf,size_t nbytes,off_t offset)
 {
+    if(I_AM_HRC_PROC)
+        return nbytes;
 #ifdef NO_REAL_DISK_IO
     return nbytes;
 #else
@@ -658,6 +690,9 @@ static int dev_pwrite(int fd, void* buf,size_t nbytes,off_t offset)
 
 static int dev_simu_write(void* buf,size_t nbytes,off_t offset)
 {
+    if(I_AM_HRC_PROC)
+        return nbytes;
+
     int w;
     _TimerLap(&tv_start);
     w = simu_smr_write(buf,nbytes,offset);
@@ -667,6 +702,9 @@ static int dev_simu_write(void* buf,size_t nbytes,off_t offset)
 
 static int dev_simu_read(void* buf,size_t nbytes,off_t offset)
 {
+    if(I_AM_HRC_PROC)
+        return nbytes;
+
     int r;
     _TimerLap(&tv_start);
     r = simu_smr_read(buf,nbytes,offset);

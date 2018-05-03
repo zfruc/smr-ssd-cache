@@ -463,11 +463,8 @@ FLAG_NEWPERIOD:
         }
         else
         {
-            cm_token token;
-            token.will_evict_clean_blkcnt = EVICT_DITRY_GRAIN;
-            token.will_evict_dirty_blkcnt = EVICT_DITRY_GRAIN;
-            token.wrtamp = ((double)(ZONEBLKSZ) * 2) / evictZone->pagecnt_dirty ;
-            int type = CM_CHOOSE(token);
+
+            int type = CM_CHOOSE();
             if(type == 0)
                 goto FLAG_EVICT_CLEAN;
             else

@@ -17,13 +17,6 @@ typedef struct
     pthread_mutex_t lock;
 } CleanDespCtrl;
 
-typedef enum
-{
-    CLEAN_ONLY,
-    DIRTY_ONLY,
-    HYBRID
-} EnumEvictModel;
-static blkcnt_t Evicted_Blk_Cnt = 0;
 static blkcnt_t  ZONEBLKSZ;
 
 static StrategyDesp_pore*   GlobalDespArray;
@@ -57,7 +50,6 @@ static void move2CleanArrayHead(StrategyDesp_pore* desp);
 /** PORE Plus**/
 static int redefineOpenZones();
 
-static EnumEvictModel       CurEvictModel;
 static int choose_colder(long stampA, long stampB, long minStamp);
 static int get_FrozenOpZone_Seq();
 
@@ -183,7 +175,7 @@ Hit_poreplus_v3(long despId, unsigned flag)
         If else the Hybrid model, evicting both of global clean blocks and dirty block in open zones.
  */
 int
-LogOut_poreplus_v3(long * out_despid_array, int max_n_batch)
+LogOut_poreplus_v3(long * out_despid_array, int max_n_batch, enum_t_vict suggest_type)
 {
     static int CurEvictZoneSeq = -1;
     static long evict_clean_cnt = 0, evict_dirty_cnt = 0;
@@ -210,83 +202,50 @@ FLAG_NEWPERIOD:
         redefineOpenZones();
 
         /** 2. Decide Evict Model Phase **/
-
-        if(OpenZoneCnt > 0)
-        {
-            CurEvictModel = HYBRID;
-        }
-        else
-            CurEvictModel = CLEAN_ONLY;
-
-
         printf("-------------New Period!-----------\n");
-        printf("Period [%d], Non-Empty Zone_Cnt=%d, OpenZones_cnt=%d, CleanBlks=%ld(%0.2lf) ",PeriodStamp, NonEmptyZoneCnt, OpenZoneCnt,CleanCtrl.pagecnt_clean, (double)CleanCtrl.pagecnt_clean/NBLOCK_SSD_CACHE);
-        switch(CurEvictModel)
-        {
-        case CLEAN_ONLY:
-            printf("Evict Model=%s\n","CLEAN-ONLY");
-            break;
-        case DIRTY_ONLY:
-            printf("Evict Model=%s\n","DIRTY_ONLY");
-            break;
-        case HYBRID:
-            printf("Evict Model=%s\n","HYBRID");
-            break;
-
-        }
+        printf("Period [%d], Non-Empty Zone_Cnt=%d, OpenZones_cnt=%d, CleanBlks=%ld(%0.2lf)\n",PeriodStamp, NonEmptyZoneCnt, OpenZoneCnt,CleanCtrl.pagecnt_clean, (double)CleanCtrl.pagecnt_clean/NBLOCK_SSD_CACHE);
     }
 
     /**3. Evict Phase **/
     ZoneCtrl* evictZone;
-    if(CurEvictModel == CLEAN_ONLY)
+
+    if(suggest_type == Clean)
     {
-        if(CleanCtrl.pagecnt_clean <= 0)
-            goto FLAG_NEWPERIOD;
-        //return -1;
+        if(CleanCtrl.pagecnt_clean == 0) // Consistency judgment
+            error("Order to evict clean cache block, but it is exhausted in advance.");
         goto FLAG_EVICT_CLEAN;
     }
-    else if(CurEvictModel == HYBRID)
+    else if(suggest_type == Dirty)
     {
-        //else
-        StrategyDesp_pore * cleanDesp, * dirtyDesp;
+        if(STT->incache_n_dirty == 0)   // Consistency judgment
+            error("Order to evict dirty cache block, but it is exhausted in advance.");
 
         CurEvictZoneSeq = get_FrozenOpZone_Seq();
         if(CurEvictZoneSeq < 0)
             goto FLAG_NEWPERIOD;
-        // Compare time stamp;
-        if(CleanCtrl.pagecnt_clean <= 0)
-            goto FLAG_EVICT_DIRTYZONE;
-
-        cleanDesp = GlobalDespArray + CleanCtrl.tail;
-        evictZone = ZoneCtrlArray + OpenZoneSet[CurEvictZoneSeq];
-        dirtyDesp = GlobalDespArray + evictZone->tail;
-
-        /* T-Switcher will start working after a while of been evicted NBLOCK_SSD_CACHE blocks. */
-        if(Evicted_Blk_Cnt < TS_WindowSize)
-        {
-            if(choose_colder(cleanDesp->stamp, dirtyDesp->stamp, StampGlobal))
-                goto FLAG_EVICT_CLEAN;
-            else
-                goto FLAG_EVICT_DIRTYZONE;
-        }
-        else
-        {
-            cm_token token;
-            token.will_evict_clean_blkcnt = EVICT_DITRY_GRAIN;
-            token.will_evict_dirty_blkcnt = EVICT_DITRY_GRAIN;
-            token.wrtamp = ((double)(ZONEBLKSZ) * 2) / evictZone->pagecnt_dirty ;
-            int type = CM_CHOOSE(token);
-            if(type == 0)
-                goto FLAG_EVICT_CLEAN;
-            else
-                goto FLAG_EVICT_DIRTYZONE;
-        }
+        goto FLAG_EVICT_DIRTYZONE;
     }
     else
     {
-        return -2;
-    }
+        if(CleanCtrl.tail < 0)
+            error("Order to evict clean cache block, but it is exhausted in advance.");
 
+        // The suggest type is 'Any'.
+        StrategyDesp_pore * cleanDesp, * dirtyDesp;
+
+        cleanDesp = GlobalDespArray + CleanCtrl.tail;
+
+        CurEvictZoneSeq = get_FrozenOpZone_Seq();
+        if(CurEvictZoneSeq < 0)
+            goto FLAG_NEWPERIOD;
+        evictZone = ZoneCtrlArray + OpenZoneSet[CurEvictZoneSeq];
+        dirtyDesp = GlobalDespArray + evictZone->tail;
+
+        if(choose_colder(cleanDesp->stamp, dirtyDesp->stamp, StampGlobal))
+            goto FLAG_EVICT_CLEAN;
+        else
+            goto FLAG_EVICT_DIRTYZONE;
+    }
 
 FLAG_EVICT_CLEAN:
     1;
@@ -303,7 +262,6 @@ FLAG_EVICT_CLEAN:
         CleanCtrl.pagecnt_clean --;
         i ++;
     }
-    Evicted_Blk_Cnt += i;
     return i;
 
 FLAG_EVICT_DIRTYZONE:
@@ -328,7 +286,6 @@ FLAG_EVICT_DIRTYZONE:
     }
     //printf("pore+V2: batch flush dirty cnt [%d] from zone[%lu]\n", j,evictZone->zoneId);
 
-    Evicted_Blk_Cnt += j;
 //    printf("SCORE REPORT: zone id[%d], score[%lu]\n", evictZone->zoneId, evictZone->score);
     return j;
 }
@@ -557,6 +514,8 @@ static int
 redefineOpenZones()
 {
     NonEmptyZoneCnt = extractNonEmptyZoneId();
+    if(NonEmptyZoneCnt == 0)
+        return 0;
     pause_and_score(); /**< Method 1 */
     qsort_zone(0,NonEmptyZoneCnt-1);
 
@@ -585,22 +544,12 @@ redefineOpenZones()
 //               ZoneCtrlArray[ZoneSortArray[i]].pagecnt_clean);
 //    }
 
-    return 0;
+    return OpenZoneCnt;
 }
 
 static int
 choose_colder(long stampA, long stampB, long maxStamp)
 {
-//    srand((unsigned int)time(0));
-//   long ran = random(1000);
-
-    // double weightA = (double)(maxStamp - stampA + 1) / (2*maxStamp - stampA - stampB + 2);
-
-    // if(ran < 1000 * weightA)
-    //     return 1;
-    // else
-    //     return 0;
-
     return (stampA > stampB) ? 0 : 1;
 }
 

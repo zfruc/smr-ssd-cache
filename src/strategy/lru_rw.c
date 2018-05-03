@@ -90,10 +90,6 @@ hitInBuffer_LRU_rw(long serial_id, unsigned flag)
 int
 insertBuffer_LRU_rw(long serial_id, unsigned flag)
 {
-    if(serial_id == 5249)
-    {
-        int a = 0;
-    }
     //strategy_desp[serial_id].user_id = UserId;
     addToLRUHead(&strategy_desp[serial_id], flag);
 

@@ -2,6 +2,7 @@
 #include "report.h"
 #include "statusDef.h"
 #include "unistd.h"
+#include <stdlib.h>
 FILE* LogFile;
 void info(char* str)
 {
@@ -11,7 +12,7 @@ void info(char* str)
 void error(char* str)
 {
     printf("process [%d]: %s\n",getpid(),str);
-    exit(1);
+    exit(EXIT_FAILURE);
 }
 
 int OpenLogFile(const char* filepath)

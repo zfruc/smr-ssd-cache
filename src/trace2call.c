@@ -13,9 +13,13 @@
 #include "trace2call.h"
 #include "report.h"
 #include "strategy/strategies.h"
+
+#include "/home/fei/git/Func-Utils/pipelib.h"
+#include "hrc.h"
 extern struct RuntimeSTAT* STT;
 #define REPORT_INTERVAL 50000
 
+static void do_HRC();
 static void reportCurInfo();
 static void report_ontime();
 static void resetStatics();
@@ -30,15 +34,21 @@ extern microsecond_t    msec_r_hdd,msec_w_hdd,msec_r_ssd,msec_w_ssd;
 extern int IsHit;
 char logbuf[512];
 
-
 void
 trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
 {
+    if(I_AM_HRC_PROC)
+    {
+        do_HRC(startLBA);
+        exit(EXIT_SUCCESS);
+    }
+
     char		action;
     off_t		offset;
     char       *ssd_buffer;
     int	        returnCode;
     int         isFullSSDcache = 0;
+    char        pipebuf[128];
 #ifdef CG_THROTTLE
     static char* cgbuf;
     int returncode = posix_memalign(&cgbuf, 512, 4096);
@@ -68,12 +78,20 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     static int req_cnt = 0;
 
     blkcnt_t total_n_req = isWriteOnly ? 100000000 : 200000000;
+    blkcnt_t skiprows = isWriteOnly ? 50000000 : 100000000;
     while (!feof(trace)&& STT->reqcnt_s < total_n_req) // 84340000
     {
-
-        //        if(feof(trace))
-//            fseek(trace,0,SEEK_SET);
-
+        returnCode = fscanf(trace, "%c %d %lu\n", &action, &i, &offset);
+        if (returnCode < 0)
+        {
+            error("error while reading trace file.");
+            break;
+        }
+        if(skiprows > 0)
+        {
+            skiprows -- ;
+            continue;
+        }
 #ifdef CG_THROTTLE
         if(pwrite(ram_fd,cgbuf,1024,0) <= 0)
         {
@@ -82,12 +100,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         }
 #endif // CG_THROTTLE
 
-        returnCode = fscanf(trace, "%c %d %lu\n", &action, &i, &offset);
-        if (returnCode < 0)
-        {
-            error("error while reading trace file.");
-            break;
-        }
+
         offset = (offset + startLBA) * BLCKSZ;
 
         if(!isFullSSDcache && (STT->flush_clean_blocks + STT->flush_hdd_blocks) > 0)
@@ -98,8 +111,9 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         }
 #ifdef T_SWITCHER_ON
         static int tk = 1;
-        if(tk && (STT->flush_clean_blocks + STT->flush_hdd_blocks) >= TS_WindowSize)
-        {
+        if(tk && (STT->flush_clean_blocks + STT->flush_hdd_blocks) >= TS_StartSize)
+        {   /* When T-Switcher start working */
+            info("T-Switcher start working...");
             reportCurInfo();
             tk = 0;
         }
@@ -108,17 +122,32 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
 #ifdef LOG_SINGLE_REQ
         _TimerLap(&tv_req_start);
 #endif // TIMER_SINGLE_REQ
+        sprintf(pipebuf,"%c,%lu\n",action,offset);
         if (action == ACT_WRITE) // Write = 1
         {
             STT->reqcnt_w ++;
             STT->reqcnt_s ++;
             write_block(offset, ssd_buffer);
+            #ifdef HRC_PROCS_N
+            int i;
+            for(i = 0; i < HRC_PROCS_N; i++)
+            {
+                pipe_write(PipeEnds_of_MAIN[i],pipebuf,64);
+            }
+            #endif // HRC_PROCS_N
         }
         else if (!isWriteOnly && action == ACT_READ)    // read = 9
         {
             STT->reqcnt_r ++;
             STT->reqcnt_s ++;
             read_block(offset,ssd_buffer);
+            #ifdef HRC_PROCS_N
+            int i;
+            for(i = 0; i < HRC_PROCS_N; i++)
+            {
+                pipe_write(PipeEnds_of_MAIN[i],pipebuf,64);
+            }
+            #endif // HRC_PROCS_N
         }
         else if (action != ACT_READ)
         {
@@ -150,8 +179,57 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     _TimerLap(&tv_trace_end);
     time_trace = Mirco2Sec(TimerInterval_MICRO(&tv_trace_start,&tv_trace_end));
     reportCurInfo();
+
+    #ifdef HRC_PROCS_N
+    for(i = 0; i < HRC_PROCS_N; i++)
+    {
+        sprintf(pipebuf,"EOF\n");
+        pipe_write(PipeEnds_of_MAIN[i],pipebuf,64);
+    }
+    #endif // HRC_PROCS_N
 //    free(ssd_buffer);
 //    fclose(trace);
+}
+
+static void
+do_HRC()
+{
+#ifdef HRC_PROCS_N
+    char	action;
+    off_t   offset;
+    int     i;
+    int strlen = 64;
+    char buf[128];
+    int  ret;
+    while((ret = read(PipeEnd_of_HRC, buf, strlen)) == strlen)
+    {
+        if(sscanf(buf,"%c,%lu\n", &action, &offset) < 0)
+        {
+            perror("HRC: sscanf string");
+            exit(EXIT_FAILURE);
+        }
+
+        if (action == ACT_WRITE) // Write = 1
+        {
+            STT->reqcnt_w ++;
+            STT->reqcnt_s ++;
+            write_block(offset, NULL);
+        }
+        else if (action == ACT_READ)    // read = 9
+        {
+            STT->reqcnt_r ++;
+            STT->reqcnt_s ++;
+            read_block(offset,NULL);
+        }
+
+        if(STT->reqcnt_s % 10000== 0)
+        {
+            hrc_report();
+        }
+    }
+
+    exit(EXIT_SUCCESS);
+#endif
 }
 
 static void reportCurInfo()

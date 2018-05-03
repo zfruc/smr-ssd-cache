@@ -1,6 +1,7 @@
 #include "global.h"
 
 /** This user basic info */
+pid_t Fork_Pid = 0; /* Default 0. If is a HRC process, this must be large than 0 */
 int BatchId;
 int UserId;
 int TraceId;
@@ -13,6 +14,7 @@ unsigned long Param1;
 unsigned long Param2;
 
 /** All users basic setup **/           /** NEED TO BE '#DEFINE' **/
+blksize_t NBLOCK_MAX_CACHE_SIZE;
 blksize_t NBLOCK_SSD_CACHE;
 blksize_t NTABLE_SSD_CACHE;
 blksize_t SSD_BUFFER_SIZE = 4096;
@@ -54,3 +56,10 @@ char* SHM_PROCESS_REQ_LOCK = "SHM_PROCESS_REQ_LOCK";
 
 char* PATH_LOG = "/home/outputs/logs";
 
+/** Var for T-Switcher **/
+
+/** Pipes for HRC processes **/
+#ifdef HRC_PROCS_N
+int PipeEnds_of_MAIN[HRC_PROCS_N];
+int PipeEnd_of_HRC;
+#endif

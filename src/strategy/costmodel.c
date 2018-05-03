@@ -39,6 +39,7 @@ static microsecond_t * t_hitmisscollect;
 
 /** The relavant objs of evicted blocks array belonged the current window. **/
 blkcnt_t TS_WindowSize;
+blkcnt_t TS_StartSize;
 typedef struct
 {
     off_t       offset;
@@ -76,7 +77,11 @@ static int random_pick(float weight1, float weight2, float obey);
 /** MAIN FUNCTIONS **/
 int CM_Init()
 {
-    TS_WindowSize = NBLOCK_SSD_CACHE;
+    #ifndef T_SWITCHER_ON
+        return 0;
+    #endif // T_SWITCHER_ON
+    TS_WindowSize = NBLOCK_SSD_CACHE  / 16;
+    TS_StartSize = TS_WindowSize;
     WindowArray = (WDArray *)malloc(TS_WindowSize * sizeof(WDItem));
     WDArray_Head = WDArray_Tail = 0;
 
@@ -108,6 +113,10 @@ int CM_Init()
  */
 int CM_Reg_EvictBlk(SSDBufTag blktag, unsigned flag, microsecond_t usetime)
 {
+    #ifndef T_SWITCHER_ON
+        return 0;
+    #endif // T_SWITCHER_ON
+
     if(IsFull_WDArray())
     {
         /* Clean all the information related to the oldest block(the head block)  */
@@ -170,6 +179,10 @@ int CM_Reg_EvictBlk(SSDBufTag blktag, unsigned flag, microsecond_t usetime)
  */
 int CM_TryCallBack(SSDBufTag blktag)
 {
+    #ifndef T_SWITCHER_ON
+        return 0;
+    #endif // T_SWITCHER_ON
+
     hashkey_t key = blktag.offset;
     blkcnt_t itemId = indexGet_WDItemId(key);
     if(itemId >= 0)
@@ -192,8 +205,11 @@ static int DirtyWinTimes = 0, CleanWinTimes = 0;
  * 0 : Clean BLock
  * 1 : Dirty Block
  */
-int CM_CHOOSE(cm_token token)
+int CM_CHOOSE()
 {
+    #ifndef T_SWITCHER_ON
+        return 0;
+    #endif // T_SWITCHER_ON
     if(WriteOnly) return 1;
 
     static blkcnt_t counter = 0;
@@ -206,10 +222,6 @@ int CM_CHOOSE(cm_token token)
 
     PCB_Clean = (double)CallBack_Cnt_Clean / (Evict_Cnt_Clean + 1);
     PCB_Dirty = (double)CallBack_Cnt_Dirty / (Evict_Cnt_Dirty + 1);
-
-    int clean_cnt = token.will_evict_clean_blkcnt;
-    int dirty_cnt = token.will_evict_dirty_blkcnt;
-    WrtAmp = token.wrtamp;
 
     T_rand = T_rand_sum / (T_rand_cnt + 1);
     T_fifo = T_fifo_sum / (T_fifo_cnt + 1);
@@ -225,7 +237,7 @@ int CM_CHOOSE(cm_token token)
     CC_avg = CC;
     CD_avg = CD;
 
-    int pick = random_pick(CC, CD, 0.5);
+    int pick = random_pick(CC, CD, 1);
     if(pick == 1)
     {
         CleanWinTimes ++;
@@ -240,6 +252,9 @@ int CM_CHOOSE(cm_token token)
 
 int CM_T_rand_Reg(microsecond_t usetime)
 {
+    #ifndef T_SWITCHER_ON
+        return 0;
+    #endif // T_SWITCHER_ON
     static blkcnt_t head = 0, tail = 0;
     if(head == (tail + 1) % TS_WindowSize)
     {
@@ -259,6 +274,9 @@ int CM_T_rand_Reg(microsecond_t usetime)
 
 int CM_T_hitmiss_Reg(microsecond_t usetime)
 {
+    #ifndef T_SWITCHER_ON
+        return 0;
+    #endif // T_SWITCHER_ON
     static blkcnt_t head = 0, tail = 0;
     if(head == (tail + 1) % TS_WindowSize)
     {
@@ -278,6 +296,9 @@ int CM_T_hitmiss_Reg(microsecond_t usetime)
 
 void ReportCM()
 {
+    #ifndef T_SWITCHER_ON
+        return 0;
+    #endif // T_SWITCHER_ON
     printf("---------- Cost Model Runtime Report ----------\n");
     printf("Count C / D:\t");
     printf("[%ld / %ld]\n", Evict_Cnt_Clean, Evict_Cnt_Dirty);
@@ -298,6 +319,9 @@ void ReportCM()
 
 void CM_Report_PCB()
 {
+    #ifndef T_SWITCHER_ON
+        return 0;
+    #endif // T_SWITCHER_ON
     static char buf[50];
     sprintf(buf,"%d,%d\n",(int)(PCB_Clean*100), (int)(PCB_Dirty*100));
     WriteLog(buf);
@@ -392,6 +416,7 @@ static int indexRemove_WDItem(hashkey_t key)
 
 static int random_pick(float weight1, float weight2, float obey)
 {
+    //return (weight1 < weight2) ? 1 : 2;
     // let weight as the standard, set as 1,
     float inc_times = (weight2 / weight1) - 1;
     inc_times *= obey;

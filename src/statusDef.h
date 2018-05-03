@@ -19,10 +19,10 @@
 #undef SIMULATOR_AIO
 #define SIMU_NO_DISK_IO
 
-/** Daemon process **/
+/** Daemon Thread **/
 #undef DAEMON_PROC
 #undef DAEMON_BANDWIDHT
-#undef DAEMON_CACHE_RUNTIME:q
+#undef DAEMON_CACHE_RUNTIME
 #undef DAEON_SMR_RUNTIME
 
 #define PORE_BATCH
@@ -31,5 +31,6 @@
 #define T_SWITCHER_ON
 
 /* Future Features */
+#undef HRC_PROCS_N 10
 #undef CG_THROTTLE     // CGroup throttle.
 #undef MULTIUSER

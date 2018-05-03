@@ -58,10 +58,17 @@ typedef struct
     pthread_mutex_t lock;
 } SSDBufDespCtrl;
 
+typedef enum enum_t_vict
+{
+    Clean,
+    Dirty,
+    Any
+} enum_t_vict;
+
 extern int IsHit;
 extern microsecond_t msec_r_hdd,msec_w_hdd,msec_r_ssd,msec_w_ssd,msec_bw_hdd;
 
-extern void initSSD();
+extern void CacheLayer_Init();
 extern void read_block(off_t offset, char* ssd_buffer);
 extern void write_block(off_t offset, char* ssd_buffer);
 extern void read_band(off_t offset, char* ssd_buffer);
