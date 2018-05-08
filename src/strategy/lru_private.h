@@ -8,8 +8,9 @@ typedef struct
 	long 		serial_id;			// the corresponding descriptor serial number.
     long        next_self_lru;
     long        last_self_lru;
-    int   user_id;
+    int         user_id;
     pthread_mutex_t lock;
+    long     	    stamp;
 } StrategyDesp_LRU_private;
 
 typedef struct

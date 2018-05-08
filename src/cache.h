@@ -1,7 +1,7 @@
 #define DEBUG 0
 /* ---------------------------ssd cache---------------------------- */
 #ifndef _SSD_CACHE_H
-#define _SSD_CACHE_H 1
+#define _SSD_CACHE_H
 
 #include <pthread.h>
 #include "global.h"
@@ -60,9 +60,9 @@ typedef struct
 
 typedef enum enum_t_vict
 {
-    Clean,
-    Dirty,
-    Any
+    ENUM_B_Clean,
+    ENUM_B_Dirty,
+    ENUM_B_Any
 } enum_t_vict;
 
 extern int IsHit;

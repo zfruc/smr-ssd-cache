@@ -308,23 +308,23 @@ allocSSDBuf(SSDBufTag ssd_buf_tag, bool * found, int alloc4What, int * isCallBac
     {
         /** When there is NO free SSD space for cache **/
         // TODO Choose a buffer by strategy/
-        enum_t_vict suggest_type = Any;
+        enum_t_vict suggest_type = ENUM_B_Any;
 
 #ifdef T_SWITCHER_ON
         if((STT->flush_hdd_blocks + STT->flush_clean_blocks) >= TS_StartSize)
         {   /* Decide victim type by T_Switcher */
             int type = CM_CHOOSE();
             if(type == 0)
-                suggest_type = Clean;
+                suggest_type = ENUM_B_Clean;
             else
-                suggest_type = Dirty;
+                suggest_type = ENUM_B_Dirty;
         }
 #endif // T_SWITCHER_ON
 
         if(STT->incache_n_clean == 0)
-            suggest_type = Dirty;
+            suggest_type = ENUM_B_Dirty;
         else if(STT->incache_n_dirty == 0)
-            suggest_type = Clean;
+            suggest_type = ENUM_B_Clean;
 
 #ifdef PORE_BATCH
         static int max_n_batch = 8 * 1024;
@@ -332,20 +332,27 @@ allocSSDBuf(SSDBufTag ssd_buf_tag, bool * found, int alloc4What, int * isCallBac
         int n_evict;
         switch (EvictStrategy)
         {
-        case PORE_PLUS_V2 :
-            n_evict = LogOut_poreplus_v2(buf_despid_array, max_n_batch);
-            break;
-        case PV3 :
-            n_evict = LogOut_poreplus_v3(buf_despid_array, max_n_batch, suggest_type);
-            break;
-        case MOST :
-            n_evict = LogOut_most(buf_despid_array, max_n_batch);
-            break;
-        case MOST_RW :
-            n_evict = LogOut_most_rw(buf_despid_array,max_n_batch,suggest_type);
-            break;
-        case LRU_private:
-            n_evict = Unload_Buf_LRU_private(buf_despid_array, max_n_batch);
+            case PORE_PLUS_V2 :
+                n_evict = LogOut_poreplus_v2(buf_despid_array, max_n_batch);
+                break;
+            case PV3 :
+                n_evict = LogOut_poreplus_v3(buf_despid_array, max_n_batch, suggest_type);
+                break;
+            case MOST :
+                n_evict = LogOut_most(buf_despid_array, max_n_batch);
+                break;
+            case MOST_RW :
+                n_evict = LogOut_most_rw(buf_despid_array,max_n_batch,suggest_type);
+                break;
+            case LRU_private:
+                n_evict = Unload_Buf_LRU_private(buf_despid_array, max_n_batch);
+                break;
+            case LRU_rw:
+                n_evict = Unload_Buf_LRU_rw(buf_despid_array, max_n_batch,suggest_type);
+                break;
+            default:
+                error("Current cache algorithm dose not support batched process.");
+                exit(EXIT_FAILURE);
         }
 
         int k = 0;
@@ -444,7 +451,7 @@ Strategy_Desp_LogOut(unsigned flag)
     case LRU_private:
         error("LRU wrong time function revoke, please use BATHCH configure.\n");
     case LRU_rw:
-        return Unload_Buf_LRU_rw(flag);
+        error("MOST wrong time function revoke\n");
 //       case Most:              return LogOutDesp_most();
     case PORE:
         return LogOutDesp_pore();

@@ -54,18 +54,11 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     int returncode = posix_memalign(&cgbuf, 512, 4096);
 #endif // CG_THROTTLE
 
-    FILE *trace;
-    if ((trace = fopen(trace_file_path, "rt")) == NULL)
-    {
-        error("Failed to open the trace file!\n");
-        exit(1);
-    }
-
     returnCode = posix_memalign(&ssd_buffer, 1024, 16*sizeof(char) * BLCKSZ);
     if (returnCode < 0)
     {
         error("posix memalign error\n");
-        free(ssd_buffer);
+        //free(ssd_buffer);
         exit(-1);
     }
     int i;
@@ -79,7 +72,15 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
 
     blkcnt_t total_n_req = isWriteOnly ? 100000000 : 200000000;
     blkcnt_t skiprows = isWriteOnly ? 50000000 : 100000000;
-    while (!feof(trace)&& STT->reqcnt_s < total_n_req) // 84340000
+
+    FILE *trace;
+    if ((trace = fopen(trace_file_path, "rt")) == NULL)
+    {
+        error("Failed to open the trace file!\n");
+        exit(EXIT_FAILURE);
+    }
+
+    while (!feof(trace) && STT->reqcnt_s < total_n_req) // 84340000
     {
         returnCode = fscanf(trace, "%c %d %lu\n", &action, &i, &offset);
         if (returnCode < 0)
@@ -187,8 +188,8 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         pipe_write(PipeEnds_of_MAIN[i],pipebuf,64);
     }
     #endif // HRC_PROCS_N
-//    free(ssd_buffer);
-//    fclose(trace);
+    free(ssd_buffer);
+    fclose(trace);
 }
 
 static void

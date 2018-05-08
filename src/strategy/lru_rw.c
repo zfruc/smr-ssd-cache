@@ -1,11 +1,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "global.h"
-#include "lru.h"
-#include "cache.h"
+#include "../global.h"
+#include"../shmlib.h"
 #include "lru_private.h"
-#include "shmlib.h"
+#include "lru_rw.h"
+
+
+#define EVICT_DITRY_GRAIN 64
+#define stamp(desp) \
+    desp->stamp = ++ StampGlobal;
+
 /********
  ** SHM**
  ********/
@@ -16,6 +21,7 @@ static StrategyDesp_LRU_private	* strategy_desp;
 static volatile void *addToLRUHead(StrategyDesp_LRU_private * ssd_buf_hdr_for_lru, unsigned flag);
 static volatile void *deleteFromLRU(StrategyDesp_LRU_private * ssd_buf_hdr_for_lru);
 static volatile void *moveToLRUHead(StrategyDesp_LRU_private * ssd_buf_hdr_for_lru, unsigned flag);
+static long                 StampGlobal;      /* Current io sequenced number in a period lenth, used to distinct the degree of heat among zones */
 
 #define IsDirty(flag) ((flag & SSD_BUF_DIRTY) != 0)
 
@@ -51,32 +57,62 @@ initSSDBufferFor_LRU_rw()
     lru_dirty_ctrl.last_self_lru = lru_clean_ctrl.last_self_lru = -1;
     lru_dirty_ctrl.count = lru_clean_ctrl.count = 0;
 
+    StampGlobal = 0;
     return stat;
 }
 
-long
-Unload_Buf_LRU_rw(unsigned flag)
+int
+Unload_Buf_LRU_rw(long * out_despid_array, int max_n_batch, enum_t_vict suggest_type)
 {
     long frozen_id;
-    if (IsDirty(flag))
+    int cnt = 0;
+    StrategyDesp_LRU_private * victim;
+    if(suggest_type == ENUM_B_Any)
     {
-        if(lru_dirty_ctrl.last_self_lru >= 0)
-            frozen_id = lru_dirty_ctrl.last_self_lru;
+        if(lru_dirty_ctrl.last_self_lru < 0 || lru_clean_ctrl.last_self_lru < 0)
+        {
+            error("Order to evict any cache block, but one of them has exhausted in advance.");
+        }
+        if(strategy_desp[lru_dirty_ctrl.last_self_lru].stamp > strategy_desp[lru_clean_ctrl.last_self_lru].stamp)
+            goto FLAG_EVICT_CLEAN;
         else
-            frozen_id = lru_clean_ctrl.last_self_lru;
+            goto FLAG_EVICT_DIRTY;
+    }
+    else if (suggest_type == ENUM_B_Dirty)
+    {
+        if(lru_dirty_ctrl.last_self_lru < 0)
+            error("Order to evict [dirty] cache block, but one of them has exhausted in advance.");
+
+        goto FLAG_EVICT_DIRTY;
+    }
+    else if (suggest_type == ENUM_B_Clean)
+    {
+        if(lru_clean_ctrl.last_self_lru < 0)
+            error("Order to evict [clean] cache block, but one of them has exhausted in advance.");
+        goto FLAG_EVICT_CLEAN;
     }
     else
     {
-        if(lru_clean_ctrl.last_self_lru >= 0)
-            frozen_id = lru_clean_ctrl.last_self_lru;
-        else
-            frozen_id = lru_dirty_ctrl.last_self_lru;
+        error("Order to evict [Unknown] type block.");
     }
-    if(frozen_id < 0)
-        exit(-1);
-    deleteFromLRU(&strategy_desp[frozen_id]);
 
-    return frozen_id;
+FLAG_EVICT_CLEAN:
+    while(lru_clean_ctrl.last_self_lru >= 0 &&  cnt < EVICT_DITRY_GRAIN){
+        victim =  strategy_desp + lru_clean_ctrl.last_self_lru;
+        out_despid_array[cnt] = victim->serial_id;
+        deleteFromLRU(victim);
+        cnt ++ ;
+    }
+    return cnt;
+
+FLAG_EVICT_DIRTY:
+    while(lru_dirty_ctrl.last_self_lru >= 0 &&  cnt < EVICT_DITRY_GRAIN){
+        victim =  strategy_desp + lru_dirty_ctrl.last_self_lru;
+        out_despid_array[cnt] = victim->serial_id;
+        deleteFromLRU(victim);
+        cnt ++ ;
+    }
+    return cnt;
 }
 
 int
@@ -84,6 +120,7 @@ hitInBuffer_LRU_rw(long serial_id, unsigned flag)
 {
     StrategyDesp_LRU_private* ssd_buf_hdr_for_lru = &strategy_desp[serial_id];
     moveToLRUHead(ssd_buf_hdr_for_lru, flag);
+    stamp(ssd_buf_hdr_for_lru);
     return 0;
 }
 
@@ -91,8 +128,9 @@ int
 insertBuffer_LRU_rw(long serial_id, unsigned flag)
 {
     //strategy_desp[serial_id].user_id = UserId;
-    addToLRUHead(&strategy_desp[serial_id], flag);
-
+    StrategyDesp_LRU_private * desp = strategy_desp + serial_id;
+    addToLRUHead(desp, flag);
+    stamp(desp);
     return 0;
 }
 

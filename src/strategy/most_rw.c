@@ -141,13 +141,13 @@ LogOut_most_rw(long * out_despid_array, int max_n_batch, enum_t_vict suggest_typ
 
 
     StrategyDesp_pore*  victimDesp;
-    if(suggest_type == Clean)
+    if(suggest_type == ENUM_B_Clean)
     {
         if(CleanCtrl.pagecnt_clean == 0) // Consistency judgment
             error("Order to evict clean cache block, but it is exhausted in advance.");
         goto FLAG_EVICT_CLEAN;
     }
-    else if(suggest_type == Dirty)
+    else if(suggest_type == ENUM_B_Dirty)
     {
         if(STT->incache_n_dirty == 0)   // Consistency judgment
             error("Order to evict dirty cache block, but it is exhausted in advance.");
