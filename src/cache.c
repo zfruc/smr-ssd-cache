@@ -617,7 +617,7 @@ write_block(off_t offset, char *ssd_buffer)
     return;
 #else
 
-    _TimerLap(&tv_cmstop);
+    _TimerLap(&tv_cmstart);
     bool	found;
     int isCallBack;
     static SSDBufTag ssd_buf_tag;

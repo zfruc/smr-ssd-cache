@@ -28,7 +28,7 @@
 #define PORE_BATCH
 
 /** T-Switcher **/
-#define T_SWITCHER_ON
+#undef T_SWITCHER_ON
 
 /* Future Features */
 #undef HRC_PROCS_N 10
