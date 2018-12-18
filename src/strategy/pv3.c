@@ -63,7 +63,7 @@ getZoneNum(size_t offset)
 int
 Init_poreplus_v3()
 {
-    ZONEBLKSZ = ZONESZ / BLCKSZ;
+    ZONEBLKSZ = ZONESZ / BLKSZ;
 
     PeriodStamp = StampGlobal = Progress_Clean = Progress_Dirty = 0;
     GlobalDespArray = (StrategyDesp_pore*)malloc(sizeof(StrategyDesp_pore) * NBLOCK_SSD_CACHE);
@@ -520,7 +520,7 @@ redefineOpenZones()
     qsort_zone(0,NonEmptyZoneCnt-1);
 
     long n_chooseblk = 0, n = 0;
-    long max_n_zones = PeriodLenth / (ZONESZ / BLCKSZ);
+    long max_n_zones = PeriodLenth / (ZONESZ / BLKSZ);
     if(max_n_zones == 0)
         max_n_zones = 1;  // This is for Emulation on small traces, some of their fifo size are lower than a zone size.
     OpenZoneCnt = 0;

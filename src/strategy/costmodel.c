@@ -71,7 +71,7 @@ static WDBucket ** HashIndex;
 static blkcnt_t indexGet_WDItemId(off_t key);
 static int      indexInsert_WDItem(hashkey_t key, hashvalue_t value);
 static int      indexRemove_WDItem(hashkey_t key);
-#define HashMap_KeytoValue(key) ((key / BLCKSZ) % TS_WindowSize)
+#define HashMap_KeytoValue(key) ((key / BLKSZ) % TS_WindowSize)
 static int random_pick(float weight1, float weight2, float obey);
 
 /** MAIN FUNCTIONS **/

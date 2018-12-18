@@ -72,7 +72,7 @@ getZoneNum(size_t offset)
 int
 Init_poreplus_v2()
 {
-    ZONEBLKSZ = ZONESZ / BLCKSZ;
+    ZONEBLKSZ = ZONESZ / BLKSZ;
     plus_Dirty_Threshold =  ZONEBLKSZ * 0.8;    /* Cover Rate mush be >= 80% */
     plus_Clean_LowBound =   NBLOCK_SSD_CACHE * 0.2;     /* Clean blocks number < 20% of cache size, must to adopt Hybrid Model, even if there is NONE of zones reach the dirty threshold. */
     plus_Clean_UpBound =    NBLOCK_SSD_CACHE * 0.8;     /* Clean blocks number > 80% of cache size, must to adopt Clean-Only Model, even if there EXIST zones reach the dirty threshold. */

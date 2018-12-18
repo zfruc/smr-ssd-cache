@@ -7,7 +7,7 @@
 
 #undef NO_CACHE
 
-#undef CACHE_PROPORTIOIN_STATIC
+#define CACHE_PROPORTIOIN_STATIC
 #undef NO_READ_CACHE
 /**< Statistic information requirments defination */
 
@@ -25,7 +25,7 @@
 #undef DAEMON_CACHE_RUNTIME
 #undef DAEON_SMR_RUNTIME
 
-#define PORE_BATCH
+#define WRITE_IN_BATCH
 
 /** T-Switcher **/
 #undef T_SWITCHER_ON

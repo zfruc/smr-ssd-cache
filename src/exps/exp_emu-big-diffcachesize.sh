@@ -18,7 +18,7 @@ done
 
 for i in "${!cache_blksize[@]}";
 do
-        /home/smr/smr-ssd-cache 0 0 11 1 0 ${cache_blksize[$i]} 35 LUR 30 > /home/outputs/pore_test_outputfiles/exp/lru-diff-cachesize$i.out
+        /home/smr/smr-ssd-cache 0 0 11 1 0 ${cache_blksize[$i]} 35 LRU 30 > /home/outputs/pore_test_outputfiles/exp/lru-diff-cachesize$i.out
 done
 
 

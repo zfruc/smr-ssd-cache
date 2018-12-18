@@ -107,7 +107,7 @@ extern blkcnt_t NBLOCK_SMR_FIFO;
 extern blkcnt_t NSSDTables;
 //extern blkcnt_t NBANDTables;
 extern blkcnt_t SSD_SIZE;
-extern  blksize_t BLCKSZ;
+extern  blksize_t BLKSZ;
 extern  blkcnt_t  NZONES;
 extern  blksize_t ZONESZ;
 

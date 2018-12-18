@@ -78,8 +78,8 @@ main(int argc, char** argv)
 
 // 1 4 0 0 500000 106230 5242880 LRU 0
 
-// trace11: 0 0 11 1 0 8000000 30 PV3
-    if (argc == 10)
+//0 11 0 8000000 8000000 30 LRU -1
+    if (argc == 11)
     {
         UserId = atoi(argv[1]);
         TraceId = atoi(argv[2]);
@@ -88,7 +88,7 @@ main(int argc, char** argv)
 
         NBLOCK_MAX_CACHE_SIZE = atol(argv[5]);
         NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = atol(argv[6]);
-        NBLOCK_SMR_FIFO = atol(argv[7]) * (ZONESZ / BLCKSZ);
+        NBLOCK_SMR_FIFO = atol(argv[7]) * (ZONESZ / BLKSZ);
 
         if (strcmp(argv[8],"LRU") == 0)
             EvictStrategy = LRU_private;
@@ -106,7 +106,7 @@ main(int argc, char** argv)
         if(atoi(argv[9]) < 0)
             PeriodLenth = NBLOCK_SMR_FIFO;
         else
-            PeriodLenth =  atoi(argv[9]) * (ZONESZ / BLCKSZ);
+            PeriodLenth =  atoi(argv[9]) * (ZONESZ / BLKSZ);
 #ifdef CACHE_PROPORTIOIN_STATIC
         Proportion_Dirty = atof(argv[10]);
 #endif // Proportion_Dirty

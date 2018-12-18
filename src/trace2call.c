@@ -54,7 +54,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     int returncode = posix_memalign(&cgbuf, 512, 4096);
 #endif // CG_THROTTLE
 
-    returnCode = posix_memalign(&ssd_buffer, 1024, 16*sizeof(char) * BLCKSZ);
+    returnCode = posix_memalign(&ssd_buffer, 1024, 16*sizeof(char) * BLKSZ);
     if (returnCode < 0)
     {
         error("posix memalign error\n");
@@ -62,7 +62,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         exit(-1);
     }
     int i;
-    for (i = 0; i < 16 * BLCKSZ; i++)
+    for (i = 0; i < 16 * BLKSZ; i++)
     {
         ssd_buffer[i] = '1';
     }
@@ -70,7 +70,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     _TimerLap(&tv_trace_start);
     static int req_cnt = 0;
 
-    blkcnt_t total_n_req = isWriteOnly ? 100000000 : 200000000;
+    blkcnt_t total_n_req = isWriteOnly ? 100000000 : 10000000;
     blkcnt_t skiprows = isWriteOnly ? 50000000 : 100000000;
 
     FILE *trace;
@@ -88,11 +88,11 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
             error("error while reading trace file.");
             break;
         }
-        if(skiprows > 0)
-        {
-            skiprows -- ;
-            continue;
-        }
+//        if(skiprows > 0)
+//        {
+//            skiprows -- ;
+//            continue;
+//        }
 #ifdef CG_THROTTLE
         if(pwrite(ram_fd,cgbuf,1024,0) <= 0)
         {
@@ -101,9 +101,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         }
 #endif // CG_THROTTLE
 
-
-        offset = (offset + startLBA) * BLCKSZ;
-
+        offset = (offset + startLBA) * BLKSZ;
         if(!isFullSSDcache && (STT->flush_clean_blocks + STT->flush_hdd_blocks) > 0)
         {
             reportCurInfo();
@@ -128,7 +126,15 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         {
             STT->reqcnt_w ++;
             STT->reqcnt_s ++;
-            write_block(offset, ssd_buffer);
+        /*** For simulate ten processes running ***/
+//            write_block(offset, ssd_buffer);
+
+//            int i = 0;
+//            for(1; i < 10; i ++)
+//            {
+//                offset += (i * 20000000 * BLKSZ);
+                write_block(offset, ssd_buffer);
+//            }
             #ifdef HRC_PROCS_N
             int i;
             for(i = 0; i < HRC_PROCS_N; i++)
@@ -141,7 +147,12 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         {
             STT->reqcnt_r ++;
             STT->reqcnt_s ++;
-            read_block(offset,ssd_buffer);
+//            int i = 0;
+//            for(1; i < 10; i ++)
+//            {
+//                offset += (i * 20000000 * BLKSZ);
+                read_block(offset,ssd_buffer);
+//            }
             #ifdef HRC_PROCS_N
             int i;
             for(i = 0; i < HRC_PROCS_N; i++)

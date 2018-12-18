@@ -196,9 +196,9 @@ simu_smr_read(char *buffer, size_t size, off_t offset)
     long		despId;
     struct timeval	tv_start,tv_stop;
 
-    for (i = 0; i * BLCKSZ < size; i++)
+    for (i = 0; i * BLKSZ < size; i++)
     {
-        tag.offset = offset + i * BLCKSZ;
+        tag.offset = offset + i * BLKSZ;
         ssd_hash = ssdtableHashcode(tag);
         despId = ssdtableLookup(tag, ssd_hash);
 
@@ -209,10 +209,10 @@ simu_smr_read(char *buffer, size_t size, off_t offset)
             ssd_hdr = fifo_desp_array + despId;
 
             _TimerLap(&tv_start);
-            returnCode = DISK_READ(fd_fifo_part, buffer, BLCKSZ, ssd_hdr->despId * BLCKSZ + OFF_FIFO);
+            returnCode = DISK_READ(fd_fifo_part, buffer, BLKSZ, ssd_hdr->despId * BLKSZ + OFF_FIFO);
             if (returnCode < 0)
             {
-                printf("[ERROR] smrread():-------read from inner ssd: fd=%d, errorcode=%d, offset=%lu\n", fd_fifo_part, returnCode, ssd_hdr->despId * BLCKSZ);
+                printf("[ERROR] smrread():-------read from inner ssd: fd=%d, errorcode=%d, offset=%lu\n", fd_fifo_part, returnCode, ssd_hdr->despId * BLKSZ);
                 exit(-1);
             }
             _TimerLap(&tv_stop);
@@ -224,10 +224,10 @@ simu_smr_read(char *buffer, size_t size, off_t offset)
             simu_n_read_smr++;
             _TimerLap(&tv_start);
 
-            returnCode = DISK_READ(fd_smr_part, buffer, BLCKSZ, offset + i * BLCKSZ);
+            returnCode = DISK_READ(fd_smr_part, buffer, BLKSZ, offset + i * BLKSZ);
             if (returnCode < 0)
             {
-                printf("[ERROR] smrread():-------read from smr disk: fd=%d, errorcode=%d, offset=%lu\n", fd_smr_part, returnCode, offset + i * BLCKSZ);
+                printf("[ERROR] smrread():-------read from smr disk: fd=%d, errorcode=%d, offset=%lu\n", fd_smr_part, returnCode, offset + i * BLKSZ);
                 exit(-1);
             }
             _TimerLap(&tv_stop);
@@ -250,9 +250,9 @@ simu_smr_write(char *buffer, size_t size, off_t offset)
     long		ssd_hash;
     struct timeval	tv_start,tv_stop;
 
-    for (i = 0; i * BLCKSZ < size; i++)
+    for (i = 0; i * BLKSZ < size; i++)
     {
-        tag.offset = offset + i * BLCKSZ;
+        tag.offset = offset + i * BLKSZ;
 
         /* APPEND_ONLY */
         ssd_hdr = getFIFODesp();
@@ -267,10 +267,10 @@ simu_smr_write(char *buffer, size_t size, off_t offset)
         }
 
         _TimerLap(&tv_start);
-        returnCode = DISK_WRITE(fd_fifo_part, buffer, BLCKSZ, ssd_hdr->despId * BLCKSZ + OFF_FIFO);
+        returnCode = DISK_WRITE(fd_fifo_part, buffer, BLKSZ, ssd_hdr->despId * BLKSZ + OFF_FIFO);
         if (returnCode < 0)
         {
-            printf("[ERROR] smrwrite():-------write to smr disk: fd=%d, errorcode=%d, offset=%lu\n", fd_fifo_part, returnCode, offset + i * BLCKSZ);
+            printf("[ERROR] smrwrite():-------write to smr disk: fd=%d, errorcode=%d, offset=%lu\n", fd_fifo_part, returnCode, offset + i * BLKSZ);
             exit(-1);
         }
         _TimerLap(&tv_stop);
@@ -330,7 +330,7 @@ flushFIFO()
 
     /* Create a band-sized buffer for readind and flushing whole band bytes */
     long		band_size = GetSMRActualBandSizeFromSSD(target->tag.offset);
-    off_t		band_offset = target->tag.offset - GetSMROffsetInBandFromSSD(target) * BLCKSZ;
+    off_t		band_offset = target->tag.offset - GetSMROffsetInBandFromSSD(target) * BLKSZ;
 
     /** R **/
     /* read whole band from smr to buffer*/
@@ -374,18 +374,18 @@ flushFIFO()
 #ifdef SIMULATOR_AIO
             struct aiocb* aio_n = aiolist + aio_read_cnt;
             aio_n->aio_fildes = fd_fifo_part;
-            aio_n->aio_offset = curPos * BLCKSZ;
-            aio_n->aio_buf = BandBuffer + offset_inband * BLCKSZ;
-            aio_n->aio_nbytes = BLCKSZ;
+            aio_n->aio_offset = curPos * BLKSZ;
+            aio_n->aio_buf = BandBuffer + offset_inband * BLKSZ;
+            aio_n->aio_nbytes = BLKSZ;
             aio_n->aio_lio_opcode = LIO_READ;
             aiocb_addr_list[aio_read_cnt] = aio_n;
             aio_read_cnt++;
 #else
             _TimerLap(&tv_start);
-            returnCode = DISK_READ(fd_fifo_part, BandBuffer + offset_inband * BLCKSZ, BLCKSZ, curPos * BLCKSZ + OFF_FIFO);
+            returnCode = DISK_READ(fd_fifo_part, BandBuffer + offset_inband * BLKSZ, BLKSZ, curPos * BLKSZ + OFF_FIFO);
             if (returnCode < 0)
             {
-                printf("[ERROR] flushFIFO():-------read from inner ssd: fd=%d, errorcode=%d, offset=%lu\n", fd_fifo_part, returnCode, curPos * BLCKSZ);
+                printf("[ERROR] flushFIFO():-------read from inner ssd: fd=%d, errorcode=%d, offset=%lu\n", fd_fifo_part, returnCode, curPos * BLKSZ);
                 exit(-1);
             }
             _TimerLap(&tv_stop);
@@ -445,7 +445,7 @@ flushFIFO()
     simu_flush_bands++;
     simu_flush_band_size += band_size;
 
-    wtrAmp = (double)band_size / (dirty_n_inBand * BLCKSZ);
+    wtrAmp = (double)band_size / (dirty_n_inBand * BLKSZ);
     STT->wtrAmp_cur = wtrAmp;
     STT->WA_sum += wtrAmp;
     STT->n_RMW ++;
@@ -497,7 +497,7 @@ GetSMROffsetInBandFromSSD(FIFODesc * ssd_hdr)
     {
         size = BNDSZ / 2 + i * 1024 * 1024;
         if (total_size + size * num_each_size > offset)
-            return (offset - total_size - (offset - total_size) / size * size) / BLCKSZ;
+            return (offset - total_size - (offset - total_size) / size * size) / BLKSZ;
         total_size += size * num_each_size;
     }
 
@@ -516,5 +516,5 @@ void PrintSimulatorStatistic()
     printf("Read Bands:\t%ld\nFlush Bands:\t%ld\nFlush BandSize:\t%ld\n",simu_read_smr_bands, simu_flush_bands, simu_flush_band_size);
 
 
-    printf("WA AVG:\t%lf\n",(float)(simu_flush_band_size / BLCKSZ) / STT->flush_hdd_blocks);
+    printf("WA AVG:\t%lf\n",(float)(simu_flush_band_size / BLKSZ) / STT->flush_hdd_blocks);
 }

@@ -80,7 +80,7 @@ CacheLayer_Init()
     if(r_initdesp==-1 || r_initstrategybuf==-1 || r_initbuftb==-1 || r_initstt==-1 || r_initTSwitcher == -1)
         exit(EXIT_FAILURE);
 
-    int returnCode = posix_memalign(&ssd_buffer, 512, sizeof(char) * BLCKSZ);
+    int returnCode = posix_memalign(&ssd_buffer, 512, sizeof(char) * BLKSZ);
     if (returnCode < 0)
     {
         printf("[ERROR] flushSSDBuffer():--------posix memalign\n");
@@ -224,7 +224,6 @@ static SSDBufDesp*
 allocSSDBuf(SSDBufTag ssd_buf_tag, bool * found, int alloc4What, int * isCallBack)
 {
 
-    unsigned flag = (alloc4What == 0) ? 0 : SSD_BUF_DIRTY;
     /* Lookup if already cached. */
     SSDBufDesp      *ssd_buf_hdr; //returned value.
     unsigned long   ssd_buf_hash = HashTab_GetHashCode(ssd_buf_tag);
@@ -253,28 +252,14 @@ allocSSDBuf(SSDBufTag ssd_buf_tag, bool * found, int alloc4What, int * isCallBac
         *found = 1;
 
         return ssd_buf_hdr;
-//        }
-//        else
-//        {
-//            _UNLOCK(&ssd_buf_hdr->lock);
-//            /** passive delete hash item, which corresponding cache buf has been evicted early **/
-//            HashTab_Delete(ssd_buf_tag,ssd_buf_hash);
-//            STT->hashmiss_sum++;
-//            if(alloc4What == 1)	// alloc for write
-//                STT->hashmiss_write++;
-//            else		//alloc for read
-//                STT->hashmiss_read++;
-//        }
+
     }
 
     /* Cache MISS */
-//    if(STT->flush_hdd_blocks + STT->flush_clean_blocks > NBLOCK_SSD_CACHE)
-//    {
-//        cm_token token;
-//        CM_CHOOSE(token);
-//    }
     *found = 0;
     *isCallBack = CM_TryCallBack(ssd_buf_tag);
+    enum_t_vict suggest_type = ENUM_B_Any;
+
 #ifdef CACHE_PROPORTIOIN_STATIC
 #ifdef NO_READ_CACHE
     if(alloc4What == 0)
@@ -285,12 +270,12 @@ allocSSDBuf(SSDBufTag ssd_buf_tag, bool * found, int alloc4What, int * isCallBac
 #endif
     if (STT->incache_n_clean >= Max_Clean_Cache)
     {
-        flag = 0;
+        suggest_type = ENUM_B_Clean;
         goto FLAG_CACHEOUT;
     }
     else if (STT->incache_n_dirty >= Max_Dirty_Cache)
     {
-        flag = SSD_BUF_DIRTY;
+        suggest_type = ENUM_B_Dirty;
         goto FLAG_CACHEOUT;
     }
 #endif // CACHE_PROPORTIOIN_STATIC
@@ -308,8 +293,6 @@ allocSSDBuf(SSDBufTag ssd_buf_tag, bool * found, int alloc4What, int * isCallBac
     {
         /** When there is NO free SSD space for cache **/
         // TODO Choose a buffer by strategy/
-        enum_t_vict suggest_type = ENUM_B_Any;
-
 #ifdef T_SWITCHER_ON
         if((STT->flush_hdd_blocks + STT->flush_clean_blocks) >= TS_StartSize)
         {   /* Decide victim type by T_Switcher */
@@ -321,12 +304,12 @@ allocSSDBuf(SSDBufTag ssd_buf_tag, bool * found, int alloc4What, int * isCallBac
         }
 #endif // T_SWITCHER_ON
 
+FLAG_CACHEOUT:
         if(STT->incache_n_clean == 0)
             suggest_type = ENUM_B_Dirty;
         else if(STT->incache_n_dirty == 0)
             suggest_type = ENUM_B_Clean;
 
-#ifdef PORE_BATCH
         static int max_n_batch = 8 * 1024;
         long buf_despid_array[max_n_batch];
         int n_evict;
@@ -376,32 +359,24 @@ allocSSDBuf(SSDBufTag ssd_buf_tag, bool * found, int alloc4What, int * isCallBac
             k++;
         }
         ssd_buf_hdr = pop_freebuf();
-
-#else
-        long out_despId;
-FLAG_CACHEOUT:
-//        if(STT->incache_n_clean <= 0)
-//        {
-//             int a = 0;
-//        }
-        out_despId = Strategy_Desp_LogOut(flag); //need look
-//        if(out_despId == 5249)
-//        {
-//            int b = 0;
-//        }
-        ssd_buf_hdr = &ssd_buf_desps[out_despId];
-        _LOCK(&ssd_buf_hdr->lock);
-        // Clear Hashtable item.
-        SSDBufTag oldtag = ssd_buf_hdr->ssd_buf_tag;
-        unsigned long hash = HashTab_GetHashCode(oldtag);
-        HashTab_Delete(oldtag,hash);
-        // TODO Flush
-        flushSSDBuffer(ssd_buf_hdr);
-
-        IsDirty(ssd_buf_hdr->ssd_buf_flag) ? STT->incache_n_dirty -- : STT->incache_n_clean -- ;
-        ssd_buf_hdr->ssd_buf_flag &= ~(SSD_BUF_VALID | SSD_BUF_DIRTY);
-
-#endif // PORE_BATCH
+//
+//#else
+///* NO Longer support to evict only one blocks per time. */
+////        long out_despId;
+////        out_despId = Strategy_Desp_LogOut(flag); //need look
+////        ssd_buf_hdr = &ssd_buf_desps[out_despId];
+////        _LOCK(&ssd_buf_hdr->lock);
+////        // Clear Hashtable item.
+////        SSDBufTag oldtag = ssd_buf_hdr->ssd_buf_tag;
+////        unsigned long hash = HashTab_GetHashCode(oldtag);
+////        HashTab_Delete(oldtag,hash);
+////        // TODO Flush
+////        flushSSDBuffer(ssd_buf_hdr);
+////
+////        IsDirty(ssd_buf_hdr->ssd_buf_flag) ? STT->incache_n_dirty -- : STT->incache_n_clean -- ;
+////        ssd_buf_hdr->ssd_buf_flag &= ~(SSD_BUF_VALID | SSD_BUF_DIRTY);
+//
+//#endif // WRITE_IN_BATCH
     }
 
     flagOp(ssd_buf_hdr,alloc4What);
@@ -451,7 +426,7 @@ Strategy_Desp_LogOut(unsigned flag)
     case LRU_private:
         error("LRU wrong time function revoke, please use BATHCH configure.\n");
     case LRU_rw:
-        error("MOST wrong time function revoke\n");
+        error("LRU_RW wrong time function revoke\n");
 //       case Most:              return LogOutDesp_most();
     case PORE:
         return LogOutDesp_pore();
@@ -537,7 +512,7 @@ read_block(off_t offset, char *ssd_buffer)
 #ifdef SIMULATION
     dev_simu_read(ssd_buffer, SSD_BUFFER_SIZE, offset);
 #else
-    dev_pread(hdd_fd, ssd_buffer, BLCKSZ, offset);
+    dev_pread(hdd_fd, ssd_buffer, BLKSZ, offset);
 #endif // SIMULATION
     msec_r_hdd = TimerInterval_MICRO(&tv_start,&tv_stop);
     STT->time_read_hdd += Mirco2Sec(msec_r_hdd);
@@ -605,9 +580,9 @@ write_block(off_t offset, char *ssd_buffer)
 {
 #ifdef NO_CACHE
 #ifdef SIMULATION
-    dev_simu_write(ssd_buffer, BLCKSZ, offset);
+    dev_simu_write(ssd_buffer, BLKSZ, offset);
 #else
-    dev_pwrite(hdd_fd, ssd_buffer, BLCKSZ, offset);
+    dev_pwrite(hdd_fd, ssd_buffer, BLKSZ, offset);
 #endif // SIMULATION
     //IO by no cache.
 

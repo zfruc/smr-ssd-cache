@@ -75,7 +75,7 @@
 //initFIFOCache()
 //{
 //    /* initialliz related constants */
-//    SMR_DISK_OFFSET = NBLOCK_SMR_FIFO * BLCKSZ;
+//    SMR_DISK_OFFSET = NBLOCK_SMR_FIFO * BLKSZ;
 //    band_size_num = BNDSZ / 1024 / 1024 / 2 + 1;
 //    num_each_size = NSMRBands / band_size_num;
 //
@@ -163,9 +163,9 @@
 //    long		despId;
 //    struct timeval	tv_start,tv_stop;
 //
-//    for (i = 0; i * BLCKSZ < size; i++)
+//    for (i = 0; i * BLKSZ < size; i++)
 //    {
-//        tag.offset = offset + i * BLCKSZ;
+//        tag.offset = offset + i * BLKSZ;
 //        ssd_hash = ssdtableHashcode(&tag);
 //        despId = ssdtableLookup(&tag, ssd_hash);
 //
@@ -176,10 +176,10 @@
 //            ssd_hdr = fifo_desp_array + despId;
 //
 //            _TimerLap(&tv_start);
-//            returnCode = pread(fd_fifo_part, buffer, BLCKSZ, ssd_hdr->despId * BLCKSZ);
+//            returnCode = pread(fd_fifo_part, buffer, BLKSZ, ssd_hdr->despId * BLKSZ);
 //            if (returnCode < 0)
 //            {
-//                printf("[ERROR] smrread():-------read from inner ssd: fd=%d, errorcode=%d, offset=%lu\n", fd_fifo_part, returnCode, ssd_hdr->despId * BLCKSZ);
+//                printf("[ERROR] smrread():-------read from inner ssd: fd=%d, errorcode=%d, offset=%lu\n", fd_fifo_part, returnCode, ssd_hdr->despId * BLKSZ);
 //                exit(-1);
 //            }
 //            _TimerLap(&tv_stop);
@@ -191,10 +191,10 @@
 //            simu_n_read_smr++;
 //            _TimerLap(&tv_start);
 //
-//            returnCode = pread(fd_smr_part, buffer, BLCKSZ, offset + i * BLCKSZ);
+//            returnCode = pread(fd_smr_part, buffer, BLKSZ, offset + i * BLKSZ);
 //            if (returnCode < 0)
 //            {
-//                printf("[ERROR] smrread():-------read from smr disk: fd=%d, errorcode=%d, offset=%lu\n", fd_smr_part, returnCode, offset + i * BLCKSZ);
+//                printf("[ERROR] smrread():-------read from smr disk: fd=%d, errorcode=%d, offset=%lu\n", fd_smr_part, returnCode, offset + i * BLKSZ);
 //                exit(-1);
 //            }
 //            _TimerLap(&tv_stop);
@@ -218,9 +218,9 @@
 //    long		despId;
 //    struct timeval	tv_start,tv_stop;
 //
-//    for (i = 0; i * BLCKSZ < size; i++)
+//    for (i = 0; i * BLKSZ < size; i++)
 //    {
-//        tag.offset = offset + i * BLCKSZ;
+//        tag.offset = offset + i * BLKSZ;
 //        ssd_hash = ssdtableHashcode(&tag);
 //        despId = ssdtableLookup(&tag, ssd_hash);
 //        if (despId >= 0)
@@ -236,10 +236,10 @@
 //        ssdtableInsert(&tag, ssd_hash, ssd_hdr->despId);
 //
 //        _TimerLap(&tv_start);
-//        returnCode = pwrite(fd_fifo_part, buffer, BLCKSZ, ssd_hdr->despId * BLCKSZ);
+//        returnCode = pwrite(fd_fifo_part, buffer, BLKSZ, ssd_hdr->despId * BLKSZ);
 //        if (returnCode < 0)
 //        {
-//            printf("[ERROR] smrwrite():-------write to smr disk: fd=%d, errorcode=%d, offset=%lu\n", fd_fifo_part, returnCode, offset + i * BLCKSZ);
+//            printf("[ERROR] smrwrite():-------write to smr disk: fd=%d, errorcode=%d, offset=%lu\n", fd_fifo_part, returnCode, offset + i * BLKSZ);
 //            exit(-1);
 //        }
 //        //returnCode = fsync(inner_ssd_fd);
@@ -358,7 +358,7 @@
 //
 //    /* Create a band-sized buffer for readind and flushing whole band bytes */
 //    long		band_size = GetSMRActualBandSizeFromSSD(target->tag.offset);
-//    off_t		band_offset = target->tag.offset - GetSMROffsetInBandFromSSD(target) * BLCKSZ;
+//    off_t		band_offset = target->tag.offset - GetSMROffsetInBandFromSSD(target) * BLKSZ;
 //
 //    /* read whole band from smr to buffer*/
 //    _TimerLap(&tv_start);
@@ -394,18 +394,18 @@
 //#ifdef SIMULATOR_AIO
 //            struct aiocb* aio_n = aiolist + aio_read_cnt;
 //            aio_n->aio_fildes = fd_fifo_part;
-//            aio_n->aio_offset = curPos * BLCKSZ;
-//            aio_n->aio_buf = BandBuffer + offset_inband * BLCKSZ;
-//            aio_n->aio_nbytes = BLCKSZ;
+//            aio_n->aio_offset = curPos * BLKSZ;
+//            aio_n->aio_buf = BandBuffer + offset_inband * BLKSZ;
+//            aio_n->aio_nbytes = BLKSZ;
 //            aio_n->aio_lio_opcode = LIO_READ;
 //            aiocb_addr_list[aio_read_cnt] = aio_n;
 //            aio_read_cnt++;
 //#else
 //            _TimerLap(&tv_start);
-//            returnCode = pread(fd_fifo_part, BandBuffer + offset_inband * BLCKSZ, BLCKSZ, curPos * BLCKSZ);
+//            returnCode = pread(fd_fifo_part, BandBuffer + offset_inband * BLKSZ, BLKSZ, curPos * BLKSZ);
 //            if (returnCode < 0)
 //            {
-//                printf("[ERROR] flushSSD():-------read from inner ssd: fd=%d, errorcode=%d, offset=%lu\n", fd_fifo_part, returnCode, curPos * BLCKSZ);
+//                printf("[ERROR] flushSSD():-------read from inner ssd: fd=%d, errorcode=%d, offset=%lu\n", fd_fifo_part, returnCode, curPos * BLKSZ);
 //                exit(-1);
 //            }
 //            _TimerLap(&tv_stop);
@@ -455,7 +455,7 @@
 //    simu_flush_bands++;
 //    simu_flush_band_size += band_size;
 //
-//    wtrAmp = (double)band_size / (dirty_n_inBand * BLCKSZ);
+//    wtrAmp = (double)band_size / (dirty_n_inBand * BLKSZ);
 //    char log[256];
 //    sprintf(log,"flush [%ld] times from fifo to smr,collect time:%lf, cnt=%ld,WtrAmp = %lf\n",simu_flush_bands,collect_time,dirty_n_inBand,wtrAmp);
 //    WriteLog(log);
@@ -503,7 +503,7 @@
 //    {
 //        size = BNDSZ / 2 + i * 1024 * 1024;
 //        if (total_size + size * num_each_size > offset)
-//            return (offset - total_size - (offset - total_size) / size * size) / BLCKSZ;
+//            return (offset - total_size - (offset - total_size) / size * size) / BLKSZ;
 //        total_size += size * num_each_size;
 //    }
 //
@@ -522,5 +522,5 @@
 //    printf("Read Bands:\t%ld\nFlush Bands:\t%ld\nFlush BandSize:\t%ld\n",simu_read_smr_bands, simu_flush_bands, simu_flush_band_size);
 //
 //
-//    printf("Total WrtAmp:\t%lf\n",(double)simu_flush_band_size / (simu_n_write_fifo * BLCKSZ));
+//    printf("Total WrtAmp:\t%lf\n",(double)simu_flush_band_size / (simu_n_write_fifo * BLKSZ));
 //}

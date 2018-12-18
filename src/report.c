@@ -12,7 +12,6 @@ void info(char* str)
 void error(char* str)
 {
     printf("process [%d]: %s\n",getpid(),str);
-    exit(EXIT_FAILURE);
 }
 
 int OpenLogFile(const char* filepath)
