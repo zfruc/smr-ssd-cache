@@ -14,7 +14,7 @@ typedef __suseconds_t microsecond_t;
 extern void _TimerLap(timeval* tv);
 
 extern microsecond_t    TimerInterval_MICRO(timeval* tv_start, timeval* tv_stop);
-extern double           TimerInterval_SECOND(timeval* tv_start, timeval* tv_stop);
+extern double    TimerInterval_SECOND(timeval* tv_start, timeval* tv_stop);
 
 extern double Mirco2Sec(microsecond_t msecond);
 extern double Mirco2Milli(microsecond_t msecond);

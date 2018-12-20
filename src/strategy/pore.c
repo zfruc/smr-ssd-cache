@@ -90,7 +90,7 @@ LogInPoreBuffer(long despId, SSDBufTag tag, unsigned flag)
 //        if(myZone->zoneId==205){
 //            char str[50];
 //            sprintf(str,"[<%ld>\tdirty+1]\tndirty=%ld,nclean=%ld\n",myDesp->serial_id,myZone->pagecnt_dirty,myZone->pagecnt_clean);
-//            WriteLog(str);
+//            _Log(str);
 //        }
     }
     else{

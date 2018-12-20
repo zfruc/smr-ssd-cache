@@ -368,7 +368,7 @@
 //    {
 //        char log[128];
 //        sprintf(log,"Flush [%ld] times ERROR: AIO read list from FIFO Failure[%d].\n",simu_flush_bands+1,ret_aio);
-//        WriteLog(log);
+//        _Log(log);
 //    }
 //    _TimerLap(&tv_stop);
 //    simu_time_read_fifo += TimerInterval_SECOND(&tv_start,&tv_stop);
@@ -397,7 +397,7 @@
 //    wtrAmp = (double)band_size / (dirty_n_inBand * BLKSZ);
 //    char log[256];
 //    sprintf(log,"flush [%ld] times from fifo to smr,collect time:%lf, cnt=%ld,WtrAmp = %lf\n",simu_flush_bands,collect_time,dirty_n_inBand,wtrAmp);
-//    WriteLog(log);
+//    _Log(log);
 //}
 //
 //

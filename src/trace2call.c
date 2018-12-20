@@ -33,10 +33,16 @@ static microsecond_t    msec_req;
 extern microsecond_t    msec_r_hdd,msec_w_hdd,msec_r_ssd,msec_w_ssd;
 extern int IsHit;
 char logbuf[512];
+FILE* log_lat;
+char log_lat_path[] = "/home/outputs/logs/log_lat";
 
 void
 trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
 {
+    log_lat = fopen(log_lat_path, "w+");
+    if(log_lat == NULL)
+        return errno;
+
     if(I_AM_HRC_PROC)
     {
         do_HRC(startLBA);
@@ -49,6 +55,10 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     int	        returnCode;
     int         isFullSSDcache = 0;
     char        pipebuf[128];
+    static struct timeval	tv_start_io, tv_stop_io;
+    static char log[256];
+    double io_latency;
+
 #ifdef CG_THROTTLE
     static char* cgbuf;
     int returncode = posix_memalign(&cgbuf, 512, 4096);
@@ -73,6 +83,9 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     blkcnt_t total_n_req = isWriteOnly ? 100000000 : 10000000;
     blkcnt_t skiprows = isWriteOnly ? 50000000 : 100000000;
 
+    total_n_req = 1000000;
+    skiprows = 0;
+
     FILE *trace;
     if ((trace = fopen(trace_file_path, "rt")) == NULL)
     {
@@ -82,7 +95,11 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
 
     while (!feof(trace) && STT->reqcnt_s < total_n_req) // 84340000
     {
-        returnCode = fscanf(trace, "%c %d %lu\n", &action, &i, &offset);
+
+     //   returnCode = fscanf(trace, "%c %d %lu\n", &action, &i, &offset);
+        //mustdelete
+        action = ACT_WRITE;
+        returnCode = fscanf(trace, "%lu\n", &offset);
         if (returnCode < 0)
         {
             error("error while reading trace file.");
@@ -121,6 +138,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
 #ifdef LOG_SINGLE_REQ
         _TimerLap(&tv_req_start);
 #endif // TIMER_SINGLE_REQ
+        _TimerLap(&tv_start_io);
         sprintf(pipebuf,"%c,%lu\n",action,offset);
         if (action == ACT_WRITE) // Write = 1
         {
@@ -142,6 +160,11 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
                 pipe_write(PipeEnds_of_MAIN[i],pipebuf,64);
             }
             #endif // HRC_PROCS_N
+            _TimerLap(&tv_stop_io);
+            io_latency = TimerInterval_SECOND(&tv_start_io, &tv_stop_io);
+
+            sprintf(log,"%f,%c\n", io_latency, action);
+            _Log(log, log_lat);
         }
         else if (!isWriteOnly && action == ACT_READ)    // read = 9
         {
@@ -160,6 +183,11 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
                 pipe_write(PipeEnds_of_MAIN[i],pipebuf,64);
             }
             #endif // HRC_PROCS_N
+            _TimerLap(&tv_stop_io);
+            io_latency = TimerInterval_SECOND(&tv_start_io, &tv_stop_io);
+
+            sprintf(log,"%f,%c\n", io_latency, action);
+            _Log(log, log_lat);
         }
         else if (action != ACT_READ)
         {
@@ -175,7 +203,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
             <req_id, r/w, ishit, time cost for: one request, read_ssd, write_ssd, read_smr, write_smr>
         */
         //sprintf(logbuf,"%lu,%c,%d,%ld,%ld,%ld,%ld,%ld\n",STT->reqcnt_s,action,IsHit,msec_req,msec_r_ssd,msec_w_ssd,msec_r_hdd,msec_w_hdd);
-       // WriteLog(logbuf);
+       // _Log(logbuf);
         msec_r_ssd = msec_w_ssd = msec_r_hdd = msec_w_hdd = 0;
 #endif // TIMER_SINGLE_REQ
 
@@ -183,6 +211,8 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         {
             report_ontime();
         }
+
+
 
 
         //ResizeCacheUsage();
@@ -201,6 +231,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     #endif // HRC_PROCS_N
     free(ssd_buffer);
     fclose(trace);
+    fclose(log_lat);
 }
 
 static void

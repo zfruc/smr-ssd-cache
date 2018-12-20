@@ -48,20 +48,32 @@ void ramdisk_iotest()
         }
     }
 }
+//
+//char* tracefile[] = {"/home/trace/src1_2.csv.req",
+//                     "/home/trace/wdev_0.csv.req",
+//                     "/home/trace/hm_0.csv.req",
+//                     "/home/trace/mds_0.csv.req",
+//                     "/home/trace/prn_0.csv.req",       //1 1 4 0 0 106230 5242880 0
+//                     "/home/trace/rsrch_0.csv.req",
+//                     "/home/trace/stg_0.csv.req",
+//                     "/home/trace/ts_0.csv.req",
+//                     "/home/trace/usr_0.csv.req",
+//                     "/home/trace/web_0.csv.req",
+//                     "/home/trace/production-LiveMap-Backend-4K.req", // --> not in used.
+//                     "/home/trace/merged_traceX18.req"  // default set: cache size = 8M*blksize; persistent buffer size = 1.6M*blksize.
+//                     //"/home/trace/merged_trace_x1.req.csv"
+//                    };
 
-char* tracefile[] = {"/home/trace/src1_2.csv.req",
-                     "/home/trace/wdev_0.csv.req",
-                     "/home/trace/hm_0.csv.req",
-                     "/home/trace/mds_0.csv.req",
-                     "/home/trace/prn_0.csv.req",       //1 1 4 0 0 106230 5242880 0
-                     "/home/trace/rsrch_0.csv.req",
-                     "/home/trace/stg_0.csv.req",
-                     "/home/trace/ts_0.csv.req",
-                     "/home/trace/usr_0.csv.req",
-                     "/home/trace/web_0.csv.req",
-                     "/home/trace/production-LiveMap-Backend-4K.req", // --> not in used.
-                     "/home/trace/merged_traceX18.req"  // default set: cache size = 8M*blksize; persistent buffer size = 1.6M*blksize.
-                     //"/home/trace/merged_trace_x1.req.csv"
+//mustdelete
+ char* tracefile[] = {
+                    "/home/trace/out_32k",
+                     "/home/trace/out_128k",
+                     "/home/trace/out_512k",
+                     "/home/trace/out_2m",
+                     "/home/trace/out_8m",       //1 1 4 0 0 106230 5242880 0
+                     "/home/trace/out_32m",
+                     "/home/trace/out_128m",
+                     "/home/trace/out_512m",
                     };
 
 blksize_t trace_req_total[] = {14024860,2654824,8985487,2916662,17635766,3254278,6098667,4216457,12873274,9642398,1,1481448114};
@@ -79,7 +91,7 @@ main(int argc, char** argv)
 // 1 4 0 0 500000 106230 5242880 LRU 0
 
 //0 11 0 8000000 8000000 30 LRU -1
-    if (argc == 11)
+    if (argc == 10)
     {
         UserId = atoi(argv[1]);
         TraceId = atoi(argv[2]);
@@ -88,7 +100,7 @@ main(int argc, char** argv)
 
         NBLOCK_MAX_CACHE_SIZE = atol(argv[5]);
         NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = atol(argv[6]);
-        NBLOCK_SMR_FIFO = atol(argv[7]) * (ZONESZ / BLKSZ);
+        NBLOCK_SMR_FIFO = 750 * 1024 * 1024 / BLKSZ; //atol(argv[7]) * (ZONESZ / BLKSZ);
 
         if (strcmp(argv[8],"LRU") == 0)
             EvictStrategy = LRU_private;
@@ -151,15 +163,15 @@ main(int argc, char** argv)
 
     if(!I_AM_HRC_PROC)
     {   /* If this is a MAIN process */
-        initLog();
-
         /* Open Device */
+
         ssd_fd = open(ssd_device, O_RDWR | O_DIRECT);
-    #ifndef SIMULATION
+
+        #ifndef SIMULATION
         /* Real Device */
         hdd_fd = open(smr_device, O_RDWR | O_DIRECT);
         printf("Device ID: hdd=%d, ssd=%d\n",hdd_fd,ssd_fd);
-    #else
+        #else
         /* Emulator */
         fd_fifo_part = open(simu_smr_fifo_device, O_RDWR | O_DIRECT);
         fd_smr_part = open(simu_smr_smr_device, O_RDWR | O_DIRECT | O_FSYNC);
@@ -167,7 +179,7 @@ main(int argc, char** argv)
         if(fd_fifo_part<0 || fd_smr_part<0)
             exit(EXIT_FAILURE);
         InitSimulator();
-    #endif
+        #endif
     }
     else
     {   /* If this is a HRC process */
@@ -198,10 +210,10 @@ main(int argc, char** argv)
 
 #ifdef SIMULATION
     PrintSimulatorStatistic();
+    CloseSMREmu();
 #endif
     close(hdd_fd);
     close(ssd_fd);
-    CloseLogFile();
     ReportCM();
     wait(NULL);
     exit(EXIT_SUCCESS);
@@ -229,15 +241,3 @@ int initRuntimeInfo()
     return 0;
 }
 
-int initLog()
-{
-    char logpath[50];
-    sprintf(logpath,"%s/20180317-RWcost.log",PATH_LOG,TraceId);
-    int rt = 0;
-    if((rt = OpenLogFile(logpath)) < 0)
-    {
-        error("open log file failure.\n");
-        exit(1);
-    }
-    return rt;
-}

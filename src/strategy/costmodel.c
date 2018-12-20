@@ -74,6 +74,9 @@ static int      indexRemove_WDItem(hashkey_t key);
 #define HashMap_KeytoValue(key) ((key / BLKSZ) % TS_WindowSize)
 static int random_pick(float weight1, float weight2, float obey);
 
+FILE* log_r3balancer;
+char log_r3balancer_path[] = "/home/outputs/logs/log_r3balancer";
+
 /** MAIN FUNCTIONS **/
 int CM_Init()
 {
@@ -103,6 +106,10 @@ int CM_Init()
 
     if(WindowArray == NULL || WDBucketPool == NULL || HashIndex == NULL || t_randcollect == NULL)
         return -1;
+
+    if((log_r3balancer = fopen(log_r3balancer_path, "w+")) == NULL)
+        error_exit("Cannot open log: log_r3balancer.");
+
     return 0;
 }
 
@@ -324,7 +331,7 @@ void CM_Report_PCB()
     #endif // T_SWITCHER_ON
     static char buf[50];
     sprintf(buf,"%d,%d\n",(int)(PCB_Clean*100), (int)(PCB_Dirty*100));
-    WriteLog(buf);
+    _Log(buf, log_r3balancer);
 }
 /** Utilities of Hash Index **/
 static int push_WDBucket(WDBucket * freeBucket)
@@ -426,7 +433,7 @@ static int random_pick(float weight1, float weight2, float obey)
     int token = random(1000);
     static char buf[50];
     sprintf(buf,">>w1,w2,pick:%.1f,%.1f\n",1,1 + inc_times);
-    WriteLog(buf);
+    _Log(buf, log_r3balancer);
 
     if(token < de_point)
         return 2;

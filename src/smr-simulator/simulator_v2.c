@@ -86,6 +86,9 @@ static off_t GetSMROffsetInBandFromSSD(FIFODesc * ssd_hdr);
 struct aiocb aiolist[max_aio_count];
 struct aiocb* aiocb_addr_list[max_aio_count];/* >= band block size */
 
+FILE* log_wa;
+char log_wa_path[] = "/home/outputs/logs/log_wa";
+
 
 /*
  * init inner ssd buffer hash table, strategy_control, buffer, work_mem
@@ -132,6 +135,9 @@ void InitSimulator()
 
     initSSDTable(NBLOCK_SMR_FIFO + 1);
 
+    log_wa = fopen(log_wa_path, "w+");
+    if(log_wa == NULL)
+        error_exit("cannot open log: log_wa.");
 //    pthread_t tid;
 //    int err = pthread_create(&tid, NULL, smr_fifo_monitor_thread, NULL);
 //    if (err != 0)
@@ -248,7 +254,7 @@ simu_smr_write(char *buffer, size_t size, off_t offset)
     long		i;
     int		returnCode = 0;
     long		ssd_hash;
-    struct timeval	tv_start,tv_stop;
+    static struct timeval	tv_start,tv_stop;
 
     for (i = 0; i * BLKSZ < size; i++)
     {
@@ -275,10 +281,12 @@ simu_smr_write(char *buffer, size_t size, off_t offset)
         }
         _TimerLap(&tv_stop);
         simu_time_write_fifo += TimerInterval_SECOND(&tv_start,&tv_stop);
-        simu_n_write_fifo++;
+        simu_n_write_fifo ++;
     }
     ACCESS_FLAG = 1;
     pthread_mutex_unlock(&simu_smr_fifo_mutex);
+
+
     return 0;
 }
 
@@ -326,11 +334,11 @@ flushFIFO()
     long    dirty_n_inBand = 0;
     double  wtrAmp;
 
-    FIFODesc* target = fifo_desp_array + global_fifo_ctrl.head;
+    FIFODesc* leader = fifo_desp_array + global_fifo_ctrl.head;
 
     /* Create a band-sized buffer for readind and flushing whole band bytes */
-    long		band_size = GetSMRActualBandSizeFromSSD(target->tag.offset);
-    off_t		band_offset = target->tag.offset - GetSMROffsetInBandFromSSD(target) * BLKSZ;
+    long		band_size = GetSMRActualBandSizeFromSSD(leader->tag.offset);
+    off_t		band_offset = leader->tag.offset - GetSMROffsetInBandFromSSD(leader) * BLKSZ;
 
     /** R **/
     /* read whole band from smr to buffer*/
@@ -343,7 +351,7 @@ flushFIFO()
         exit(-1);
     }
     _TimerLap(&tv_stop);
-    simu_time_read_smr += TimerInterval_SECOND(&tv_start,&tv_stop);
+    simu_time_read_smr += TimerInterval_SECOND(&tv_start, &tv_stop);
     simu_read_smr_bands++;
 
 //    /* temp persistence whole band from buffer to smr*/
@@ -354,22 +362,23 @@ flushFIFO()
 //    }
     /** M **/
     /* Combine cached pages from FIFO which are belong to the same band */
-    unsigned long BandNum = GetSMRBandNumFromSSD(target->tag.offset);
+    unsigned long thisBandNum = GetSMRBandNumFromSSD(leader->tag.offset);
 
-    /** ---------------DEBUG BLOCK----------------------- **/
+    /** ---------------DEBUG BLOCK 1----------------------- **/
     struct timeval	tv_collect_start, tv_collect_stop;
     double collect_time;
     _TimerLap(&tv_collect_start);
     /**--------------------------------------------------- **/
     int aio_read_cnt = 0;
-    long curPos = target->despId;
+    long curPos = leader->despId;
     while(curPos != global_fifo_ctrl.tail)
     {
         FIFODesc* curDesp = fifo_desp_array + curPos;
         long nextPos = (curDesp->despId + 1) % (NBLOCK_SMR_FIFO + 1);
-        if (curDesp->isValid && GetSMRBandNumFromSSD(curDesp->tag.offset) == BandNum)
+
+        /* If the block belongs the same band with the header of fifo. */
+        if (curDesp->isValid && GetSMRBandNumFromSSD(curDesp->tag.offset) == thisBandNum)
         {
-            /* The block belongs the same band with the header of fifo. */
             off_t offset_inband = GetSMROffsetInBandFromSSD(curDesp);
 #ifdef SIMULATOR_AIO
             struct aiocb* aio_n = aiolist + aio_read_cnt;
@@ -385,7 +394,7 @@ flushFIFO()
             returnCode = DISK_READ(fd_fifo_part, BandBuffer + offset_inband * BLKSZ, BLKSZ, curPos * BLKSZ + OFF_FIFO);
             if (returnCode < 0)
             {
-                printf("[ERROR] flushFIFO():-------read from inner ssd: fd=%d, errorcode=%d, offset=%lu\n", fd_fifo_part, returnCode, curPos * BLKSZ);
+                printf("[ERROR] flushFIFO():-------read from PB: fd=%d, errorcode=%d, offset=%lu\n", fd_fifo_part, returnCode, curPos * BLKSZ);
                 exit(-1);
             }
             _TimerLap(&tv_stop);
@@ -396,7 +405,7 @@ flushFIFO()
             unsigned long hash_code = ssdtableHashcode(curDesp->tag);
             ssdtableDelete(curDesp->tag, hash_code);
 
-            int isHeadChanged = invalidDespInFIFO(curDesp);
+            int isHeadChanged = invalidDespInFIFO(curDesp); // Invalidate the current block and check if the head block get changed.
             if(isHeadChanged)
             {
                 curPos = global_fifo_ctrl.head;
@@ -417,7 +426,7 @@ flushFIFO()
     {
         char log[128];
         sprintf(log,"Flush [%ld] times ERROR: AIO read list from FIFO Failure[%d].\n",simu_flush_bands+1,ret_aio);
-//        WriteLog(log);
+//        _Log(log);
     }
     _TimerLap(&tv_stop);
     simu_time_read_fifo += TimerInterval_SECOND(&tv_start,&tv_stop);
@@ -427,7 +436,7 @@ flushFIFO()
     _TimerLap(&tv_collect_stop);
     collect_time = TimerInterval_SECOND(&tv_collect_start, &tv_collect_stop);
     simu_time_collectFIFO += collect_time;
-    /** ---------------DEBUG BLOCK----------------------- **/
+    /** ---------------DEBUG BLOCK 1----------------------- **/
 
     /* flush whole band to smr */
     _TimerLap(&tv_start);
@@ -450,16 +459,14 @@ flushFIFO()
     STT->WA_sum += wtrAmp;
     STT->n_RMW ++;
 
-
     char log[256];
-    sprintf(log,"%d\n",(int)wtrAmp);
-    WriteLog(log);
+    sprintf(log,"%f\n", wtrAmp);
+    _Log(log, log_wa);
 }
 
 static unsigned long
 GetSMRActualBandSizeFromSSD(unsigned long offset)
 {
-
     long		i, size, total_size = 0;
     for (i = 0; i < band_size_num; i++)
     {
@@ -468,7 +475,6 @@ GetSMRActualBandSizeFromSSD(unsigned long offset)
             return size;
         total_size += size * num_each_size;
     }
-
     return 0;
 }
 
@@ -483,7 +489,6 @@ GetSMRBandNumFromSSD(unsigned long offset)
             return num_each_size * i + (offset - total_size) / size;
         total_size += size * num_each_size;
     }
-
     return 0;
 }
 
@@ -517,4 +522,9 @@ void PrintSimulatorStatistic()
 
 
     printf("WA AVG:\t%lf\n",(float)(simu_flush_band_size / BLKSZ) / STT->flush_hdd_blocks);
+}
+
+void CloseSMREmu()
+{
+    fclose(log_wa);
 }

@@ -28,8 +28,8 @@ blksize_t BLKSZ = 4096;
 blkcnt_t  NZONES = 466034;/* size = 8TB */ //194180;    // NZONES * ZONESZ =
 blksize_t ZONESZ = 18 * 1024 * 1024;//18MB    // Unit: Byte.
 
-char simu_smr_fifo_device[] = "/dev/sdb1";
-char simu_smr_smr_device[] = "/dev/sdb2";
+char simu_smr_fifo_device[] = "/dev/sdc1";
+char simu_smr_smr_device[] = "/dev/sdc2";
 char smr_device[] = "/dev/md0"; // /dev/sdc";
 char ssd_device[] = "/dev/memdiska";//"/mnt/ramdisk/ramdisk";//"/dev/memdiska";// "/mnt/ssd/ssd";
 char ram_device[1024];

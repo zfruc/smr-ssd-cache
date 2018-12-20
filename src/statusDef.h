@@ -5,9 +5,9 @@
 /** configure of system structure **/
 #undef NO_REAL_DISK_IO
 
-#undef NO_CACHE
+#define NO_CACHE
 
-#define CACHE_PROPORTIOIN_STATIC
+#undef CACHE_PROPORTIOIN_STATIC
 #undef NO_READ_CACHE
 /**< Statistic information requirments defination */
 
@@ -15,9 +15,9 @@
 #undef  LOG_SINGLE_REQ  // Print detail time information of each single request.
 
 /** Simulator Related **/
-#undef SIMULATION
+#define SIMULATION
 #undef SIMULATOR_AIO
-#define SIMU_NO_DISK_IO
+#undef SIMU_NO_DISK_IO
 
 /** Daemon Thread **/
 #undef DAEMON_PROC

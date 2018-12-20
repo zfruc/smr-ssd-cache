@@ -9,27 +9,26 @@ void info(char* str)
     printf("process [%d]: %s\n",getpid(),str);
 }
 
-void error(char* str)
+int error(char* str)
+{
+    printf("process [%d]: %s, errno: %d\n",getpid(),str, errno);
+    return errno;
+}
+
+void error_exit(char* str)
+{
+    printf("process [%d]: %s, errno: %d\n",getpid(),str, errno);
+    exit(EXIT_FAILURE);
+}
+
+int warnning(char* str)
 {
     printf("process [%d]: %s\n",getpid(),str);
 }
 
-int OpenLogFile(const char* filepath)
-{
-    LogFile = fopen(filepath,"w+");
-    if(LogFile == NULL)
-        return errno;
-    return 0;
-}
-
-int CloseLogFile()
-{
-    return fclose(LogFile);
-}
-
-int WriteLog(char* log)
+int _Log(char* log, FILE* file)
 {
 #ifdef LOG_ALLOW
-    return fwrite(log,strlen(log),1,LogFile);
+    return fwrite(log,strlen(log),1,file);
 #endif // LOG_ALLOW
 }
