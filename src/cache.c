@@ -9,8 +9,7 @@
 
 #include "strategies.h"
 
-#include "smr-simulator/smr-simulator.h"
-#include "smr-simulator/simulator_logfifo.h"
+#include "smr-simulator/emulator.h"
 
 #include "shmlib.h"
 #include "report.h"
@@ -677,7 +676,7 @@ static int dev_simu_write(void* buf,size_t nbytes,off_t offset)
 
     int w;
     _TimerLap(&tv_start);
-    w = simu_smr_write(buf,nbytes,offset);
+    w = emu_smr_write(buf,nbytes,offset);
     _TimerLap(&tv_stop);
     return w;
 }
@@ -689,7 +688,7 @@ static int dev_simu_read(void* buf,size_t nbytes,off_t offset)
 
     int r;
     _TimerLap(&tv_start);
-    r = simu_smr_read(buf,nbytes,offset);
+    r = emu_smr_read(buf,nbytes,offset);
     _TimerLap(&tv_stop);
     return r;
 }

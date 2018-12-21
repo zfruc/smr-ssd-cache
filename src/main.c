@@ -16,9 +16,8 @@
 #include "shmlib.h"
 #include "global.h"
 #include "cache.h"
-#include "smr-simulator/smr-simulator.h"
 #include "smr-simulator/simulator_logfifo.h"
-#include "smr-simulator/simulator_v2.h"
+#include "smr-simulator/emulator.h"
 #include "trace2call.h"
 #include "daemon.h"
 #include "timerUtils.h"
@@ -178,7 +177,7 @@ main(int argc, char** argv)
         printf("Simulator Device: fifo part=%d, smr part=%d\n",fd_fifo_part,fd_smr_part);
         if(fd_fifo_part<0 || fd_smr_part<0)
             exit(EXIT_FAILURE);
-        InitSimulator();
+        InitEmulator();
         #endif
     }
     else

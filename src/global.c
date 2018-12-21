@@ -30,7 +30,7 @@ blksize_t ZONESZ = 18 * 1024 * 1024;//18MB    // Unit: Byte.
 
 char simu_smr_fifo_device[] = "/dev/sdc1";
 char simu_smr_smr_device[] = "/dev/sdc2";
-char smr_device[] = "/dev/md0"; // /dev/sdc";
+char smr_device[] = "/dev/sdc"; // /dev/sdc";
 char ssd_device[] = "/dev/memdiska";//"/mnt/ramdisk/ramdisk";//"/dev/memdiska";// "/mnt/ssd/ssd";
 char ram_device[1024];
 

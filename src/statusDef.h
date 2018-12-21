@@ -14,8 +14,8 @@
 #define  LOG_ALLOW // Log allowed EXCLUSIVELY for 1. Print the pcb by CM. 2. Print the WA by Emulator.
 #undef  LOG_SINGLE_REQ  // Print detail time information of each single request.
 
-/** Simulator Related **/
-#define SIMULATION
+/** Emulator Related **/
+#undef SIMULATION
 #undef SIMULATOR_AIO
 #undef SIMU_NO_DISK_IO
 

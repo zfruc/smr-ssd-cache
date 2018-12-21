@@ -5,6 +5,7 @@
 struct freeItem
 {
     unsigned long id;
+    int status;
     struct freeItem * next_free;
     struct freeItem * pre_free;
 
