@@ -1,8 +1,7 @@
 #ifndef SSDBUFTABLE_H
 #define SSDBUFTABLE_H
-#include "smr-simulator/smr-simulator.h"
-#include "smr-simulator/simulator_logfifo.h"
-#include "smr-simulator/simulator_v2.h"
+
+#include "emulator.h"
 typedef struct SSDHashBucket
 {
         DespTag	hash_key;
