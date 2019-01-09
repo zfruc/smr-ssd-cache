@@ -5,7 +5,7 @@ SCALE=$2
 
 if [ ${SCALE} = "small" ]; then
     echo "fast cleanning..."
-    dd if=/dev/zero of=${TEST_DEV} bs=4K count=2M
+    dd if=/dev/zero of=${TEST_DEV} bs=4K count=100M
 
 elif [ ${SCALE} = "big" ]; then
     echo "slow cleanning..."
