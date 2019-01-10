@@ -320,6 +320,14 @@ FLAG_CACHEOUT:
             case PV3 :
                 n_evict = LogOut_poreplus_v3(buf_despid_array, max_n_batch, suggest_type);
                 break;
+            case PORE:
+                int i;
+                n_evict = 64;
+                for(i=0;i<n_evict;i++)
+                {
+                    buf_despid_array[i] = LogOutDesp_pore();
+                }
+                break;
             case MOST :
                 n_evict = LogOut_most(buf_despid_array, max_n_batch);
                 break;
