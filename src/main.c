@@ -17,11 +17,11 @@
 #include "global.h"
 #include "cache.h"
 #include "smr-simulator/simulator_logfifo.h"
-#include "smr-simulator/emulator.h"
+#include "smr-simulator/simulator_v2.h"
 #include "trace2call.h"
 #include "daemon.h"
 #include "timerUtils.h"
-#include "/home/fei/git/Func-Utils/pipelib.h"
+//#include "/home/fei/git/Func-Utils/pipelib.h"
 
 //static char str_program_config[];
 

@@ -2,8 +2,8 @@
 #define _PV3_H_
 
 #include "pore.h"
-#include "cache.h"
-#include "global.h"
+#include "../cache.h"
+#include "../global.h"
 
 extern int Init_poreplus_v3();
 extern int LogIn_poreplus_v3(long despId, SSDBufTag tag, unsigned flag);

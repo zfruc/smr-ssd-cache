@@ -1,8 +1,8 @@
 #include <stdlib.h>
 #include "most.h"
-#include "statusDef.h"
+#include "../statusDef.h"
 #include "losertree4pore.h"
-#include "report.h"
+#include "../report.h"
 
 static StrategyDesp_pore*   GlobalDespArray;
 static ZoneCtrl*            ZoneCtrlArray;

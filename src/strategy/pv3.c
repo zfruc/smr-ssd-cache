@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include "pv3.h"
-#include "statusDef.h"
-#include "report.h"
+#include "../statusDef.h"
+#include "../report.h"
 #include "costmodel.h"
 #include <math.h>
 //#define random(x) (rand()%x)

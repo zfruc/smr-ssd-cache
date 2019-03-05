@@ -2,8 +2,8 @@
 #include <stdlib.h>
 
 #include "inner_ssd_buf_table.h"
-#include "smr-simulator/simulator_v2.h"
-#include "cache.h"
+#include "simulator_v2.h"
+#include "../cache.h"
 
 static SSDHashBucket* HashTable;
 static SSDHashBucket* HashItemPool,* FreeItem_hdr;

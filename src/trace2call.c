@@ -14,7 +14,7 @@
 #include "report.h"
 #include "strategy/strategies.h"
 
-#include "/home/fei/git/Func-Utils/pipelib.h"
+//#include "/home/fei/git/Func-Utils/pipelib.h"
 #include "hrc.h"
 extern struct RuntimeSTAT* STT;
 #define REPORT_INTERVAL 50000

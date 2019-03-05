@@ -1,8 +1,8 @@
 #include <stdlib.h>
 #include "most_rw.h"
-#include "statusDef.h"
+#include "../statusDef.h"
 #include "losertree4pore.h"
-#include "report.h"
+#include "../report.h"
 
 #define IsDirty(flag) ( (flag & SSD_BUF_DIRTY) != 0 )
 #define IsClean(flag) ( (flag & SSD_BUF_DIRTY) == 0 )

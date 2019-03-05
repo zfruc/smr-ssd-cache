@@ -1,9 +1,8 @@
 #define DEBUG 0
 #ifndef _PORE_H
 #define _PORE_H
-#include "cache.h"
-#include "global.h"
-
+#include "../cache.h"
+#include "../global.h"
 
 typedef struct StrategyDesp_pore
 {

@@ -1,11 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "global.h"
+#include "../global.h"
 #include "lru.h"
-#include "cache.h"
+#include "../cache.h"
 #include "lru_batch.h"
-#include "shmlib.h"
+#include "../shmlib.h"
 /********
  ** SHM**
  ********/

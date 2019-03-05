@@ -1,8 +1,8 @@
 #ifndef SMR_SSD_CACHE_SMR_SIMULATOR_H
 #define SMR_SSD_CACHE_SMR_SIMULATOR_H
 
-#include "global.h"
-#include "statusDef.h"
+#include "../global.h"
+#include "../statusDef.h"
 
 #define DEBUG 0
 /* ---------------------------smr simulator---------------------------- */

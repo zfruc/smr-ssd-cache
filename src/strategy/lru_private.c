@@ -1,11 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "global.h"
+#include "../global.h"
+#include "../cache.h"
 #include "lru.h"
-#include "cache.h"
 #include "lru_private.h"
-#include "shmlib.h"
+#include "../shmlib.h"
 
 #define EVICT_DITRY_GRAIN 64
 

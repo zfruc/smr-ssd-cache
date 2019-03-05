@@ -1,8 +1,8 @@
 #include <stdlib.h>
 #include "pore.h"
-#include "statusDef.h"
+#include "../statusDef.h"
 //#include "losertree4pore.h"
-#include "report.h"
+#include "../report.h"
 
 #define random(x) (rand() % x)
 

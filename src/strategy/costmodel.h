@@ -3,10 +3,10 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-#include "global.h"
-#include "cache.h"
-#include "timerUtils.h"
-#include "report.h"
+#include "../global.h"
+#include "../cache.h"
+#include "../timerUtils.h"
+#include "../report.h"
 extern blkcnt_t TS_WindowSize;
 extern blkcnt_t TS_StartSize;
 extern int CM_Init();

@@ -1,8 +1,8 @@
 #ifndef _MOST_RW_H_
 #define _MOST_RW_H_
 #include "pore.h"
-#include "cache.h"
-#include "global.h"
+#include "../cache.h"
+#include "../global.h"
 
 extern int Init_most_rw();
 extern int LogIn_most_rw(long despId, SSDBufTag tag, unsigned flag);

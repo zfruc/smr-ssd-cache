@@ -1,8 +1,8 @@
 #ifndef _MOST_H_
 #define _MOST_H_
 #include "pore.h"
-#include "cache.h"
-#include "global.h"
+#include "../cache.h"
+#include "../global.h"
 
 extern int Init_most();
 extern int LogIn_most(long despId, SSDBufTag tag, unsigned flag);

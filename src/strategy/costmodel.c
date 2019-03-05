@@ -3,7 +3,7 @@
 
 */
 #include "costmodel.h"
-#include "report.h"
+#include "../report.h"
 /** Statistic Objects **/
 static blkcnt_t CallBack_Cnt_Clean, CallBack_Cnt_Dirty;
 static blkcnt_t Evict_Cnt_Clean, Evict_Cnt_Dirty;

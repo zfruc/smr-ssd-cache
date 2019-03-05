@@ -7,14 +7,14 @@
 #include "cache.h"
 #include "hashtable_utils.h"
 
-#include "strategies.h"
+#include "strategy/strategies.h"
 
-#include "smr-simulator/emulator.h"
+#include "smr-simulator/simulator_v2.h"
 
 #include "shmlib.h"
 #include "report.h"
 
-#include "costmodel.h"
+#include "strategy/costmodel.h"
 
 SSDBufDespCtrl*     ssd_buf_desp_ctrl;
 SSDBufDesp*         ssd_buf_desps;
@@ -320,14 +320,14 @@ FLAG_CACHEOUT:
             case PV3 :
                 n_evict = LogOut_poreplus_v3(buf_despid_array, max_n_batch, suggest_type);
                 break;
-            case PORE:
-                int i;
-                n_evict = 64;
-                for(i=0;i<n_evict;i++)
-                {
-                    buf_despid_array[i] = LogOutDesp_pore();
-                }
-                break;
+//            case PORE:
+//                int i;
+//                n_evict = 64;
+//                for(i=0;i<n_evict;i++)
+//                {
+//                    buf_despid_array[i] = LogOutDesp_pore();
+//                }
+//                break;
             case MOST :
                 n_evict = LogOut_most(buf_despid_array, max_n_batch);
                 break;
@@ -684,7 +684,7 @@ static int dev_simu_write(void* buf,size_t nbytes,off_t offset)
 
     int w;
     _TimerLap(&tv_start);
-    w = emu_smr_write(buf,nbytes,offset);
+    w = simu_smr_write(buf,nbytes,offset);
     _TimerLap(&tv_stop);
     return w;
 }
@@ -696,7 +696,7 @@ static int dev_simu_read(void* buf,size_t nbytes,off_t offset)
 
     int r;
     _TimerLap(&tv_start);
-    r = emu_smr_read(buf,nbytes,offset);
+    r = simu_smr_read(buf,nbytes,offset);
     _TimerLap(&tv_stop);
     return r;
 }

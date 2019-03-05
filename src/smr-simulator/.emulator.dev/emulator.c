@@ -13,12 +13,13 @@
 #include <memory.h>
 #include <aio.h>
 
-#include "report.h"
-#include "cache.h"
-#include "smr-simulator/simulator_logfifo.h"
+#include "../report.h"
+#include "../cache.h"
+#include "../timerUtils.h"
+#include "../statusDef.h"
+#include "simulator_logfifo.h"
 #include "inner_ssd_buf_table.h"
-#include "timerUtils.h"
-#include "statusDef.h"
+
 
 #define OFF_BAND_TMP_PERSISIT   0 // The head 80MB of FIFO for temp persistence band needed to clean.
 #define OFF_FIFO                80*1024*1024
@@ -285,8 +286,8 @@ emu_smr_write(char *buffer, size_t size, off_t offset)
 
 
         /* Update HashTable and Descriptor array */
-        ssd_hash = ssdtableHashcode(tag);
-        long old_despId = ssdtableUpdate(tag, ssd_hash, ssd_hdr->despId);
+        unsigned long ssd_hash = ssdtableHashcode(tag);
+        old_despId = ssdtableUpdate(tag, ssd_hash, ssd_hdr->despId);
         if(old_despId>=0){
           FIFODesc* oldDesp = fifo_desp_array + old_despId;
           invalidDespInFIFO(oldDesp); ///invalid the old desp
