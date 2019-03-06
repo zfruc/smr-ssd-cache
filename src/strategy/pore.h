@@ -4,6 +4,7 @@
 #include "../cache.h"
 #include "../global.h"
 
+
 typedef struct StrategyDesp_pore
 {
     long            serial_id;

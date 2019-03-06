@@ -317,7 +317,7 @@ FLAG_CACHEOUT:
             case PORE_PLUS_V2 :
                 n_evict = LogOut_poreplus_v2(buf_despid_array, max_n_batch);
                 break;
-            case PV3 :
+            case PAUL :
                 n_evict = LogOut_poreplus_v3(buf_despid_array, max_n_batch, suggest_type);
                 break;
 //            case PORE:
@@ -412,7 +412,7 @@ initStrategySSDBuffer()
         return InitPORE_plus();
     case PORE_PLUS_V2:
         return Init_poreplus_v2();
-    case PV3:
+    case PAUL:
         return Init_poreplus_v3();
     case MOST:
         return Init_most();
@@ -441,8 +441,8 @@ Strategy_Desp_LogOut(unsigned flag)
         return LogOutDesp_pore_plus();
     case PORE_PLUS_V2:
         error("PORE_PLUS_V2 wrong time function revoke\n");
-    case PV3:
-        error("PV3 wrong time function revoke\n");
+    case PAUL:
+        error("PAUL wrong time function revoke\n");
     case MOST:
         error("MOST wrong time function revoke\n");
     }
@@ -467,7 +467,7 @@ Strategy_Desp_HitIn(SSDBufDesp* desp)
         return HitPoreBuffer_plus(desp->ssd_buf_flag, desp->ssd_buf_flag);
     case PORE_PLUS_V2:
         return Hit_poreplus_v2(desp->serial_id, desp->ssd_buf_flag);
-    case PV3:
+    case PAUL:
         return Hit_poreplus_v3(desp->serial_id, desp->ssd_buf_flag);
     case MOST:
         return Hit_most(desp->serial_id, desp->ssd_buf_flag);
@@ -498,7 +498,7 @@ Strategy_Desp_LogIn(SSDBufDesp* desp)
         return LogInPoreBuffer_plus(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
     case PORE_PLUS_V2:
         return LogIn_poreplus_v2(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
-    case PV3:
+    case PAUL:
         return LogIn_poreplus_v3(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
     case MOST:
         return LogIn_most(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);

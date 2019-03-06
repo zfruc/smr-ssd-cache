@@ -48,7 +48,7 @@ void ramdisk_iotest()
     }
 }
 //
-//char* tracefile[] = {"/home/trace/src1_2.csv.req",
+//char* tracefile[] = {~"/home/trace/src1_2.csv.req",
 //                     "/home/trace/wdev_0.csv.req",
 //                     "/home/trace/hm_0.csv.req",
 //                     "/home/trace/mds_0.csv.req",
@@ -56,8 +56,8 @@ void ramdisk_iotest()
 //                     "/home/trace/rsrch_0.csv.req",
 //                     "/home/trace/stg_0.csv.req",
 //                     "/home/trace/ts_0.csv.req",
-//                     "/home/trace/usr_0.csv.req",
-//                     "/home/trace/web_0.csv.req",
+//                     ~"/home/trace/usr_0.csv.req",
+//                     ~"/home/trace/web_0.csv.req",
 //                     "/home/trace/production-LiveMap-Backend-4K.req", // --> not in used.
 //                     "/home/trace/merged_traceX18.req"  // default set: cache size = 8M*blksize; persistent buffer size = 1.6M*blksize.
 //                     //"/home/trace/merged_trace_x1.req.csv"
@@ -105,8 +105,8 @@ main(int argc, char** argv)
             EvictStrategy = LRU_private;
         else if (strcmp(argv[8],"LRU_RW") == 0)
             EvictStrategy = LRU_rw;
-        else if (strcmp(argv[8],"PV3") == 0)
-            EvictStrategy = PV3;
+        else if (strcmp(argv[8],"PAUL") == 0)
+            EvictStrategy = PAUL;
         else if (strcmp(argv[8],"PORE") == 0)
             EvictStrategy = PORE;
         else if(strcmp(argv[8],"MOST") == 0)
