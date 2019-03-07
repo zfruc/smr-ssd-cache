@@ -32,7 +32,7 @@ static int                  NonEmptyZoneCnt = 0;
 static unsigned long*       OpenZoneSet;        /* The decided open zones in current period, which chosed by both the weight-sorted array and the access threshold. */
 static int                  OpenZoneCnt;        /* It represent the number of open zones and the first number elements in 'ZoneSortArray' is the open zones ID */
 
-extern long                 PeriodLenth;        /* The period lenth which defines the times of eviction triggered */
+extern long                 Cycle_Length;        /* The period lenth which defines the times of eviction triggered */
 static long                 PeriodProgress;     /* Current times of eviction in a period lenth */
 static long                 StampGlobal;      /* Current io sequenced number in a period lenth, used to distinct the degree of heat among zones */
 
@@ -40,7 +40,7 @@ static void add2ArrayHead(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl);
 static void move2ArrayHead(StrategyDesp_pore* desp,ZoneCtrl* zoneCtrl);
 #define stamp(desp, zoneCtrl) \
     StampGlobal++;\
-    desp->stamp = zoneCtrl->stamp = StampGlobal;
+    desp->stamp = StampGlobal;
 
 static void unloadfromZone(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl);
 static void clearDesp(StrategyDesp_pore* desp);
@@ -186,7 +186,7 @@ LogOutDesp_pore_plus()
     static int isWholeZone = 0;
     //static int curZone_evict_cnt = 0;
 
-    if(PeriodProgress >= PeriodLenth  && !isWholeZone)
+    if(PeriodProgress >= Cycle_Length  && !isWholeZone)
     {
         printf("This Period Evict Info: clean:%ld, dirty:%ld\n",evict_clean_cnt,evict_dirty_cnt);
 
@@ -313,7 +313,7 @@ EVICT_DIRTYZONE:
             //curZone_evict_cnt = 0;
         }
         else
-            PeriodProgress = PeriodLenth + 1; // restart
+            PeriodProgress = Cycle_Length + 1; // restart
     }
     goto EVICT_RETURN;
 
@@ -528,7 +528,7 @@ redefineOpenZones()
     while(n < NonEmptyZoneCnt)
     {
         ZoneCtrl* curZone = ZoneCtrlArray + ZoneSortArray[n];
-        if(curZone->pagecnt_dirty + n_chooseblk > PeriodLenth)
+        if(curZone->pagecnt_dirty + n_chooseblk > Cycle_Length)
             break;
 
         if(curZone->pagecnt_dirty >= plus_Dirty_Threshold)

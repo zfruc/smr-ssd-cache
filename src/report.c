@@ -9,13 +9,13 @@ void info(char* str)
     printf("process [%d]: %s\n",getpid(),str);
 }
 
-int error(char* str)
+int usr_warning(char* str)
 {
     printf("process [%d]: %s, errno: %d\n",getpid(),str, errno);
     return errno;
 }
 
-void error_exit(char* str)
+void usr_error(char* str)
 {
     printf("process [%d]: %s, errno: %d\n",getpid(),str, errno);
     exit(EXIT_FAILURE);

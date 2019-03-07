@@ -138,12 +138,12 @@ void InitSimulator()
 
     log_wa = fopen(log_wa_path, "w+");
     if(log_wa == NULL)
-        error_exit("cannot open log: log_wa.");
+        usr_error("cannot open log: log_wa.");
 //    pthread_t tid;
 //    int err = pthread_create(&tid, NULL, smr_fifo_monitor_thread, NULL);
 //    if (err != 0)
 //    {
-//        printf("[ERROR] initSSD: fail to create thread: %s\n", strerror(err));
+//        printf("[ERROR] initSSD: fail to create thread: %s\n", strusr_warning(err));
 //        exit(-1);
 //    }
     /* cgroup write fifo throttle */

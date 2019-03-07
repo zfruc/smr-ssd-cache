@@ -94,7 +94,7 @@ extern SSDEvictionStrategy EvictStrategy;
 extern unsigned long Param1;
 extern unsigned long Param2;
 extern int BatchSize;
-extern long PeriodLenth;
+extern long Cycle_Length;
 /** All users basic setup **/
 extern blksize_t NBLOCK_MAX_CACHE_SIZE;
 extern blkcnt_t NBLOCK_SSD_CACHE;

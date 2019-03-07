@@ -28,16 +28,15 @@ static int                  NonEmptyZoneCnt = 0;
 static unsigned long*       OpenZoneSet;        /* The decided open zones in current period, which chosed by both the weight-sorted array and the access threshold. */
 static int                  OpenZoneCnt;        /* It represent the number of open zones and the first number elements in 'ZoneSortArray' is the open zones ID */
 
-extern long                 PeriodLenth;        /* Which defines the upper limit of the block amount of selected OpenZone and of Evicted blocks. */
-static long                 Progress_Clean, Progress_Dirty;     /* Current times to evict clean/dirty block in a period lenth */
+extern long                 Cycle_Length;        /* Which defines the upper limit of the block amount of selected OpenZone and of Evicted blocks. */
+static long                 Cycle_Progress;     /* Current times to evict clean/dirty block in a period lenth */
 static long                 StampGlobal;      /* Current io sequenced number in a period lenth, used to distinct the degree of heat among zones */
-static long                 PeriodStamp;
+static long                 CycleID;
 
 static void add2ArrayHead(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl);
 static void move2ArrayHead(StrategyDesp_pore* desp,ZoneCtrl* zoneCtrl);
-//#define stamp(desp, zoneCtrl) \
-//    StampGlobal++;\
-//    desp->stamp = zoneCtrl->stamp = StampGlobal;
+
+static int start_new_cycle();
 static void stamp(StrategyDesp_pore * desp);
 
 static void unloadfromZone(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl);
@@ -47,11 +46,10 @@ static void add2CleanArrayHead(StrategyDesp_pore* desp);
 static void unloadfromCleanArray(StrategyDesp_pore* desp);
 static void move2CleanArrayHead(StrategyDesp_pore* desp);
 
-/** PORE Plus**/
+/** PAUL**/
 static int redefineOpenZones();
-
-static int choose_colder(long stampA, long stampB, long minStamp);
 static int get_FrozenOpZone_Seq();
+static int random_pick(float weight1, float weight2, float obey);
 
 static volatile unsigned long
 getZoneNum(size_t offset)
@@ -65,7 +63,7 @@ Init_poreplus_v3()
 {
     ZONEBLKSZ = ZONESZ / BLKSZ;
 
-    PeriodStamp = StampGlobal = Progress_Clean = Progress_Dirty = 0;
+    CycleID = StampGlobal = Cycle_Progress = 0;
     GlobalDespArray = (StrategyDesp_pore*)malloc(sizeof(StrategyDesp_pore) * NBLOCK_SSD_CACHE);
     ZoneCtrlArray = (ZoneCtrl*)malloc(sizeof(ZoneCtrl) * NZONES);
 
@@ -160,134 +158,110 @@ Hit_poreplus_v3(long despId, unsigned flag)
     }
     stamp(myDesp);
     myDesp->flag |= flag;
+
+    return 0;
+}
+
+static int
+start_new_cycle()
+{
+    CycleID++;
+    Cycle_Progress = 0;
+
+    int cnt = redefineOpenZones();
+
+    printf("-------------New Cycle!-----------\n");
+    printf("Cycle ID [%ld], Non-Empty Zone_Cnt=%d, OpenZones_cnt=%d, CleanBlks=%ld(%0.2lf)\n",CycleID, NonEmptyZoneCnt, OpenZoneCnt,CleanCtrl.pagecnt_clean, (double)CleanCtrl.pagecnt_clean/NBLOCK_SSD_CACHE);
+
+    return cnt;
 }
 
 /** \brief
- *  The default cache-out strategy implemented in PORE+ framework.
-    We use the dirty block and clean block isolation management in the way to achieve amplification control.
-    There is 3 following phases of the implement:
-    1.  Searching phase:
-        search and redefine the Open Zones: those dirty blocks content > threshold.
-    2.  Deciding phase:
-        decieding evicted model according the open zones and the ratio of clean blocks. Hybrid / Clean-Only
-    3.  Evicting phase:
-        If in the Clean-Only model, evicting clean blocks by global LRU.
-        If else the Hybrid model, evicting both of global clean blocks and dirty block in open zones.
  */
 int
 LogOut_poreplus_v3(long * out_despid_array, int max_n_batch, enum_t_vict suggest_type)
 {
-    static int CurEvictZoneSeq = -1;
-    static long evict_clean_cnt = 0, evict_dirty_cnt = 0;
-    //static int isWholeZone = 0;
-    //static int curZone_evict_cnt = 0;
+    static int CurEvictZoneSeq;
+    static long n_evict_clean_cycle = 0, n_evict_dirty_cycle = 0;
+    int evict_cnt = 0;
 
-    /* The condition to restart a new OpenZone period is
-        1. flushed enough dirty block by zone
-        2. or flushed enough clean block when the OpenZone flushing has still not start.
-    */
-    if((Progress_Clean >= PeriodLenth && Progress_Dirty == 0) || Progress_Dirty >= PeriodLenth || Progress_Clean + Progress_Dirty == 0)
-    {
-FLAG_NEWPERIOD:
-        printf("This Period Evict Info: clean:%ld, dirty:%ld\n",evict_clean_cnt,evict_dirty_cnt);
-
-        /** 1. Searching Phase **/
-        OpenZoneCnt = 0;
-        Progress_Clean = Progress_Dirty = 0;
-        evict_clean_cnt = evict_dirty_cnt = 0;
-
-        CurEvictZoneSeq = -1;
-        PeriodStamp++;
-        //isWholeZone = 0;
-        redefineOpenZones();
-
-        /** 2. Decide Evict Model Phase **/
-        printf("-------------New Period!-----------\n");
-        printf("Period [%d], Non-Empty Zone_Cnt=%d, OpenZones_cnt=%d, CleanBlks=%ld(%0.2lf)\n",PeriodStamp, NonEmptyZoneCnt, OpenZoneCnt,CleanCtrl.pagecnt_clean, (double)CleanCtrl.pagecnt_clean/NBLOCK_SSD_CACHE);
-    }
-
-    /**3. Evict Phase **/
     ZoneCtrl* evictZone;
 
     if(suggest_type == ENUM_B_Clean)
     {
         if(CleanCtrl.pagecnt_clean == 0) // Consistency judgment
-            error("Order to evict clean cache block, but it is exhausted in advance.");
+            usr_error("Order to evict clean cache block, but it is exhausted in advance.");
         goto FLAG_EVICT_CLEAN;
     }
     else if(suggest_type == ENUM_B_Dirty)
     {
         if(STT->incache_n_dirty == 0)   // Consistency judgment
-            error("Order to evict dirty cache block, but it is exhausted in advance.");
-
-        CurEvictZoneSeq = get_FrozenOpZone_Seq();
-        if(CurEvictZoneSeq < 0)
-            goto FLAG_NEWPERIOD;
+            usr_error("Order to evict dirty cache block, but it is exhausted in advance.");
         goto FLAG_EVICT_DIRTYZONE;
     }
-    else
+    else if(suggest_type == ENUM_B_Any)
     {
-        if(CleanCtrl.tail < 0)
-            error("Order to evict clean cache block, but it is exhausted in advance.");
-
-        // The suggest type is 'Any'.
-        StrategyDesp_pore * cleanDesp, * dirtyDesp;
-
-        cleanDesp = GlobalDespArray + CleanCtrl.tail;
-
-        CurEvictZoneSeq = get_FrozenOpZone_Seq();
-        if(CurEvictZoneSeq < 0)
-            goto FLAG_NEWPERIOD;
-        evictZone = ZoneCtrlArray + OpenZoneSet[CurEvictZoneSeq];
-        dirtyDesp = GlobalDespArray + evictZone->tail;
-
-        if(choose_colder(cleanDesp->stamp, dirtyDesp->stamp, StampGlobal))
+        if(STT->incache_n_clean == 0)
+            goto FLAG_EVICT_DIRTYZONE;
+        else if(STT->incache_n_dirty == 0)
             goto FLAG_EVICT_CLEAN;
         else
-            goto FLAG_EVICT_DIRTYZONE;
+        {
+            int it = random_pick((float)STT->incache_n_clean, (float)STT->incache_n_dirty, 1);
+            if(it == 1)
+                goto FLAG_EVICT_CLEAN;
+            else
+                goto FLAG_EVICT_DIRTYZONE;
+        }
     }
+    else
+        usr_error("PAUL doesn't support this evict type.");
 
 FLAG_EVICT_CLEAN:
-    1;
-    int i = 0;
-    while(i < EVICT_DITRY_GRAIN && CleanCtrl.pagecnt_clean > 0)
+    while(evict_cnt < EVICT_DITRY_GRAIN && CleanCtrl.pagecnt_clean > 0)
     {
         StrategyDesp_pore * cleanDesp = GlobalDespArray + CleanCtrl.tail;
-        out_despid_array[i] = cleanDesp->serial_id;
+        out_despid_array[evict_cnt] = cleanDesp->serial_id;
         unloadfromCleanArray(cleanDesp);
         clearDesp(cleanDesp);
 
-        Progress_Clean ++;
-        evict_clean_cnt ++;
+        n_evict_clean_cycle ++;
         CleanCtrl.pagecnt_clean --;
-        i ++;
+        evict_cnt ++;
     }
-    return i;
+    return evict_cnt;
 
 FLAG_EVICT_DIRTYZONE:
+    if(Cycle_Progress >= Cycle_Length || Cycle_Progress == 0){
+        start_new_cycle();
+
+        n_evict_clean_cycle = n_evict_dirty_cycle = 0;
+        printf("Ouput of last Cycle: clean:%ld, dirty:%ld\n",n_evict_clean_cycle,n_evict_dirty_cycle);
+    }
+
+    CurEvictZoneSeq = get_FrozenOpZone_Seq();
     evictZone = ZoneCtrlArray + OpenZoneSet[CurEvictZoneSeq];
 
-    int j = 0; // batch cache out
-    while(j < EVICT_DITRY_GRAIN && evictZone->pagecnt_dirty > 0)
+    while(evict_cnt < EVICT_DITRY_GRAIN && evictZone->pagecnt_dirty > 0)
     {
         StrategyDesp_pore* frozenDesp = GlobalDespArray + evictZone->tail;
 
         unloadfromZone(frozenDesp,evictZone);
-        out_despid_array[j] = frozenDesp->serial_id;
+        out_despid_array[evict_cnt] = frozenDesp->serial_id;
 //        evictZone->score -= (double) 1 / (1 << frozenDesp->heat);
 
-        Progress_Dirty ++;
+        Cycle_Progress ++;
         evictZone->pagecnt_dirty--;
         evictZone->heat -= frozenDesp->heat;
-        evict_dirty_cnt++;
+        n_evict_dirty_cycle++;
 
         clearDesp(frozenDesp);
-        j++;
+        evict_cnt++;
     }
     //printf("pore+V2: batch flush dirty cnt [%d] from zone[%lu]\n", j,evictZone->zoneId);
 
 //    printf("SCORE REPORT: zone id[%d], score[%lu]\n", evictZone->zoneId, evictZone->score);
-    return j;
+    return evict_cnt;
 }
 
 /****************
@@ -464,25 +438,20 @@ extractNonEmptyZoneId()
             cnt++;
         }
         zoneId++;
+
+        if(zone->activate_after_n_cycles > 0)
+            zone->activate_after_n_cycles --;
     }
     return cnt;
 }
 
-static volatile void
+static void
 pause_and_score()
 {
     /*  For simplicity, searching all the zones of SMR,
         actually it's only needed to search the zones which had been cached.
         But it doesn't matter because of only 200~500K meta data of zones in memory for searching, it's not a big number.
     */
-//    int n = 0;
-//    while( n < NZONES )
-//    {
-//        ZoneCtrl* ctrl = ZoneCtrlArray + n;
-//
-//        ctrl->score = ((ctrl->pagecnt_dirty) * (ctrl->pagecnt_dirty)) * 1000000 / (ctrl->heat+1);
-//        n++;
-//    }
     /* Score all zones. */
     blkcnt_t n = 0;
     ZoneCtrl * myCtrl;
@@ -497,7 +466,7 @@ pause_and_score()
         while(despId >= 0)
         {
             desp = GlobalDespArray + despId;
-            long idx2 = PeriodStamp - desp->stamp;
+            long idx2 = CycleID - desp->stamp;
             if(idx2 > 15)
                 idx2 = 15;
 
@@ -516,20 +485,27 @@ redefineOpenZones()
     NonEmptyZoneCnt = extractNonEmptyZoneId();
     if(NonEmptyZoneCnt == 0)
         return 0;
-    pause_and_score(); /**< Method 1 */
+    pause_and_score(); /** ARS (Actually Release Space) */
     qsort_zone(0,NonEmptyZoneCnt-1);
 
-    long n_chooseblk = 0, n = 0;
-    long max_n_zones = PeriodLenth / (ZONESZ / BLKSZ);
+    long max_n_zones = Cycle_Length / (ZONESZ / BLKSZ);
     if(max_n_zones == 0)
         max_n_zones = 1;  // This is for Emulation on small traces, some of their fifo size are lower than a zone size.
+
     OpenZoneCnt = 0;
-    while(n < NonEmptyZoneCnt && n < max_n_zones)
+    long i = 0;
+    while(OpenZoneCnt < max_n_zones && i < NonEmptyZoneCnt)
     {
-        ZoneCtrl* zone = ZoneCtrlArray + ZoneSortArray[n];
-        OpenZoneSet[OpenZoneCnt] = zone->zoneId;
-        OpenZoneCnt++;
-        n++;
+        ZoneCtrl* zone = ZoneCtrlArray + ZoneSortArray[i];
+
+        /* According to the RULE 2, zones which have already be in PB cannot be choosed into this cycle. */
+        if(zone->activate_after_n_cycles == 0)
+        {
+            zone->activate_after_n_cycles = 2;  // Deactivate the zone for the next 2 cycles.
+            OpenZoneSet[OpenZoneCnt] = zone->zoneId;
+            OpenZoneCnt++;
+        }
+        i++;
     }
 
     /** lookup sort result **/
@@ -548,17 +524,11 @@ redefineOpenZones()
 }
 
 static int
-choose_colder(long stampA, long stampB, long maxStamp)
-{
-    return (stampA > stampB) ? 0 : 1;
-}
-
-static int
 get_FrozenOpZone_Seq()
 {
     int seq = 0;
     blkcnt_t frozenSeq = -1;
-    long frozenStamp = PeriodStamp;
+    long frozenStamp = CycleID;
     while(seq < OpenZoneCnt)
     {
         ZoneCtrl* ctrl = ZoneCtrlArray + OpenZoneSet[seq];
@@ -577,10 +547,26 @@ get_FrozenOpZone_Seq()
         seq ++;
     }
 
-    return frozenSeq;
+    return frozenSeq;   // If return value <= 0, it means 1. here has no dirty block. 2. here has not started the cycle.
 }
 
 static void stamp(StrategyDesp_pore * desp)
 {
-    desp->stamp = PeriodStamp;
+    desp->stamp = CycleID;
+}
+
+static int random_pick(float weight1, float weight2, float obey)
+{
+    //return (weight1 < weight2) ? 1 : 2;
+    // let weight as the standard, set as 1,
+    float inc_times = (weight2 / weight1) - 1;
+    inc_times *= obey;
+
+    float de_point = 1000 * (1 / (2 + inc_times));
+//    rand_init();
+    int token = rand() % 1000;
+
+    if(token < de_point)
+        return 2;
+    return 1;
 }

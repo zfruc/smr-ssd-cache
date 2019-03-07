@@ -29,8 +29,7 @@ typedef struct ZoneCtrl
     long            pagecnt_dirty;
     long            pagecnt_clean;
     long            head,tail;
-    long	        stamp;
-
+    int             activate_after_n_cycles;
     unsigned long score;
 
 }ZoneCtrl;

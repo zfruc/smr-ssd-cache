@@ -24,7 +24,7 @@ static CleanDespCtrl        CleanCtrl;
 static unsigned long*       ZoneSortArray;      /* The zone ID array sorted by weight(calculated customized). it is used to determine the open zones */
 static int                  OpenZoneCnt;        /* It represent the number of open zones and the first number elements in 'ZoneSortArray' is the open zones ID */
 
-extern long                 PeriodLenth;        /* The period lenth which defines the times of eviction triggered */
+extern long                 Cycle_Length;        /* The period lenth which defines the times of eviction triggered */
 static long                 PeriodProgress;     /* Current times of eviction in a period lenth */
 static long                 CleanProgress;
 static long                 StampGlobal;      /* Current io sequenced number in a period lenth, used to distinct the degree of heat among zones */
@@ -127,8 +127,8 @@ LogOut_most_rw(long * out_despid_array, int max_n_batch, enum_t_vict suggest_typ
     static long evict_clean_cnt = 0, evict_dirty_cnt = 0;
     static int periodCnt = 0;
     static ZoneCtrl* chosenOpZone;
-    if( (PeriodProgress != 0 && PeriodProgress % PeriodLenth == 0) ||
-        (PeriodProgress == 0 && CleanProgress % PeriodLenth == 0) ||
+    if( (PeriodProgress != 0 && PeriodProgress % Cycle_Length == 0) ||
+        (PeriodProgress == 0 && CleanProgress % Cycle_Length == 0) ||
         (chosenOpZone->tail < 0))
     {
         printf("This Period Evict Info: clean:%ld, dirty:%ld\n", CleanProgress , PeriodProgress);
@@ -144,20 +144,20 @@ LogOut_most_rw(long * out_despid_array, int max_n_batch, enum_t_vict suggest_typ
     if(suggest_type == ENUM_B_Clean)
     {
         if(CleanCtrl.pagecnt_clean == 0) // Consistency judgment
-            error("Order to evict clean cache block, but it is exhausted in advance.");
+            usr_warning("Order to evict clean cache block, but it is exhausted in advance.");
         goto FLAG_EVICT_CLEAN;
     }
     else if(suggest_type == ENUM_B_Dirty)
     {
         if(STT->incache_n_dirty == 0)   // Consistency judgment
-            error("Order to evict dirty cache block, but it is exhausted in advance.");
+            usr_warning("Order to evict dirty cache block, but it is exhausted in advance.");
 
         goto FLAG_EVICT_DIRTYZONE;
     }
     else    // The suggest type is 'Any'.
     {
         if(CleanCtrl.pagecnt_clean  == 0 || STT->incache_n_dirty == 0)
-            error("Order to evict clean or dirty cache block, but it is exhausted in advance.");
+            usr_warning("Order to evict clean or dirty cache block, but it is exhausted in advance.");
 
         StrategyDesp_pore * cleanDesp, * dirtyDesp;
 

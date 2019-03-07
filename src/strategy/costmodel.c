@@ -10,7 +10,6 @@ static blkcnt_t Evict_Cnt_Clean, Evict_Cnt_Dirty;
 
 /* RELATED PARAMETER OF COST MODEL */
 static double   CC, CD;                 /* Cost of Clean/Dirty blocks. */
-static double   CC_avg, CD_avg;
 static double   PCB_Clean, PCB_Dirty;   /* Possibility of CallBack the clean/dirty blocks */
 static double   WrtAmp;                 /* The write amp of blocks i'm going to evict. */
 
@@ -19,22 +18,22 @@ static double   WrtAmp;                 /* The write amp of blocks i'm going to 
 
 /* time of random, sequence, into fifo, average.
  * And each of these collects from different way, such as:
- * T_rand from when calling the 'CM_CallBack' func and sending a parameter of read block time.
+ * Lat_read_avg from when calling the 'CM_CallBack' func and sending a parameter of read block time.
  * T_seq is the inner-disk time of sequenced IO, which depends on the hardware parameter (Set 40 microsecond).
- * T_fifo should be a hardware parameter, but it's inner metadata management can't be seen, so I mearsure it from evicted dirty block.
- * T_avg is the average time cost, which is (dirty evicted time sum / evicted count)
+ * Lat_write_avg should be a hardware parameter, but it's inner metadata management can't be seen, so I mearsure it from evicted dirty block.
+ * Lat_evict_avg is the average time cost, which is (dirty evicted time sum / evicted count)
  */
-static int  T_rand, T_fifo, T_avg, T_seq = 20;
-static microsecond_t T_rand_sum = 0;
-static microsecond_t T_fifo_sum = 0;
-static microsecond_t T_hitmiss_sum = 0;
+static int  Lat_read_avg, Lat_write_avg, Lat_evict_avg, T_seq = 20;
+static microsecond_t Lat_read_sum = 0;
+static microsecond_t Lat_write_sum = 0;
+static microsecond_t Lat_evict_sum = 0;
 
-static blkcnt_t T_rand_cnt = 0;
-static blkcnt_t T_hitmiss_cnt = 0;
+static blkcnt_t Cnt_read_req = 0;
+static blkcnt_t Cnt_evict_sum = 0;
 
-static blkcnt_t T_fifo_cnt = 0;
+static blkcnt_t Cnt_write_req = 0;
 static blkcnt_t T_evict_cnt = 0;
-static microsecond_t * t_randcollect;
+static microsecond_t * Lat_read_avgcollect;
 static microsecond_t * t_hitmisscollect;
 
 /** The relavant objs of evicted blocks array belonged the current window. **/
@@ -101,14 +100,14 @@ int CM_Init()
     HashIndex = (WDBucket **)calloc(TS_WindowSize, sizeof(WDItem*));
     CallBack_Cnt_Clean = CallBack_Cnt_Dirty = Evict_Cnt_Clean = Evict_Cnt_Dirty = 0;
 
-    t_randcollect = (microsecond_t *)malloc(TS_WindowSize * sizeof(microsecond_t));
+    Lat_read_avgcollect = (microsecond_t *)malloc(TS_WindowSize * sizeof(microsecond_t));
     t_hitmisscollect  = (microsecond_t *)malloc(TS_WindowSize * sizeof(microsecond_t));
 
-    if(WindowArray == NULL || WDBucketPool == NULL || HashIndex == NULL || t_randcollect == NULL)
+    if(WindowArray == NULL || WDBucketPool == NULL || HashIndex == NULL || Lat_read_avgcollect == NULL)
         return -1;
 
     if((log_r3balancer = fopen(log_r3balancer_path, "w+")) == NULL)
-        error_exit("Cannot open log: log_r3balancer.");
+        usr_error("Cannot open log: log_r3balancer.");
 
     return 0;
 }
@@ -139,8 +138,8 @@ int CM_Reg_EvictBlk(SSDBufTag blktag, unsigned flag, microsecond_t usetime)
         T_evict_cnt --;
         if((oldestItem->flag & SSD_BUF_DIRTY) != 0)
         {
-            T_fifo_cnt --;
-            T_fifo_sum -= oldestItem->usetime;
+            Cnt_write_req --;
+            Lat_write_sum -= oldestItem->usetime;
 
             Evict_Cnt_Dirty --;
             if(oldestItem->isCallBack)
@@ -170,8 +169,8 @@ int CM_Reg_EvictBlk(SSDBufTag blktag, unsigned flag, microsecond_t usetime)
     if((flag & SSD_BUF_DIRTY) != 0)
     {
         Evict_Cnt_Dirty ++;
-        T_fifo_cnt ++;
-        T_fifo_sum += usetime;
+        Cnt_write_req ++;
+        Lat_write_sum += usetime;
     }
     else
         Evict_Cnt_Clean ++;
@@ -224,25 +223,22 @@ int CM_CHOOSE()
 
     if(counter % 10000 == 0)
     {
-	ReportCM();
+        ReportCM();
     }
 
     PCB_Clean = (double)CallBack_Cnt_Clean / (Evict_Cnt_Clean + 1);
     PCB_Dirty = (double)CallBack_Cnt_Dirty / (Evict_Cnt_Dirty + 1);
 
-    T_rand = T_rand_sum / (T_rand_cnt + 1);
-    T_fifo = T_fifo_sum / (T_fifo_cnt + 1);
-    double t_avg_fifo = T_fifo_sum / T_evict_cnt;
+    Lat_read_avg = Lat_read_sum / (Cnt_read_req + 1);
+    Lat_write_avg = Lat_write_sum / (Cnt_write_req + 1);
+    //double Lat_evict_avg_fifo = Lat_write_sum / T_evict_cnt;
 
-    double pcb_all = (double)(PCB_Clean + PCB_Dirty) / (Evict_Cnt_Clean + Evict_Cnt_Dirty);
-    double t_avg_hitmiss =  T_hitmiss_sum / (T_hitmiss_cnt + 1);
-    T_avg = t_avg_hitmiss;
+    //double pcb_all = (double)(PCB_Clean + PCB_Dirty) / (Evict_Cnt_Clean + Evict_Cnt_Dirty);
+    Lat_evict_avg =  Lat_evict_sum / (Cnt_evict_sum + 1);
 
-    CC = 0 + PCB_Clean * (T_rand + T_avg);
-    //CD = T_fifo + (WrtAmp * T_seq) + (PCB_Dirty * T_avg);
-    CD = T_fifo + (PCB_Dirty * T_avg);
-    CC_avg = CC;
-    CD_avg = CD;
+    CC = 0 + PCB_Clean * (Lat_read_avg + Lat_evict_avg);
+    CD = Lat_write_avg + (PCB_Dirty * Lat_evict_avg);
+
 
     int pick = random_pick(CC, CD, 1);
     if(pick == 1)
@@ -257,7 +253,7 @@ int CM_CHOOSE()
     }
 }
 
-int CM_T_rand_Reg(microsecond_t usetime)
+int CM_Lat_read_avg_Reg(microsecond_t usetime)
 {
     #ifndef T_SWITCHER_ON
         return 0;
@@ -266,14 +262,14 @@ int CM_T_rand_Reg(microsecond_t usetime)
     if(head == (tail + 1) % TS_WindowSize)
     {
         // full
-        T_rand_sum -= t_randcollect[head];
-        T_rand_cnt --;
+        Lat_read_sum -= Lat_read_avgcollect[head];
+        Cnt_read_req --;
         head = (head + 1) % TS_WindowSize;
     }
 
-    T_rand_sum += usetime;
-    T_rand_cnt ++;
-    t_randcollect[tail] = usetime;
+    Lat_read_sum += usetime;
+    Cnt_read_req ++;
+    Lat_read_avgcollect[tail] = usetime;
     tail = (tail + 1) % TS_WindowSize;
 
     return 0;
@@ -288,13 +284,13 @@ int CM_T_hitmiss_Reg(microsecond_t usetime)
     if(head == (tail + 1) % TS_WindowSize)
     {
         // full
-        T_hitmiss_sum -= t_hitmisscollect[head];
-        T_hitmiss_cnt --;
+        Lat_evict_sum -= t_hitmisscollect[head];
+        Cnt_evict_sum --;
         head = (head + 1) % TS_WindowSize;
     }
 
-    T_hitmiss_sum += usetime;
-    T_hitmiss_cnt ++;
+    Lat_evict_sum += usetime;
+    Cnt_evict_sum ++;
     t_hitmisscollect[tail] = usetime;
     tail = (tail + 1) % TS_WindowSize;
 
@@ -315,10 +311,10 @@ void ReportCM()
     printf("PCB C / D:\t");
     printf("[%.2f\% / %.2f\%]\n", PCB_Clean*100, PCB_Dirty*100);
 
-    printf("T_rand,\tT_fifo,\tT_avg,\tT_seq:\t");
-    printf("[%d,%d,%d,%d]\n", T_rand, T_fifo, T_avg, T_seq);
+    printf("Lat_read_avg,\tLat_write_avg,\tLat_evict_avg,\tT_seq:\t");
+    printf("[%d,%d,%d,%d]\n", Lat_read_avg, Lat_write_avg, Lat_evict_avg, T_seq);
 
-    printf("Effict Cost C / D:\t[%.2f / %.2f]\n", CC_avg, CD_avg);
+    printf("Effict Cost C / D:\t[%.2f / %.2f]\n", CC, CD);
 
     printf("Win Times C / D:\t[%d / %d]\n",CleanWinTimes, DirtyWinTimes);
 
@@ -391,7 +387,7 @@ static int indexRemove_WDItem(hashkey_t key)
 
     if(bucket == NULL)
     {
-        error("[CostModel]: Trying to remove unexisted hash index!\n");
+        usr_warning("[CostModel]: Trying to remove unexisted hash index!\n");
         exit(-1);
     }
 
@@ -417,7 +413,7 @@ static int indexRemove_WDItem(hashkey_t key)
         next_bucket = bucket->next;
     }
 
-    error("[CostModel]: Trying to remove unexisted hash index!\n");
+    usr_warning("[CostModel]: Trying to remove unexisted hash index!\n");
     exit(-1);
 }
 

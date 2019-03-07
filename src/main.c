@@ -115,9 +115,9 @@ main(int argc, char** argv)
             EvictStrategy = MOST_RW;
 
         if(atoi(argv[9]) < 0)
-            PeriodLenth = NBLOCK_SMR_FIFO;
+            Cycle_Length = NBLOCK_SMR_FIFO;
         else
-            PeriodLenth =  atoi(argv[9]) * (ZONESZ / BLKSZ);
+            Cycle_Length =  atoi(argv[9]) * (ZONESZ / BLKSZ);
 #ifdef CACHE_PROPORTIOIN_STATIC
         Proportion_Dirty = atof(argv[10]);
 #endif // Proportion_Dirty

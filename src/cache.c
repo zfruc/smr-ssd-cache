@@ -315,7 +315,7 @@ FLAG_CACHEOUT:
         switch (EvictStrategy)
         {
             case PORE_PLUS_V2 :
-                n_evict = LogOut_poreplus_v2(buf_despid_array, max_n_batch);
+                n_evict = LogOut_poreplus_v2(buf_despid_array, max_n_batch, suggest_type);
                 break;
             case PAUL :
                 n_evict = LogOut_poreplus_v3(buf_despid_array, max_n_batch, suggest_type);
@@ -341,7 +341,7 @@ FLAG_CACHEOUT:
                 n_evict = Unload_Buf_LRU_rw(buf_despid_array, max_n_batch,suggest_type);
                 break;
             default:
-                error("Current cache algorithm dose not support batched process.");
+                usr_warning("Current cache algorithm dose not support batched process.");
                 exit(EXIT_FAILURE);
         }
 
@@ -431,20 +431,20 @@ Strategy_Desp_LogOut(unsigned flag)
     {
 //        case LRU_global:        return Unload_LRUBuf();
     case LRU_private:
-        error("LRU wrong time function revoke, please use BATHCH configure.\n");
+        usr_warning("LRU wrong time function revoke, please use BATHCH configure.\n");
     case LRU_rw:
-        error("LRU_RW wrong time function revoke\n");
+        usr_warning("LRU_RW wrong time function revoke\n");
 //       case Most:              return LogOutDesp_most();
     case PORE:
         return LogOutDesp_pore();
     case PORE_PLUS:
         return LogOutDesp_pore_plus();
     case PORE_PLUS_V2:
-        error("PORE_PLUS_V2 wrong time function revoke\n");
+        usr_warning("PORE_PLUS_V2 wrong time function revoke\n");
     case PAUL:
-        error("PAUL wrong time function revoke\n");
+        usr_warning("PAUL wrong time function revoke\n");
     case MOST:
-        error("MOST wrong time function revoke\n");
+        usr_warning("MOST wrong time function revoke\n");
     }
     return -1;
 }

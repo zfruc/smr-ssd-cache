@@ -34,7 +34,7 @@ static int                  NonEmptyZoneCnt = 0;
 static unsigned long*       OpenZoneSet;        /* The decided open zones in current period, which chosed by both the weight-sorted array and the access threshold. */
 static int                  OpenZoneCnt;        /* It represent the number of open zones and the first number elements in 'ZoneSortArray' is the open zones ID */
 
-extern long                 PeriodLenth;        /* The period lenth which defines the times of eviction triggered */
+extern long                 Cycle_Length;        /* The period lenth which defines the times of eviction triggered */
 static long                 Progress_Clean, Progress_Dirty;     /* Current times to evict clean/dirty block in a period lenth */
 static long                 StampGlobal;      /* Current io sequenced number in a period lenth, used to distinct the degree of heat among zones */
 
@@ -42,7 +42,7 @@ static void add2ArrayHead(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl);
 static void move2ArrayHead(StrategyDesp_pore* desp,ZoneCtrl* zoneCtrl);
 #define stamp(desp, zoneCtrl) \
     StampGlobal++;\
-    desp->stamp = zoneCtrl->stamp = StampGlobal;
+    desp->stamp = StampGlobal;
 
 static void unloadfromZone(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl);
 static void clearDesp(StrategyDesp_pore* desp);
@@ -171,7 +171,7 @@ Hit_poreplus_v2(long despId, unsigned flag)
 }
 
 int
-LogOut_poreplus_v2(long * out_despid_array, int max_n_batch)
+LogOut_poreplus_v2(long * out_despid_array, int max_n_batch, enum_t_vict suggest_type)
 {
     static int periodCnt = 0;
     static int CurEvictZoneSeq = -1;
@@ -183,7 +183,7 @@ LogOut_poreplus_v2(long * out_despid_array, int max_n_batch)
         1. flushed enough dirty block by zone
         2. or flushed enough clean block when the OpenZone flushing has still not start.
     */
-    if((Progress_Clean >= PeriodLenth && Progress_Dirty == 0) || Progress_Dirty >= PeriodLenth || Progress_Clean + Progress_Dirty == 0)
+    if((Progress_Clean >= Cycle_Length && Progress_Dirty == 0) || Progress_Dirty >= Cycle_Length || Progress_Clean + Progress_Dirty == 0)
     {
 FLAG_NEWPERIOD:
         printf("This Period Evict Info: clean:%ld, dirty:%ld\n",evict_clean_cnt,evict_dirty_cnt);
@@ -535,7 +535,7 @@ redefineOpenZones()
     while(n < NonEmptyZoneCnt)
     {
         ZoneCtrl* curZone = ZoneCtrlArray + ZoneSortArray[n];
-        if(curZone->pagecnt_dirty + n_chooseblk > PeriodLenth)
+        if(curZone->pagecnt_dirty + n_chooseblk > Cycle_Length)
             break;
 
         if(curZone->pagecnt_dirty >= plus_Dirty_Threshold)

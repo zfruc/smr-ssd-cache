@@ -121,7 +121,7 @@
 //    int err = pthread_create(&tid, NULL, smr_fifo_monitor_thread, NULL);
 //    if (err != 0)
 //    {
-//        printf("[ERROR] initSSD: fail to create thread: %s\n", strerror(err));
+//        printf("[ERROR] initSSD: fail to create thread: %s\n", strusr_warning(err));
 //    }
 //}
 //

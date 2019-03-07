@@ -67,7 +67,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     returnCode = posix_memalign(&ssd_buffer, 1024, 16*sizeof(char) * BLKSZ);
     if (returnCode < 0)
     {
-        error("posix memalign error\n");
+        usr_warning("posix memalign error\n");
         //free(ssd_buffer);
         exit(-1);
     }
@@ -89,7 +89,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     FILE *trace;
     if ((trace = fopen(trace_file_path, "rt")) == NULL)
     {
-        error("Failed to open the trace file!\n");
+        usr_warning("Failed to open the trace file!\n");
         exit(EXIT_FAILURE);
     }
 
@@ -102,7 +102,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         returnCode = fscanf(trace, "%lu\n", &offset);
         if (returnCode < 0)
         {
-            error("error while reading trace file.");
+            usr_warning("error while reading trace file.");
             break;
         }
 //        if(skiprows > 0)

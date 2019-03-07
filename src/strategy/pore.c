@@ -10,7 +10,7 @@ static ZoneCtrl*            ZoneCtrlArray;
 static unsigned long*       ZoneSortArray;      /* The zone ID array sorted by weight(calculated customized). it is used to determine the open zones */
 static int                  OpenZoneCnt;        /* It represent the number of open zones and the first number elements in 'ZoneSortArray' is the open zones ID */
 
-extern long                 PeriodLenth;        /* The period lenth which defines the times of eviction triggered */
+extern long                 Cycle_Length;        /* The period lenth which defines the times of eviction triggered */
 static long                 PeriodProgress;     /* Current times of eviction in a period lenth */
 static long                 StampGlobal;      /* Current io sequenced number in a period lenth, used to distinct the degree of heat among zones */
 static int                  IsNewPeriod;
@@ -25,7 +25,6 @@ static void hit(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl);
 /** PORE **/
 static int redefineOpenZones();
 static ZoneCtrl* getEvictZone();
-static long stamp(StrategyDesp_pore* desp);
 
 
 static volatile unsigned long
@@ -38,7 +37,7 @@ getZoneNum(size_t offset)
 int
 InitPORE()
 {
-    PeriodLenth = NBLOCK_SMR_FIFO;
+    Cycle_Length = NBLOCK_SMR_FIFO;
     StampGlobal = PeriodProgress = 0;
     IsNewPeriod = 0;
     GlobalDespArray = (StrategyDesp_pore*)malloc(sizeof(StrategyDesp_pore) * NBLOCK_SSD_CACHE);
@@ -103,7 +102,7 @@ static int periodCnt = 0;
 long
 LogOutDesp_pore()
 {
-    if(PeriodProgress % PeriodLenth == 0)
+    if(PeriodProgress % Cycle_Length == 0)
     {
         redefineOpenZones();
         PeriodProgress = 1;
@@ -314,7 +313,7 @@ redefineOpenZones()
 //    }
 
     long n_chooseblk = 0, n = 0;
-    while(n < nonEmptyZoneCnt && n_chooseblk < PeriodLenth)
+    while(n < nonEmptyZoneCnt && n_chooseblk < Cycle_Length)
     {
         n_chooseblk += ZoneCtrlArray[ZoneSortArray[n]].pagecnt_dirty;
         n++;
@@ -347,7 +346,7 @@ getEvictZone()
             i++;
         }
         if(LoserTree_Create(OpenZoneCnt, openZoneTailBlks, &passport, &winnerZoneSortId, &winnerDespId) < 0)
-            error("Create LoserTree Failure.");
+            usr_warning("Create LoserTree Failure.");
         winnerOz = ZoneCtrlArray + ZoneSortArray[winnerZoneSortId];
         IsNewPeriod = 0;
     }

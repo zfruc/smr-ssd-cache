@@ -10,7 +10,7 @@ static ZoneCtrl*            ZoneCtrlArray;
 static unsigned long*       ZoneSortArray;      /* The zone ID array sorted by weight(calculated customized). it is used to determine the open zones */
 static int                  OpenZoneCnt;        /* It represent the number of open zones and the first number elements in 'ZoneSortArray' is the open zones ID */
 
-extern long                 PeriodLenth;        /* The period lenth which defines the times of eviction triggered */
+extern long                 Cycle_Length;        /* The period lenth which defines the times of eviction triggered */
 static long                 PeriodProgress;     /* Current times of eviction in a period lenth */
 static long                 StampGlobal;      /* Current io sequenced number in a period lenth, used to distinct the degree of heat among zones */
 static int                  IsNewPeriod;
@@ -38,7 +38,7 @@ getZoneNum(size_t offset)
 int
 Init_most()
 {
-    PeriodLenth = NBLOCK_SMR_FIFO;
+    Cycle_Length = NBLOCK_SMR_FIFO;
     StampGlobal = PeriodProgress = 0;
     IsNewPeriod = 0;
     GlobalDespArray = (StrategyDesp_pore*)malloc(sizeof(StrategyDesp_pore) * NBLOCK_SSD_CACHE);
@@ -97,7 +97,7 @@ LogOut_most(long * out_despid_array, int max_n_batch)
 {
     static int periodCnt = 0;
     static ZoneCtrl* chosenOpZone;
-    if(PeriodProgress % PeriodLenth == 0 || chosenOpZone->tail < 0)
+    if(PeriodProgress % Cycle_Length == 0 || chosenOpZone->tail < 0)
     {
         redefineOpenZones();
         PeriodProgress = 0;
