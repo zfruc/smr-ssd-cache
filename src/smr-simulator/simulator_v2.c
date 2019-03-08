@@ -88,7 +88,7 @@ struct aiocb aiolist[max_aio_count];
 struct aiocb* aiocb_addr_list[max_aio_count];/* >= band block size */
 
 FILE* log_wa;
-char log_wa_path[] = "/home/outputs/logs/log_wa";
+char log_wa_path[] = "/home/fei/devel/logs/log_wa";
 
 
 /*

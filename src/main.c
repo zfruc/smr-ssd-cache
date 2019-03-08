@@ -48,34 +48,23 @@ void ramdisk_iotest()
     }
 }
 //
-//char* tracefile[] = {~"/home/trace/src1_2.csv.req",
-//                     "/home/trace/wdev_0.csv.req",
-//                     "/home/trace/hm_0.csv.req",
-//                     "/home/trace/mds_0.csv.req",
-//                     "/home/trace/prn_0.csv.req",       //1 1 4 0 0 106230 5242880 0
-//                     "/home/trace/rsrch_0.csv.req",
-//                     "/home/trace/stg_0.csv.req",
-//                     "/home/trace/ts_0.csv.req",
-//                     ~"/home/trace/usr_0.csv.req",
-//                     ~"/home/trace/web_0.csv.req",
-//                     "/home/trace/production-LiveMap-Backend-4K.req", // --> not in used.
-//                     "/home/trace/merged_traceX18.req"  // default set: cache size = 8M*blksize; persistent buffer size = 1.6M*blksize.
-//                     //"/home/trace/merged_trace_x1.req.csv"
-//                    };
-
-//mustdelete
- char* tracefile[] = {
-                    "/home/trace/out_32k",
-                     "/home/trace/out_128k",
-                     "/home/trace/out_512k",
-                     "/home/trace/out_2m",
-                     "/home/trace/out_8m",       //1 1 4 0 0 106230 5242880 0
-                     "/home/trace/out_32m",
-                     "/home/trace/out_128m",
-                     "/home/trace/out_512m",
+char* tracefile[] = {"/home/fei/traces/src1_2.csv.req",
+                     "/home/fei/traces/wdev_0.csv.req",
+                     "/home/fei/traces/hm_0.csv.req",
+                     "/home/fei/traces/mds_0.csv.req",
+                     "/home/fei/traces/prn_0.csv.req",       //1 1 4 0 0 106230 5242880 0
+                     "/home/fei/traces/rsrch_0.csv.req",
+                     "/home/fei/traces/stg_0.csv.req",
+                     "/home/fei/traces/ts_0.csv.req",
+                     "/home/fei/traces/usr_0.csv.req",
+                     "/home/fei/traces/web_0.csv.req",
+                     "/home/fei/traces/production-LiveMap-Backend-4K.req", // --> not in used.
+                     "/home/fei/traces/long.req"  // default set: cache size = 8M*blksize; persistent buffer size = 1.6M*blksize.
+                     //"/home/fei/traces/merged_trace_x1.req.csv"
                     };
 
-blksize_t trace_req_total[] = {14024860,2654824,8985487,2916662,17635766,3254278,6098667,4216457,12873274,9642398,1,1481448114};
+
+//blksize_t trace_req_total[] = {14024860,2654824,8985487,2916662,17635766,3254278,6098667,4216457,12873274,9642398,1,1481448114};
 
 int
 main(int argc, char** argv)
@@ -89,7 +78,7 @@ main(int argc, char** argv)
 
 // 1 4 0 0 500000 106230 5242880 LRU 0
 
-//0 11 0 8000000 8000000 30 LRU -1
+//0 11 0 0 8000000 8000000 30 PAUL -1
     if (argc == 10)
     {
         UserId = atoi(argv[1]);
@@ -177,7 +166,7 @@ main(int argc, char** argv)
         printf("Simulator Device: fifo part=%d, smr part=%d\n",fd_fifo_part,fd_smr_part);
         if(fd_fifo_part<0 || fd_smr_part<0)
             exit(EXIT_FAILURE);
-        InitEmulator();
+        InitSimulator();
         #endif
     }
     else
@@ -189,7 +178,7 @@ main(int argc, char** argv)
 
 
     initRuntimeInfo();
-    STT->trace_req_amount = trace_req_total[TraceId];
+//    STT->trace_req_amount = trace_req_total[TraceId];
     CacheLayer_Init();
 
 

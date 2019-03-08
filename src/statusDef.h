@@ -3,9 +3,9 @@
  * All the switch is turn-off by default.
  */
 /** configure of system structure **/
-#undef NO_REAL_DISK_IO
+#define NO_REAL_DISK_IO
 
-#define NO_CACHE
+#undef NO_CACHE
 
 #undef CACHE_PROPORTIOIN_STATIC
 #undef NO_READ_CACHE
@@ -15,9 +15,9 @@
 #undef  LOG_SINGLE_REQ  // Print detail time information of each single request.
 
 /** Emulator Related **/
-#undef SIMULATION
+#define SIMULATION
 #undef SIMULATOR_AIO
-#undef SIMU_NO_DISK_IO
+#define SIMU_NO_DISK_IO
 
 /** Daemon Thread **/
 #undef DAEMON_PROC
@@ -28,7 +28,7 @@
 #define WRITE_IN_BATCH
 
 /** T-Switcher **/
-#undef T_SWITCHER_ON
+#undef R3BALANCER_ON
 
 /* Future Features */
 #undef HRC_PROCS_N 10

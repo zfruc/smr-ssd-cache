@@ -292,7 +292,7 @@ allocSSDBuf(SSDBufTag ssd_buf_tag, bool * found, int alloc4What, int * isCallBac
     {
         /** When there is NO free SSD space for cache **/
         // TODO Choose a buffer by strategy/
-#ifdef T_SWITCHER_ON
+#ifdef R3BALANCER_ON
         if((STT->flush_hdd_blocks + STT->flush_clean_blocks) >= TS_StartSize)
         {   /* Decide victim type by T_Switcher */
             int type = CM_CHOOSE();
@@ -301,7 +301,7 @@ allocSSDBuf(SSDBufTag ssd_buf_tag, bool * found, int alloc4What, int * isCallBac
             else
                 suggest_type = ENUM_B_Dirty;
         }
-#endif // T_SWITCHER_ON
+#endif // R3BALANCER_ON
 
 FLAG_CACHEOUT:
         if(STT->incache_n_clean == 0)
@@ -309,16 +309,16 @@ FLAG_CACHEOUT:
         else if(STT->incache_n_dirty == 0)
             suggest_type = ENUM_B_Clean;
 
-        static int max_n_batch = 8 * 1024;
+        static int max_n_batch = 1024;
         long buf_despid_array[max_n_batch];
         int n_evict;
         switch (EvictStrategy)
         {
-            case PORE_PLUS_V2 :
-                n_evict = LogOut_poreplus_v2(buf_despid_array, max_n_batch, suggest_type);
-                break;
+//            case PORE_PLUS_V2 :
+//                n_evict = LogOut_poreplus_v2(buf_despid_array, max_n_batch, suggest_type);
+//                break;
             case PAUL :
-                n_evict = LogOut_poreplus_v3(buf_despid_array, max_n_batch, suggest_type);
+                n_evict = LogOut_PAUL(buf_despid_array, max_n_batch, suggest_type);
                 break;
 //            case PORE:
 //                int i;
@@ -408,12 +408,12 @@ initStrategySSDBuffer()
 //        case Most:              return initSSDBufferForMost();
     case PORE:
         return InitPORE();
-    case PORE_PLUS:
-        return InitPORE_plus();
-    case PORE_PLUS_V2:
-        return Init_poreplus_v2();
+//    case PORE_PLUS:
+//        return InitPORE_plus();
+//    case PORE_PLUS_V2:
+//        return Init_poreplus_v2();
     case PAUL:
-        return Init_poreplus_v3();
+        return Init_PUAL();
     case MOST:
         return Init_most();
     case MOST_RW:
@@ -437,10 +437,10 @@ Strategy_Desp_LogOut(unsigned flag)
 //       case Most:              return LogOutDesp_most();
     case PORE:
         return LogOutDesp_pore();
-    case PORE_PLUS:
-        return LogOutDesp_pore_plus();
-    case PORE_PLUS_V2:
-        usr_warning("PORE_PLUS_V2 wrong time function revoke\n");
+//    case PORE_PLUS:
+//        return LogOutDesp_pore_plus();
+//    case PORE_PLUS_V2:
+//        usr_warning("PORE_PLUS_V2 wrong time function revoke\n");
     case PAUL:
         usr_warning("PAUL wrong time function revoke\n");
     case MOST:
@@ -463,12 +463,12 @@ Strategy_Desp_HitIn(SSDBufDesp* desp)
 //        case Most:              return HitMostBuffer();
     case PORE:
         return HitPoreBuffer(desp->serial_id, desp->ssd_buf_flag);
-    case PORE_PLUS:
-        return HitPoreBuffer_plus(desp->ssd_buf_flag, desp->ssd_buf_flag);
-    case PORE_PLUS_V2:
-        return Hit_poreplus_v2(desp->serial_id, desp->ssd_buf_flag);
+//    case PORE_PLUS:
+//        return HitPoreBuffer_plus(desp->ssd_buf_flag, desp->ssd_buf_flag);
+//    case PORE_PLUS_V2:
+//        return Hit_poreplus_v2(desp->serial_id, desp->ssd_buf_flag);
     case PAUL:
-        return Hit_poreplus_v3(desp->serial_id, desp->ssd_buf_flag);
+        return Hit_PAUL(desp->serial_id, desp->ssd_buf_flag);
     case MOST:
         return Hit_most(desp->serial_id, desp->ssd_buf_flag);
     case MOST_RW:
@@ -494,12 +494,12 @@ Strategy_Desp_LogIn(SSDBufDesp* desp)
 //        case Most:              return LogInMostBuffer(desp->serial_id,desp->ssd_buf_tag);
     case PORE:
         return LogInPoreBuffer(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
-    case PORE_PLUS:
-        return LogInPoreBuffer_plus(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
-    case PORE_PLUS_V2:
-        return LogIn_poreplus_v2(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
+//    case PORE_PLUS:
+//        return LogInPoreBuffer_plus(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
+//    case PORE_PLUS_V2:
+//        return LogIn_poreplus_v2(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
     case PAUL:
-        return LogIn_poreplus_v3(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
+        return LogIn_PAUL(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
     case MOST:
         return LogIn_most(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
     case MOST_RW:

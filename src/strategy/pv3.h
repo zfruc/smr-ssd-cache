@@ -1,13 +1,41 @@
-#ifndef _PV3_H_
-#define _PV3_H_
+#ifndef _PAUL_H_
+#define _PAUL_H_
 
-#include "pore.h"
 #include "../cache.h"
 #include "../global.h"
 
-extern int Init_poreplus_v3();
-extern int LogIn_poreplus_v3(long despId, SSDBufTag tag, unsigned flag);
-extern int Hit_poreplus_v3(long despId, unsigned flag);
-extern int LogOut_poreplus_v3(long * out_despid_array, int max_n_batch, enum_t_vict suggest_type);
+typedef struct Dscptr_paul
+{
+    long            serial_id;
+    SSDBufTag       ssd_buf_tag;
+    unsigned 	    flag;
+    long            pre,next;
+    unsigned long   heat;
+    long     	    stamp;
+    unsigned long   zoneId;
+}Dscptr_paul;
 
-#endif // _PV3_H_
+//typedef struct StrategyCtrl_pore
+//{
+//    long            freeId;     // Head of list of free ssds
+//    long            n_used;
+//}StrategyCtrl_pore;
+
+typedef struct ZoneCtrl_pual
+{
+    unsigned long   zoneId;
+    long            heat;
+    long            pagecnt_dirty;
+    long            pagecnt_clean;
+    long            head,tail;
+    int             activate_after_n_cycles;
+    unsigned long score;
+
+}ZoneCtrl_pual;
+
+extern int Init_PUAL();
+extern int LogIn_PAUL(long despId, SSDBufTag tag, unsigned flag);
+extern int Hit_PAUL(long despId, unsigned flag);
+extern int LogOut_PAUL(long * out_despid_array, int max_n_batch, enum_t_vict suggest_type);
+
+#endif // _PAUL_H_

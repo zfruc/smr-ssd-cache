@@ -79,9 +79,9 @@ char log_r3balancer_path[] = "/home/outputs/logs/log_r3balancer";
 /** MAIN FUNCTIONS **/
 int CM_Init()
 {
-    #ifndef T_SWITCHER_ON
+    #ifndef R3BALANCER_ON
         return 0;
-    #endif // T_SWITCHER_ON
+    #endif // R3BALANCER_ON
     TS_WindowSize = NBLOCK_SSD_CACHE  / 16;
     TS_StartSize = TS_WindowSize;
     WindowArray = (WDArray *)malloc(TS_WindowSize * sizeof(WDItem));
@@ -119,9 +119,9 @@ int CM_Init()
  */
 int CM_Reg_EvictBlk(SSDBufTag blktag, unsigned flag, microsecond_t usetime)
 {
-    #ifndef T_SWITCHER_ON
+    #ifndef R3BALANCER_ON
         return 0;
-    #endif // T_SWITCHER_ON
+    #endif // R3BALANCER_ON
 
     if(IsFull_WDArray())
     {
@@ -185,9 +185,9 @@ int CM_Reg_EvictBlk(SSDBufTag blktag, unsigned flag, microsecond_t usetime)
  */
 int CM_TryCallBack(SSDBufTag blktag)
 {
-    #ifndef T_SWITCHER_ON
+    #ifndef R3BALANCER_ON
         return 0;
-    #endif // T_SWITCHER_ON
+    #endif // R3BALANCER_ON
 
     hashkey_t key = blktag.offset;
     blkcnt_t itemId = indexGet_WDItemId(key);
@@ -213,9 +213,9 @@ static int DirtyWinTimes = 0, CleanWinTimes = 0;
  */
 int CM_CHOOSE()
 {
-    #ifndef T_SWITCHER_ON
+    #ifndef R3BALANCER_ON
         return 0;
-    #endif // T_SWITCHER_ON
+    #endif // R3BALANCER_ON
     if(WriteOnly) return 1;
 
     static blkcnt_t counter = 0;
@@ -253,11 +253,11 @@ int CM_CHOOSE()
     }
 }
 
-int CM_Lat_read_avg_Reg(microsecond_t usetime)
+int CM_T_rand_Reg(microsecond_t usetime)
 {
-    #ifndef T_SWITCHER_ON
+    #ifndef R3BALANCER_ON
         return 0;
-    #endif // T_SWITCHER_ON
+    #endif // R3BALANCER_ON
     static blkcnt_t head = 0, tail = 0;
     if(head == (tail + 1) % TS_WindowSize)
     {
@@ -277,9 +277,9 @@ int CM_Lat_read_avg_Reg(microsecond_t usetime)
 
 int CM_T_hitmiss_Reg(microsecond_t usetime)
 {
-    #ifndef T_SWITCHER_ON
+    #ifndef R3BALANCER_ON
         return 0;
-    #endif // T_SWITCHER_ON
+    #endif // R3BALANCER_ON
     static blkcnt_t head = 0, tail = 0;
     if(head == (tail + 1) % TS_WindowSize)
     {
@@ -299,9 +299,9 @@ int CM_T_hitmiss_Reg(microsecond_t usetime)
 
 void ReportCM()
 {
-    #ifndef T_SWITCHER_ON
+    #ifndef R3BALANCER_ON
         return 0;
-    #endif // T_SWITCHER_ON
+    #endif // R3BALANCER_ON
     printf("---------- Cost Model Runtime Report ----------\n");
     printf("Count C / D:\t");
     printf("[%ld / %ld]\n", Evict_Cnt_Clean, Evict_Cnt_Dirty);
@@ -322,9 +322,9 @@ void ReportCM()
 
 void CM_Report_PCB()
 {
-    #ifndef T_SWITCHER_ON
+    #ifndef R3BALANCER_ON
         return 0;
-    #endif // T_SWITCHER_ON
+    #endif // R3BALANCER_ON
     static char buf[50];
     sprintf(buf,"%d,%d\n",(int)(PCB_Clean*100), (int)(PCB_Dirty*100));
     _Log(buf, log_r3balancer);

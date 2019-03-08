@@ -34,7 +34,7 @@ extern microsecond_t    msec_r_hdd,msec_w_hdd,msec_r_ssd,msec_w_ssd;
 extern int IsHit;
 char logbuf[512];
 FILE* log_lat;
-char log_lat_path[] = "/home/outputs/logs/log_lat";
+char log_lat_path[] = "/home/fei/devel/logs/log_lat";
 
 void
 trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
@@ -83,7 +83,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     blkcnt_t total_n_req = isWriteOnly ? 100000000 : 10000000;
     blkcnt_t skiprows = isWriteOnly ? 50000000 : 100000000;
 
-    total_n_req = 1000000;
+   // total_n_req = 1000000;
     skiprows = 0;
 
     FILE *trace;
@@ -96,10 +96,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     while (!feof(trace) && STT->reqcnt_s < total_n_req) // 84340000
     {
 
-     //   returnCode = fscanf(trace, "%c %d %lu\n", &action, &i, &offset);
-        //mustdelete
-        action = ACT_WRITE;
-        returnCode = fscanf(trace, "%lu\n", &offset);
+        returnCode = fscanf(trace, "%c %d %lu\n", &action, &i, &offset);
         if (returnCode < 0)
         {
             usr_warning("error while reading trace file.");
@@ -125,7 +122,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
             resetStatics();        // Because we do not care about the statistic while the process of filling SSD cache.
             isFullSSDcache = 1;
         }
-#ifdef T_SWITCHER_ON
+#ifdef R3BALANCER_ON
         static int tk = 1;
         if(tk && (STT->flush_clean_blocks + STT->flush_hdd_blocks) >= TS_StartSize)
         {   /* When T-Switcher start working */
@@ -133,7 +130,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
             reportCurInfo();
             tk = 0;
         }
-#endif // T_SWITCHER_ON
+#endif // R3BALANCER_ON
 
 #ifdef LOG_SINGLE_REQ
         _TimerLap(&tv_req_start);

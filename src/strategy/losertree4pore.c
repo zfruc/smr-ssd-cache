@@ -25,7 +25,7 @@ static int lg2_above(int V)
     return count;
 }
 
-static void adjust(LoserTreeInfo* info, StrategyDesp_pore* winnerDesp)
+static void adjust(LoserTreeInfo* info, Dscptr* winnerDesp)
 {
     NonLeaf winnerLeaf, tmpLeaf;
     if(winnerDesp!=NULL)
@@ -60,13 +60,13 @@ static void adjust(LoserTreeInfo* info, StrategyDesp_pore* winnerDesp)
 /** \brief
  *  Create and initialize the loser tree for multi-path.
  * \param npath: the paths count.
- * \param openBlkDesps: the first elements' address array of each path. In this version I use the data type by StrategyDesp_pore.
+ * \param openBlkDesps: the first elements' address array of each path. In this version I use the data type by Dscptr.
  * \param passport, winnerPathId, winnerDespId
  * \return The first winner value from the input array.
  *
  */
 long
-LoserTree_Create(int npath, StrategyDesp_pore** openBlkDesps, void** passport,int* winnerPathId, long* winnerDespId)
+LoserTree_Create(int npath, Dscptr** openBlkDesps, void** passport,int* winnerPathId, long* winnerDespId)
 {
     int nlevels = lg2_above(npath);
     int nodes_count = pow(2,nlevels);
@@ -91,7 +91,7 @@ LoserTree_Create(int npath, StrategyDesp_pore** openBlkDesps, void** passport,in
         adjust(ltInfo,*(openBlkDesps + i));
     }
 
-    StrategyDesp_pore maxdesp;
+    Dscptr maxdesp;
     maxdesp.stamp = OVERFLOW_LEAF_VALUE;
     maxdesp.serial_id = -1;
     for(i = npath; i < nodes_count; i++)
@@ -121,7 +121,7 @@ LoserTree_Create(int npath, StrategyDesp_pore** openBlkDesps, void** passport,in
  *  0: no error.
  */
 long
-LoserTree_GetWinner(void* passport, StrategyDesp_pore* candidateDesp, int* winnerPathId, long* winnerDespId)
+LoserTree_GetWinner(void* passport, Dscptr* candidateDesp, int* winnerPathId, long* winnerDespId)
 {
     LoserTreeInfo* ltInfo = (LoserTreeInfo*)passport;
     adjust(ltInfo,candidateDesp);

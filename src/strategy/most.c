@@ -4,7 +4,7 @@
 #include "losertree4pore.h"
 #include "../report.h"
 
-static StrategyDesp_pore*   GlobalDespArray;
+static Dscptr*   GlobalDespArray;
 static ZoneCtrl*            ZoneCtrlArray;
 
 static unsigned long*       ZoneSortArray;      /* The zone ID array sorted by weight(calculated customized). it is used to determine the open zones */
@@ -16,16 +16,16 @@ static long                 StampGlobal;      /* Current io sequenced number in 
 static int                  IsNewPeriod;
 
 
-static void add2ArrayHead(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl);
-static void move2ArrayHead(StrategyDesp_pore* desp,ZoneCtrl* zoneCtrl);
-static long stamp(StrategyDesp_pore* desp);
-static void unloadfromZone(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl);
-static void clearDesp(StrategyDesp_pore* desp);
-static void hit(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl);
+static void add2ArrayHead(Dscptr* desp, ZoneCtrl* zoneCtrl);
+static void move2ArrayHead(Dscptr* desp,ZoneCtrl* zoneCtrl);
+static long stamp(Dscptr* desp);
+static void unloadfromZone(Dscptr* desp, ZoneCtrl* zoneCtrl);
+static void clearDesp(Dscptr* desp);
+static void hit(Dscptr* desp, ZoneCtrl* zoneCtrl);
 /** PORE **/
 static int redefineOpenZones();
 static ZoneCtrl* getEvictZone();
-static long stamp(StrategyDesp_pore* desp);
+static long stamp(Dscptr* desp);
 
 
 static volatile unsigned long
@@ -41,7 +41,7 @@ Init_most()
     Cycle_Length = NBLOCK_SMR_FIFO;
     StampGlobal = PeriodProgress = 0;
     IsNewPeriod = 0;
-    GlobalDespArray = (StrategyDesp_pore*)malloc(sizeof(StrategyDesp_pore) * NBLOCK_SSD_CACHE);
+    GlobalDespArray = (Dscptr*)malloc(sizeof(Dscptr) * NBLOCK_SSD_CACHE);
     ZoneCtrlArray = (ZoneCtrl*)malloc(sizeof(ZoneCtrl) * NZONES);
 
     ZoneSortArray = (unsigned long*)malloc(sizeof(unsigned long) * NZONES);
@@ -49,7 +49,7 @@ Init_most()
     int i = 0;
     while(i < NBLOCK_SSD_CACHE)
     {
-        StrategyDesp_pore* desp = GlobalDespArray + i;
+        Dscptr* desp = GlobalDespArray + i;
         desp->serial_id = i;
         desp->ssd_buf_tag.offset = -1;
         desp->next = desp->pre = -1;
@@ -76,7 +76,7 @@ int
 LogIn_most(long despId, SSDBufTag tag, unsigned flag)
 {
     /* activate the decriptor */
-    StrategyDesp_pore* myDesp = GlobalDespArray + despId;
+    Dscptr* myDesp = GlobalDespArray + despId;
     ZoneCtrl* myZone = ZoneCtrlArray + getZoneNum(tag.offset);
     myDesp->ssd_buf_tag = tag;
     myDesp->flag |= flag;
@@ -106,7 +106,7 @@ LogOut_most(long * out_despid_array, int max_n_batch)
         printf("Period [%d], OpenZones_cnt=%d\n",periodCnt,OpenZoneCnt);
     }
 
-    StrategyDesp_pore*  evitedDesp;
+    Dscptr*  evitedDesp;
     int evict_grain = 64;
     int cnt = 0;
     while(cnt < evict_grain)
@@ -136,7 +136,7 @@ LogOut_most(long * out_despid_array, int max_n_batch)
 int
 Hit_most(long despId, unsigned flag)
 {
-    StrategyDesp_pore* myDesp = GlobalDespArray + despId;
+    Dscptr* myDesp = GlobalDespArray + despId;
     ZoneCtrl* myZone = ZoneCtrlArray + getZoneNum(myDesp->ssd_buf_tag.offset);
 
     move2ArrayHead(myDesp,myZone);
@@ -156,14 +156,14 @@ Hit_most(long despId, unsigned flag)
 *****************/
 
 static void
-hit(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
+hit(Dscptr* desp, ZoneCtrl* zoneCtrl)
 {
     desp->heat++;
     zoneCtrl->heat++;
 }
 
 static void
-add2ArrayHead(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
+add2ArrayHead(Dscptr* desp, ZoneCtrl* zoneCtrl)
 {
     if(zoneCtrl->head < 0)
     {
@@ -173,7 +173,7 @@ add2ArrayHead(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
     else
     {
         //unempty
-        StrategyDesp_pore* headDesp = GlobalDespArray + zoneCtrl->head;
+        Dscptr* headDesp = GlobalDespArray + zoneCtrl->head;
         desp->pre = -1;
         desp->next = zoneCtrl->head;
         headDesp->pre = desp->serial_id;
@@ -182,7 +182,7 @@ add2ArrayHead(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
 }
 
 static void
-unloadfromZone(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
+unloadfromZone(Dscptr* desp, ZoneCtrl* zoneCtrl)
 {
     if(desp->pre < 0)
     {
@@ -205,14 +205,14 @@ unloadfromZone(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
 }
 
 static void
-move2ArrayHead(StrategyDesp_pore* desp,ZoneCtrl* zoneCtrl)
+move2ArrayHead(Dscptr* desp,ZoneCtrl* zoneCtrl)
 {
     unloadfromZone(desp, zoneCtrl);
     add2ArrayHead(desp, zoneCtrl);
 }
 
 static void
-clearDesp(StrategyDesp_pore* desp)
+clearDesp(Dscptr* desp)
 {
     desp->ssd_buf_tag.offset = -1;
     desp->next = desp->pre = -1;
@@ -321,7 +321,7 @@ getEvictZone()
 }
 
 static long
-stamp(StrategyDesp_pore* desp)
+stamp(Dscptr* desp)
 {
     desp->stamp = ++StampGlobal;
     return StampGlobal;

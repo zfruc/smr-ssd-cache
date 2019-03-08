@@ -22,8 +22,8 @@ typedef struct LoserTreeInfo
 }LoserTreeInfo;
 
 
-extern long LoserTree_Create(int npath, StrategyDesp_pore** openBlkDesps, void** passport,int* winnerPathId, long* winnerDespId);
-extern long LoserTree_GetWinner(void* passport, StrategyDesp_pore* candidateDesp, int* winnerPathId, long* winnerDespId);
+extern long LoserTree_Create(int npath, Dscptr** openBlkDesps, void** passport,int* winnerPathId, long* winnerDespId);
+extern long LoserTree_GetWinner(void* passport, Dscptr* candidateDesp, int* winnerPathId, long* winnerDespId);
 extern int LoserTree_Destory(void* passport);
 
 #endif // _LOSERTREE4OPORE_
