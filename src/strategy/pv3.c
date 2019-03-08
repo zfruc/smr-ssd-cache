@@ -235,11 +235,12 @@ FLAG_EVICT_DIRTYZONE:
     CurEvictZoneSeq = get_FrozenOpZone_Seq();
     if(CurEvictZoneSeq < 0 || Cycle_Progress >= Cycle_Length || Cycle_Progress == 0){
         start_new_cycle();
-        CurEvictZoneSeq = get_FrozenOpZone_Seq();
-        if(CurEvictZoneSeq < 0)
-            usr_error("FLAG_EVICT_DIRTYZONE error");
-        n_evict_clean_cycle = n_evict_dirty_cycle = 0;
+
         printf("Ouput of last Cycle: clean:%ld, dirty:%ld\n",n_evict_clean_cycle,n_evict_dirty_cycle);
+        n_evict_clean_cycle = n_evict_dirty_cycle = 0;
+
+        if((CurEvictZoneSeq = get_FrozenOpZone_Seq()) < 0)
+            usr_error("FLAG_EVICT_DIRTYZONE error");
     }
 
     evictZone = ZoneCtrl_pualArray + OpenZoneSet[CurEvictZoneSeq];
