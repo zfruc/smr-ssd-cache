@@ -74,7 +74,7 @@ static int      indexRemove_WDItem(hashkey_t key);
 static int random_pick(float weight1, float weight2, float obey);
 
 FILE* log_r3balancer;
-char log_r3balancer_path[] = "/home/outputs/logs/log_r3balancer";
+char log_r3balancer_path[] = "/home/fei/devel/logs/log_r3balancer";
 
 /** MAIN FUNCTIONS **/
 int CM_Init()
@@ -425,11 +425,10 @@ static int random_pick(float weight1, float weight2, float obey)
     inc_times *= obey;
 
     float de_point = 1000 * (1 / (2 + inc_times));
-//    rand_init();
     int token = random(1000);
     static char buf[50];
-    sprintf(buf,">>w1,w2,pick:%.1f,%.1f\n",1,1 + inc_times);
-    _Log(buf, log_r3balancer);
+//    sprintf(buf,">>w1,w2,pick:%.1f,%.1f\n", 1.0, 1.0 + inc_times);
+//    _Log(buf, log_r3balancer);
 
     if(token < de_point)
         return 2;
