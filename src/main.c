@@ -78,7 +78,7 @@ main(int argc, char** argv)
 
 // 1 4 0 0 500000 106230 5242880 LRU 0
 
-//0 11 0 0 8000000 8000000 30 PAUL -1
+//0 11 1 0 8000000 8000000 30 PAUL -1
     if (argc == 10)
     {
         UserId = atoi(argv[1]);
@@ -88,7 +88,7 @@ main(int argc, char** argv)
 
         NBLOCK_MAX_CACHE_SIZE = atol(argv[5]);
         NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = atol(argv[6]);
-        NBLOCK_SMR_FIFO = 750 * 1024 * 1024 / BLKSZ; //atol(argv[7]) * (ZONESZ / BLKSZ);
+        NBLOCK_SMR_FIFO = atol(argv[7]) * (ZONESZ / BLKSZ); //750 * 1024 * 1024 / BLKSZ; //
 
         if (strcmp(argv[8],"LRU") == 0)
             EvictStrategy = LRU_private;
@@ -102,6 +102,10 @@ main(int argc, char** argv)
             EvictStrategy = MOST;
         else if(strcmp(argv[8],"MOST_RW") == 0)
             EvictStrategy = MOST_RW;
+        else if(strcmp(argv[8], "OLDPORE") == 0)
+            EvictStrategy = OLDPORE;
+        else
+            usr_error("No cache algorithm matched. ");
 
         if(atoi(argv[9]) < 0)
             Cycle_Length = NBLOCK_SMR_FIFO;

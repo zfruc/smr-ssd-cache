@@ -3,6 +3,7 @@
 #include <memory.h>
 #include <unistd.h>
 
+#include "trace2call.h"
 #include "timerUtils.h"
 #include "cache.h"
 #include "hashtable_utils.h"
@@ -59,6 +60,7 @@ static char* ssd_buffer;
 
 extern struct RuntimeSTAT* STT;
 extern struct InitUsrInfo UsrInfo;
+
 
 
 /*
@@ -179,6 +181,11 @@ flushSSDBuffer(SSDBufDesp * ssd_buf_hdr)
 
     CM_Reg_EvictBlk(ssd_buf_hdr->ssd_buf_tag, ssd_buf_hdr->ssd_buf_flag, msec_w_hdd + msec_r_ssd);
 
+    static char log[256];
+    static unsigned long cnt = 0;
+    cnt ++;
+    sprintf(log,"%ld, %ld\n", cnt, msec_w_hdd);
+    _Log(log, log_lat_pb);
 }
 
 int ResizeCacheUsage()
@@ -320,6 +327,9 @@ FLAG_CACHEOUT:
             case PAUL :
                 n_evict = LogOut_PAUL(buf_despid_array, max_n_batch, suggest_type);
                 break;
+            case OLDPORE :
+                n_evict = LogOut_oldpore(buf_despid_array, max_n_batch, suggest_type);
+                break;
 //            case PORE:
 //                int i;
 //                n_evict = 64;
@@ -414,6 +424,8 @@ initStrategySSDBuffer()
 //        return Init_poreplus_v2();
     case PAUL:
         return Init_PUAL();
+    case OLDPORE:
+        return Init_oldpore();
     case MOST:
         return Init_most();
     case MOST_RW:
@@ -469,6 +481,8 @@ Strategy_Desp_HitIn(SSDBufDesp* desp)
 //        return Hit_poreplus_v2(desp->serial_id, desp->ssd_buf_flag);
     case PAUL:
         return Hit_PAUL(desp->serial_id, desp->ssd_buf_flag);
+    case OLDPORE:
+        return Hit_oldpore(desp->serial_id, desp->ssd_buf_flag);    
     case MOST:
         return Hit_most(desp->serial_id, desp->ssd_buf_flag);
     case MOST_RW:
@@ -500,6 +514,8 @@ Strategy_Desp_LogIn(SSDBufDesp* desp)
 //        return LogIn_poreplus_v2(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
     case PAUL:
         return LogIn_PAUL(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
+   case OLDPORE:
+        return LogIn_oldpore(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
     case MOST:
         return LogIn_most(desp->serial_id, desp->ssd_buf_tag, desp->ssd_buf_flag);
     case MOST_RW:

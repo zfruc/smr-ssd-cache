@@ -81,7 +81,8 @@ typedef enum
     PORE,
     PORE_PLUS,
     PORE_PLUS_V2,
-    PAUL
+    PAUL,
+    OLDPORE
 }SSDEvictionStrategy;
 
 /** This user basic info */

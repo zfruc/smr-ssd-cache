@@ -33,15 +33,18 @@ static microsecond_t    msec_req;
 extern microsecond_t    msec_r_hdd,msec_w_hdd,msec_r_ssd,msec_w_ssd;
 extern int IsHit;
 char logbuf[512];
-FILE* log_lat;
-char log_lat_path[] = "/home/fei/devel/logs/log_lat";
+FILE *log_lat, *log_lat_pb;
+char log_lat_path[] = "/home/fei/devel/logs/iolat.log";
+char log_lat_pb_path[] = "/home/fei/devel/logs/lat_flushsmr.log";
 
 void
 trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
 {
     log_lat = fopen(log_lat_path, "w+");
-    if(log_lat == NULL)
-        return errno;
+    log_lat_pb = fopen(log_lat_pb_path, "w+");
+
+    if(log_lat == NULL || log_lat_pb == NULL)
+        usr_error("log file open failure.");
 
     if(I_AM_HRC_PROC)
     {
@@ -80,11 +83,9 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     _TimerLap(&tv_trace_start);
     static int req_cnt = 0;
 
-    blkcnt_t total_n_req = isWriteOnly ? 100000000 : 100000000;
+    blkcnt_t total_n_req = isWriteOnly ? 300000000 : 300000000;
     blkcnt_t skiprows = isWriteOnly ? 50000000 : 100000000;
 
-   // total_n_req = 1000000;
-    skiprows = 0;
 
     FILE *trace;
     if ((trace = fopen(trace_file_path, "rt")) == NULL)
@@ -102,11 +103,11 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
             usr_warning("error while reading trace file.");
             break;
         }
-//        if(skiprows > 0)
-//        {
-//            skiprows -- ;
-//            continue;
-//        }
+        if(skiprows > 0)
+        {
+            skiprows -- ;
+            continue;
+        }
 #ifdef CG_THROTTLE
         if(pwrite(ram_fd,cgbuf,1024,0) <= 0)
         {
@@ -141,14 +142,14 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         {
             STT->reqcnt_w ++;
             STT->reqcnt_s ++;
-        /*** For simulate ten processes running ***/
+        //For simulate ten processes running
 //            write_block(offset, ssd_buffer);
 
 //            int i = 0;
 //            for(1; i < 10; i ++)
 //            {
 //                offset += (i * 20000000 * BLKSZ);
-                write_block(offset, ssd_buffer);
+            write_block(offset, ssd_buffer);
 //            }
             #ifdef HRC_PROCS_N
             int i;
@@ -160,8 +161,8 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
             _TimerLap(&tv_stop_io);
             io_latency = TimerInterval_SECOND(&tv_start_io, &tv_stop_io);
 
-            sprintf(log,"%f,%c\n", io_latency, action);
-            _Log(log, log_lat);
+//            sprintf(log,"%f,%c\n", io_latency, action);
+//            _Log(log, log_lat);
         }
         else if (!isWriteOnly && action == ACT_READ)    // read = 9
         {
@@ -183,8 +184,8 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
             _TimerLap(&tv_stop_io);
             io_latency = TimerInterval_SECOND(&tv_start_io, &tv_stop_io);
 
-            sprintf(log,"%f,%c\n", io_latency, action);
-            _Log(log, log_lat);
+//            sprintf(log,"%f,%c\n", io_latency, action);
+//            _Log(log, log_lat);
         }
         else if (action != ACT_READ)
         {
@@ -229,6 +230,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     free(ssd_buffer);
     fclose(trace);
     fclose(log_lat);
+    fclose(log_lat_pb);
 }
 
 static void

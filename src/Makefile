@@ -9,7 +9,7 @@ CPPFLAGS += -I$(SMR_SSD_CACHE_DIR) -I$(SMR_SSD_CACHE_DIR)/smr-simulator -I$(SMR_
 
 RM = rm -rf
 #RMSHM = rm -f /dev/shm/*
-OBJS = global.o report.o timerUtils.o shmlib.o hashtable_utils.o cache.o trace2call.o daemon.o main.o costmodel.o pore_plus.o losertree4pore.o pore.o pore_plus_v2.o pv3.o most.o most_rw.o lru_rw.o lru_private.o band_table.o smr-simulator.o inner_ssd_buf_table.o simulator_logfifo.o  simulator_v2.o
+OBJS = global.o report.o timerUtils.o shmlib.o hashtable_utils.o cache.o trace2call.o daemon.o main.o costmodel.o pore_plus.o losertree4pore.o pore.o oldpore.o pore_plus_v2.o pv3.o most.o most_rw.o lru_rw.o lru_private.o band_table.o smr-simulator.o inner_ssd_buf_table.o simulator_logfifo.o  simulator_v2.o
 
 
 all: $(OBJS) smr-ssd-cache
@@ -79,6 +79,9 @@ lru_private.o: strategy/lru_private.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
 
 lru_rw.o: strategy/lru_rw.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
+
+oldpore.o: strategy/oldpore.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $?
 
 lru_batch.o: strategy/lru_batch.c

@@ -3,7 +3,7 @@
  * All the switch is turn-off by default.
  */
 /** configure of system structure **/
-#define NO_REAL_DISK_IO
+#undef NO_REAL_DISK_IO
 
 #undef NO_CACHE
 
@@ -15,7 +15,7 @@
 #undef  LOG_SINGLE_REQ  // Print detail time information of each single request.
 
 /** Emulator Related **/
-#define SIMULATION
+#undef SIMULATION
 #undef SIMULATOR_AIO
 #define SIMU_NO_DISK_IO
 
