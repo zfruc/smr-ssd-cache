@@ -84,7 +84,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     static int req_cnt = 0;
 
     blkcnt_t total_n_req = isWriteOnly ? 300000000 : 300000000;
-    blkcnt_t skiprows = isWriteOnly ? 50000000 : 100000000;
+    blkcnt_t skiprows = isWriteOnly ? 50000000 : 50000000;
 
 
     FILE *trace;
