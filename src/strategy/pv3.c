@@ -572,6 +572,6 @@ static int random_pick(float weight1, float weight2, float obey)
     int token = rand() % 1000;
 
     if(token < de_point)
-        return 2;
-    return 1;
+        return 1;
+    return 2;
 }
