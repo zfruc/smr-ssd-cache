@@ -28,8 +28,6 @@ typedef struct ZoneCtrl_pual
     int            head,tail;
     int            OOD_num;
     int            activate_after_n_cycles;
-
-
 }ZoneCtrl_pual;
 
 extern int Init_PUAL();

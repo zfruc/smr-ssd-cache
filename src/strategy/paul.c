@@ -100,9 +100,9 @@ Init_PUAL()
     {
         ZoneCtrl_pual* ctrl = ZoneCtrl_pualArray + i;
         ctrl->zoneId = i;
-        ctrl->pagecnt_clean = ctrl->pagecnt_dirty = 0;
+        ctrl->pagecnt_dirty = 0;
         ctrl->head = ctrl->tail = -1;
-        ctrl->score = 0;
+        ctrl->OOD_num = 0;
         ZoneSortArray[i] = 0;
         i++;
     }
@@ -564,11 +564,6 @@ get_FrozenOpZone_Seq()
     }
 
     return frozenSeq;   // If return value <= 0, it means 1. here already has no any dirty block in the selected bands. 2. here has not started the cycle.
-}
-
-static void stamp(Dscptr_paul * desp)
-{
-    desp->stamp = StampGlobal ++;
 }
 
 static int random_pick(float weight1, float weight2, float obey)
