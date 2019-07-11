@@ -5,14 +5,17 @@
 /** configure of system structure **/
 #undef NO_REAL_DISK_IO
 
-#undef NO_CACHE
+#define NO_CACHE
 
 #undef CACHE_PROPORTIOIN_STATIC
 #undef NO_READ_CACHE
-/**< Statistic information requirments defination */
 
-#define  LOG_ALLOW // Log allowed EXCLUSIVELY for 1. Print the pcb by CM. 2. Print the WA by Emulator.
-#undef  LOG_SINGLE_REQ  // Print detail time information of each single request.
+/** Log reporting level **/
+
+#define LOG_ALLOW // Log allowed EXCLUSIVELY for 1. Print the pcb by CM. 2. Print the WA by Emulator.
+#undef  LOG_SINGLE_REQ // LEGACY: Print detail time information of each single request.
+#define LOG_IO_LAT // report each io latency. 
+
 
 /** Emulator Related **/
 #undef SIMULATION
