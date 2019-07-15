@@ -71,7 +71,7 @@ Unload_Buf_LRU_rw(long * out_despid_array, int max_n_batch, enum_t_vict suggest_
     {
         if(lru_dirty_ctrl.last_self_lru < 0 || lru_clean_ctrl.last_self_lru < 0)
         {
-            error("Order to evict any cache block, but one of them has exhausted in advance.");
+            usr_warning("Order to evict any cache block, but one of them has exhausted in advance.");
         }
         if(strategy_desp[lru_dirty_ctrl.last_self_lru].stamp > strategy_desp[lru_clean_ctrl.last_self_lru].stamp)
             goto FLAG_EVICT_CLEAN;
@@ -81,19 +81,19 @@ Unload_Buf_LRU_rw(long * out_despid_array, int max_n_batch, enum_t_vict suggest_
     else if (suggest_type == ENUM_B_Dirty)
     {
         if(lru_dirty_ctrl.last_self_lru < 0)
-            error("Order to evict [dirty] cache block, but one of them has exhausted in advance.");
+            usr_warning("Order to evict [dirty] cache block, but one of them has exhausted in advance.");
 
         goto FLAG_EVICT_DIRTY;
     }
     else if (suggest_type == ENUM_B_Clean)
     {
         if(lru_clean_ctrl.last_self_lru < 0)
-            error("Order to evict [clean] cache block, but one of them has exhausted in advance.");
+            usr_warning("Order to evict [clean] cache block, but one of them has exhausted in advance.");
         goto FLAG_EVICT_CLEAN;
     }
     else
     {
-        error("Order to evict [Unknown] type block.");
+        usr_warning("Order to evict [Unknown] type block.");
     }
 
 FLAG_EVICT_CLEAN:

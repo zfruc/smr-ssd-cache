@@ -4,7 +4,8 @@
 #include "../cache.h"
 #include "../global.h"
 
-typedef struct StrategyDesp_pore
+
+typedef struct Dscptr
 {
     long            serial_id;
     SSDBufTag       ssd_buf_tag;
@@ -13,7 +14,7 @@ typedef struct StrategyDesp_pore
     unsigned long   heat;
     long     	    stamp;
     unsigned long   zoneId;
-}StrategyDesp_pore;
+}Dscptr;
 
 //typedef struct StrategyCtrl_pore
 //{
@@ -28,8 +29,7 @@ typedef struct ZoneCtrl
     long            pagecnt_dirty;
     long            pagecnt_clean;
     long            head,tail;
-    long	        stamp;
-
+    int             activate_after_n_cycles;
     unsigned long score;
 
 }ZoneCtrl;

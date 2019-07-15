@@ -27,7 +27,7 @@ void* SHM_alloc(char* shm_name, size_t len)
 
     if(ftruncate(fd,len)!=0)
     {
-        error("truncate share memory error.");
+        usr_warning("truncate share memory error.");
         return NULL;
     }
 
@@ -86,7 +86,7 @@ void SHM_mutex_lock(pthread_mutex_t* lock)
 {
     if(pthread_mutex_lock(lock) == EOWNERDEAD)
     {
-        error("will consistent mutex, please check if any process has terminated while holding this mutex.");
+        usr_warning("will consistent mutex, please check if any process has terminated while holding this mutex.");
         pthread_mutex_consistent(lock);
     }
 }
@@ -122,7 +122,7 @@ void SHM_mutex_unlock(pthread_mutex_t* lock)
 //{
 //    if(shm_unlink(GLOBAL_UNI_LOCK)<0)
 //    {
-//        error("global unlock error");
+//        usr_warning("global unlock error");
 //        exit(1);
 //    }
 //}

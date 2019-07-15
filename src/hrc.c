@@ -8,7 +8,7 @@
 extern int Fork_Pid;
 char hrc_report_dir[] = "/tmp";
 
-void hrc_error(const char* str)
+void hrc_usr_warning(const char* str)
 {
     if(!I_AM_HRC_PROC){
         perror("hrc_report\n");
@@ -36,6 +36,6 @@ void hrc_report()
 //    printf("%s", (char*)str);
     ssize_t ret = pwrite(file,str,512,0);
     if(ret < 512)
-        hrc_error("report error");
+        hrc_usr_warning("report error");
     close(file);
 }

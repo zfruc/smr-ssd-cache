@@ -1,5 +1,5 @@
 #include <stdlib.h>
-#include "pv3.h"
+#include "paul.h"
 #include "../statusDef.h"
 #include "../report.h"
 #include "costmodel.h"
@@ -19,8 +19,8 @@ typedef struct
 
 static blkcnt_t  ZONEBLKSZ;
 
-static Dscptr_paul*   GlobalDespArray;
-static ZoneCtrl_pual*            ZoneCtrl_pualArray;
+static Dscptr_paul*         GlobalDespArray;
+static ZoneCtrl_pual*       ZoneCtrl_pualArray;
 static CleanDespCtrl        CleanCtrl;
 
 static unsigned long*       ZoneSortArray;      /* The zone ID array sorted by weight(calculated customized). it is used to determine the open zones */
@@ -28,16 +28,17 @@ static int                  NonEmptyZoneCnt = 0;
 static unsigned long*       OpenZoneSet;        /* The decided open zones in current period, which chosed by both the weight-sorted array and the access threshold. */
 static int                  OpenZoneCnt;        /* It represent the number of open zones and the first number elements in 'ZoneSortArray' is the open zones ID */
 
+static long                 CycleID;
 extern long                 Cycle_Length;        /* Which defines the upper limit of the block amount of selected OpenZone and of Evicted blocks. */
 static long                 Cycle_Progress;     /* Current times to evict clean/dirty block in a period lenth */
 static long                 StampGlobal;      /* Current io sequenced number in a period lenth, used to distinct the degree of heat among zones */
-static long                 CycleID;
+#define stamp(desp) (desp->stamp = StampGlobal ++)
+
 
 static void add2ArrayHead(Dscptr_paul* desp, ZoneCtrl_pual* ZoneCtrl_pual);
 static void move2ArrayHead(Dscptr_paul* desp,ZoneCtrl_pual* ZoneCtrl_pual);
 
 static int start_new_cycle();
-static void stamp(Dscptr_paul * desp);
 
 static void unloadfromZone(Dscptr_paul* desp, ZoneCtrl_pual* ZoneCtrl_pual);
 static void clearDesp(Dscptr_paul* desp);
@@ -51,6 +52,18 @@ static int redefineOpenZones();
 static int get_FrozenOpZone_Seq();
 static int random_pick(float weight1, float weight2, float obey);
 
+/* 
+    Out of Date(OOD)
+    Alpha: We call those blocks(drt or cln) which are already out of the recent history window as Out of Date (OOD), 
+    and 'think' of they are won't be reused. All the blocks stamp less than 'OOD stamp' are 'OOD blocks'. 
+    
+    Here we treat the last 80% of accesses are popular and the rest of 20%s are OOD. 
+    The OOD will be used to calculate the representation of Recall Ratio.
+*/
+static long OODstamp; // = StampGlobal - (long)(NBLOCK_SSD_CACHE * 0.8)
+
+
+
 static volatile unsigned long
 getZoneNum(size_t offset)
 {
@@ -63,9 +76,9 @@ Init_PUAL()
 {
     ZONEBLKSZ = ZONESZ / BLKSZ;
 
-    CycleID = StampGlobal = Cycle_Progress = 0;
-    GlobalDespArray = (Dscptr_paul*)malloc(sizeof(Dscptr_paul) * NBLOCK_SSD_CACHE);
-    ZoneCtrl_pualArray = (ZoneCtrl_pual*)malloc(sizeof(ZoneCtrl_pual) * NZONES);
+    CycleID = StampGlobal = Cycle_Progress = OODstamp = 0;
+    GlobalDespArray = (Dscptr_paul*) malloc(sizeof(Dscptr_paul) * NBLOCK_SSD_CACHE);
+    ZoneCtrl_pualArray = (ZoneCtrl_pual*)  malloc(sizeof(ZoneCtrl_pual) * NZONES);
 
     NonEmptyZoneCnt = OpenZoneCnt = 0;
     ZoneSortArray = (unsigned long*)malloc(sizeof(unsigned long) * NZONES);
@@ -77,7 +90,6 @@ Init_PUAL()
         desp->serial_id = i;
         desp->ssd_buf_tag.offset = -1;
         desp->next = desp->pre = -1;
-        desp->heat = 0;
         desp->stamp = 0;
         desp->flag = 0;
         desp->zoneId = -1;
@@ -88,9 +100,9 @@ Init_PUAL()
     {
         ZoneCtrl_pual* ctrl = ZoneCtrl_pualArray + i;
         ctrl->zoneId = i;
-        ctrl->heat = ctrl->pagecnt_clean = ctrl->pagecnt_dirty = 0;
+        ctrl->pagecnt_dirty = 0;
         ctrl->head = ctrl->tail = -1;
-        ctrl->score = 0;
+        ctrl->OOD_num = 0;
         ZoneSortArray[i] = 0;
         i++;
     }
@@ -255,7 +267,6 @@ FLAG_EVICT_DIRTYZONE:
 
         Cycle_Progress ++;
         evictZone->pagecnt_dirty--;
-        evictZone->heat -= frozenDesp->heat;
         n_evict_dirty_cycle++;
 
         clearDesp(frozenDesp);
@@ -275,9 +286,8 @@ FLAG_EVICT_DIRTYZONE:
 static void
 hit(Dscptr_paul* desp, ZoneCtrl_pual* ZoneCtrl_pual)
 {
-    desp->heat ++;
-    ZoneCtrl_pual->heat++;
-//    ZoneCtrl_pual->score -= (double) 1 / (1 << desp->heat);
+    //ZoneCtrl_pual->heat++;
+    //ZoneCtrl_pual->score -= (double) 1 / (1 << desp->heat);
 }
 
 static void
@@ -334,7 +344,6 @@ clearDesp(Dscptr_paul* desp)
 {
     desp->ssd_buf_tag.offset = -1;
     desp->next = desp->pre = -1;
-    desp->heat = 0;
     desp->stamp = 0;
     desp->flag &= ~(SSD_BUF_DIRTY | SSD_BUF_VALID);
     desp->zoneId = -1;
@@ -394,7 +403,7 @@ move2CleanArrayHead(Dscptr_paul* desp)
 /** \brief
  *  Quick-Sort method to sort the zones by score.
     NOTICE!
-        If the gap between variable 'start' and 'end', it will PROBABLY cause call stack OVERFLOW!
+        If the gap between variable 'start' and 'end'is too long, it will PROBABLY cause call stack OVERFLOW!
         So this function need to modify for better.
  */
 static void
@@ -405,16 +414,16 @@ qsort_zone(long start, long end)
 
     long S = ZoneSortArray[start];
     ZoneCtrl_pual* curCtrl = ZoneCtrl_pualArray + S;
-    unsigned long sScore = curCtrl->score;
+    unsigned long score = curCtrl->OOD_num;
     while (i < j)
     {
-        while (!(ZoneCtrl_pualArray[ZoneSortArray[j]].score > sScore) && i<j)
+        while (!(ZoneCtrl_pualArray[ZoneSortArray[j]].OOD_num > score) && i<j)
         {
             j--;
         }
         ZoneSortArray[i] = ZoneSortArray[j];
 
-        while (!(ZoneCtrl_pualArray[ZoneSortArray[i]].score < sScore) && i<j)
+        while (!(ZoneCtrl_pualArray[ZoneSortArray[i]].OOD_num < score) && i<j)
         {
             i++;
         }
@@ -428,6 +437,9 @@ qsort_zone(long start, long end)
         qsort_zone(j + 1, end);
 }
 
+/* 
+  extract the non-empty zones and record them into the ZoneSortArray
+ */
 static long
 extractNonEmptyZoneId()
 {
@@ -456,26 +468,25 @@ pause_and_score()
         But it doesn't matter because of only 200~500K meta data of zones in memory for searching, it's not a big number.
     */
     /* Score all zones. */
+    ZoneCtrl_pual* izone;
+    Dscptr_paul* desp;
     blkcnt_t n = 0;
-    ZoneCtrl_pual * myCtrl;
+
+    OODstamp = StampGlobal - (long)(NBLOCK_SSD_CACHE * 0.8);
     while(n < NonEmptyZoneCnt)
     {
-        myCtrl = ZoneCtrl_pualArray + ZoneSortArray[n];
-        myCtrl->score = 0;
+        izone = ZoneCtrl_pualArray + ZoneSortArray[n];
+        izone->OOD_num = 0;
 
         /* score each block of the non-empty zone */
-        Dscptr_paul * desp;
-        blkcnt_t despId = myCtrl->head;
+        
+        blkcnt_t despId = izone->tail;
         while(despId >= 0)
         {
             desp = GlobalDespArray + despId;
-            long idx2 = CycleID - desp->stamp;
-            if(idx2 > 15)
-                idx2 = 15;
-
-            myCtrl->score += (0x00000001 << idx2);
-
-            despId = desp->next;
+            if(desp->stamp < OODstamp)
+                izone->OOD_num ++;
+            despId = desp->pre;
         }
         n++ ;
     }
@@ -485,7 +496,7 @@ pause_and_score()
 static int
 redefineOpenZones()
 {
-    NonEmptyZoneCnt = extractNonEmptyZoneId();
+    NonEmptyZoneCnt = extractNonEmptyZoneId(); // >< #ugly way. 
     if(NonEmptyZoneCnt == 0)
         return 0;
     pause_and_score(); /** ARS (Actually Release Space) */
@@ -553,11 +564,6 @@ get_FrozenOpZone_Seq()
     }
 
     return frozenSeq;   // If return value <= 0, it means 1. here already has no any dirty block in the selected bands. 2. here has not started the cycle.
-}
-
-static void stamp(Dscptr_paul * desp)
-{
-    desp->stamp = CycleID;
 }
 
 static int random_pick(float weight1, float weight2, float obey)

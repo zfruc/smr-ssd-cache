@@ -16,7 +16,7 @@ typedef struct
     pthread_mutex_t lock;
 } CleanDespCtrl;
 
-static StrategyDesp_pore*   GlobalDespArray;
+static Dscptr*   GlobalDespArray;
 static ZoneCtrl*            ZoneCtrlArray;
 
 static CleanDespCtrl        CleanCtrl;
@@ -24,19 +24,19 @@ static CleanDespCtrl        CleanCtrl;
 static unsigned long*       ZoneSortArray;      /* The zone ID array sorted by weight(calculated customized). it is used to determine the open zones */
 static int                  OpenZoneCnt;        /* It represent the number of open zones and the first number elements in 'ZoneSortArray' is the open zones ID */
 
-extern long                 PeriodLenth;        /* The period lenth which defines the times of eviction triggered */
+extern long                 Cycle_Length;        /* The period lenth which defines the times of eviction triggered */
 static long                 PeriodProgress;     /* Current times of eviction in a period lenth */
 static long                 CleanProgress;
 static long                 StampGlobal;      /* Current io sequenced number in a period lenth, used to distinct the degree of heat among zones */
 static int                  IsNewPeriod;
 
 
-static void add2ArrayHead(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl);
-static void move2ArrayHead(StrategyDesp_pore* desp,ZoneCtrl* zoneCtrl);
-static long stamp(StrategyDesp_pore* desp);
-static void unloadfromZone(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl);
-static void clearDesp(StrategyDesp_pore* desp);
-static void hit(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl);
+static void add2ArrayHead(Dscptr* desp, ZoneCtrl* zoneCtrl);
+static void move2ArrayHead(Dscptr* desp,ZoneCtrl* zoneCtrl);
+static long stamp(Dscptr* desp);
+static void unloadfromZone(Dscptr* desp, ZoneCtrl* zoneCtrl);
+static void clearDesp(Dscptr* desp);
+static void hit(Dscptr* desp, ZoneCtrl* zoneCtrl);
 /** PORE **/
 static int redefineOpenZones();
 static ZoneCtrl* getEvictZone();
@@ -44,11 +44,11 @@ static int choose_colder(long stampA, long stampB, long maxStamp);
 
 /* Utilities for Global Clean Descriptors Array */
 static void
-add2CleanArrayHead(StrategyDesp_pore* desp);
+add2CleanArrayHead(Dscptr* desp);
 static void
-unloadfromCleanArray(StrategyDesp_pore* desp);
+unloadfromCleanArray(Dscptr* desp);
 static void
-move2CleanArrayHead(StrategyDesp_pore* desp);
+move2CleanArrayHead(Dscptr* desp);
 
 static volatile unsigned long
 getZoneNum(size_t offset)
@@ -62,7 +62,7 @@ Init_most_rw()
 {
     StampGlobal = PeriodProgress = CleanProgress = 0;
     IsNewPeriod = 0;
-    GlobalDespArray = (StrategyDesp_pore*)malloc(sizeof(StrategyDesp_pore) * NBLOCK_SSD_CACHE);
+    GlobalDespArray = (Dscptr*)malloc(sizeof(Dscptr) * NBLOCK_SSD_CACHE);
     ZoneCtrlArray = (ZoneCtrl*)malloc(sizeof(ZoneCtrl) * NZONES);
 
     ZoneSortArray = (unsigned long*)malloc(sizeof(unsigned long) * NZONES);
@@ -70,7 +70,7 @@ Init_most_rw()
     int i = 0;
     while(i < NBLOCK_SSD_CACHE)
     {
-        StrategyDesp_pore* desp = GlobalDespArray + i;
+        Dscptr* desp = GlobalDespArray + i;
         desp->serial_id = i;
         desp->ssd_buf_tag.offset = -1;
         desp->next = desp->pre = -1;
@@ -99,7 +99,7 @@ int
 LogIn_most_rw(long despId, SSDBufTag tag, unsigned flag)
 {
     /* activate the decriptor */
-    StrategyDesp_pore* myDesp = GlobalDespArray + despId;
+    Dscptr* myDesp = GlobalDespArray + despId;
     ZoneCtrl* myZone = ZoneCtrlArray + getZoneNum(tag.offset);
     myDesp->ssd_buf_tag = tag;
     myDesp->flag |= flag;
@@ -127,8 +127,8 @@ LogOut_most_rw(long * out_despid_array, int max_n_batch, enum_t_vict suggest_typ
     static long evict_clean_cnt = 0, evict_dirty_cnt = 0;
     static int periodCnt = 0;
     static ZoneCtrl* chosenOpZone;
-    if( (PeriodProgress != 0 && PeriodProgress % PeriodLenth == 0) ||
-        (PeriodProgress == 0 && CleanProgress % PeriodLenth == 0) ||
+    if( (PeriodProgress != 0 && PeriodProgress % Cycle_Length == 0) ||
+        (PeriodProgress == 0 && CleanProgress % Cycle_Length == 0) ||
         (chosenOpZone->tail < 0))
     {
         printf("This Period Evict Info: clean:%ld, dirty:%ld\n", CleanProgress , PeriodProgress);
@@ -140,26 +140,26 @@ LogOut_most_rw(long * out_despid_array, int max_n_batch, enum_t_vict suggest_typ
     }
 
 
-    StrategyDesp_pore*  victimDesp;
+    Dscptr*  victimDesp;
     if(suggest_type == ENUM_B_Clean)
     {
         if(CleanCtrl.pagecnt_clean == 0) // Consistency judgment
-            error("Order to evict clean cache block, but it is exhausted in advance.");
+            usr_warning("Order to evict clean cache block, but it is exhausted in advance.");
         goto FLAG_EVICT_CLEAN;
     }
     else if(suggest_type == ENUM_B_Dirty)
     {
         if(STT->incache_n_dirty == 0)   // Consistency judgment
-            error("Order to evict dirty cache block, but it is exhausted in advance.");
+            usr_warning("Order to evict dirty cache block, but it is exhausted in advance.");
 
         goto FLAG_EVICT_DIRTYZONE;
     }
     else    // The suggest type is 'Any'.
     {
         if(CleanCtrl.pagecnt_clean  == 0 || STT->incache_n_dirty == 0)
-            error("Order to evict clean or dirty cache block, but it is exhausted in advance.");
+            usr_warning("Order to evict clean or dirty cache block, but it is exhausted in advance.");
 
-        StrategyDesp_pore * cleanDesp, * dirtyDesp;
+        Dscptr * cleanDesp, * dirtyDesp;
 
         cleanDesp = GlobalDespArray + CleanCtrl.tail;
         dirtyDesp = GlobalDespArray + chosenOpZone->tail;
@@ -211,7 +211,7 @@ FLAG_EVICT_DIRTYZONE:
 int
 Hit_most_rw(long despId, unsigned flag)
 {
-    StrategyDesp_pore* myDesp = GlobalDespArray + despId;
+    Dscptr* myDesp = GlobalDespArray + despId;
     ZoneCtrl* myZone = ZoneCtrlArray + getZoneNum(myDesp->ssd_buf_tag.offset);
 
     if (IsClean(myDesp->flag) && IsDirty(flag))
@@ -242,14 +242,14 @@ Hit_most_rw(long despId, unsigned flag)
 *****************/
 
 static void
-hit(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
+hit(Dscptr* desp, ZoneCtrl* zoneCtrl)
 {
     desp->heat++;
     zoneCtrl->heat++;
 }
 
 static void
-add2ArrayHead(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
+add2ArrayHead(Dscptr* desp, ZoneCtrl* zoneCtrl)
 {
     if(zoneCtrl->head < 0)
     {
@@ -259,7 +259,7 @@ add2ArrayHead(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
     else
     {
         //unempty
-        StrategyDesp_pore* headDesp = GlobalDespArray + zoneCtrl->head;
+        Dscptr* headDesp = GlobalDespArray + zoneCtrl->head;
         desp->pre = -1;
         desp->next = zoneCtrl->head;
         headDesp->pre = desp->serial_id;
@@ -268,7 +268,7 @@ add2ArrayHead(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
 }
 
 static void
-unloadfromZone(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
+unloadfromZone(Dscptr* desp, ZoneCtrl* zoneCtrl)
 {
     if(desp->pre < 0)
     {
@@ -291,14 +291,14 @@ unloadfromZone(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
 }
 
 static void
-move2ArrayHead(StrategyDesp_pore* desp,ZoneCtrl* zoneCtrl)
+move2ArrayHead(Dscptr* desp,ZoneCtrl* zoneCtrl)
 {
     unloadfromZone(desp, zoneCtrl);
     add2ArrayHead(desp, zoneCtrl);
 }
 
 static void
-clearDesp(StrategyDesp_pore* desp)
+clearDesp(Dscptr* desp)
 {
     desp->ssd_buf_tag.offset = -1;
     desp->next = desp->pre = -1;
@@ -404,7 +404,7 @@ getEvictZone()
 
 /* Utilities for Global Clean Descriptors Array */
 static void
-add2CleanArrayHead(StrategyDesp_pore* desp)
+add2CleanArrayHead(Dscptr* desp)
 {
     if(CleanCtrl.head < 0)
     {
@@ -414,7 +414,7 @@ add2CleanArrayHead(StrategyDesp_pore* desp)
     else
     {
         //unempty
-        StrategyDesp_pore* headDesp = GlobalDespArray + CleanCtrl.head;
+        Dscptr* headDesp = GlobalDespArray + CleanCtrl.head;
         desp->pre = -1;
         desp->next = CleanCtrl.head;
         headDesp->pre = desp->serial_id;
@@ -423,7 +423,7 @@ add2CleanArrayHead(StrategyDesp_pore* desp)
 }
 
 static void
-unloadfromCleanArray(StrategyDesp_pore* desp)
+unloadfromCleanArray(Dscptr* desp)
 {
     if(desp->pre < 0)
     {
@@ -446,7 +446,7 @@ unloadfromCleanArray(StrategyDesp_pore* desp)
 }
 
 static void
-move2CleanArrayHead(StrategyDesp_pore* desp)
+move2CleanArrayHead(Dscptr* desp)
 {
     unloadfromCleanArray(desp);
     add2CleanArrayHead(desp);

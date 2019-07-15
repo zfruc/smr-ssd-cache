@@ -4,28 +4,27 @@
 #include "losertree4pore.h"
 #include "../report.h"
 
-static StrategyDesp_pore*   GlobalDespArray;
+static Dscptr*   GlobalDespArray;
 static ZoneCtrl*            ZoneCtrlArray;
 
 static unsigned long*       ZoneSortArray;      /* The zone ID array sorted by weight(calculated customized). it is used to determine the open zones */
 static int                  OpenZoneCnt;        /* It represent the number of open zones and the first number elements in 'ZoneSortArray' is the open zones ID */
 
-extern long                 PeriodLenth;        /* The period lenth which defines the times of eviction triggered */
+extern long                 Cycle_Length;        /* The period lenth which defines the times of eviction triggered */
 static long                 PeriodProgress;     /* Current times of eviction in a period lenth */
 static long                 StampGlobal;      /* Current io sequenced number in a period lenth, used to distinct the degree of heat among zones */
 static int                  IsNewPeriod;
 
 
-static void add2ArrayHead(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl);
-static void move2ArrayHead(StrategyDesp_pore* desp,ZoneCtrl* zoneCtrl);
-static long stamp(StrategyDesp_pore* desp);
-static void unloadfromZone(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl);
-static void clearDesp(StrategyDesp_pore* desp);
-static void hit(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl);
+static void add2ArrayHead(Dscptr* desp, ZoneCtrl* zoneCtrl);
+static void move2ArrayHead(Dscptr* desp,ZoneCtrl* zoneCtrl);
+static long stamp(Dscptr* desp);
+static void unloadfromZone(Dscptr* desp, ZoneCtrl* zoneCtrl);
+static void clearDesp(Dscptr* desp);
+static void hit(Dscptr* desp, ZoneCtrl* zoneCtrl);
 /** PORE **/
 static int redefineOpenZones();
 static ZoneCtrl* getEvictZone();
-static long stamp(StrategyDesp_pore* desp);
 
 
 static volatile unsigned long
@@ -38,10 +37,10 @@ getZoneNum(size_t offset)
 int
 InitPORE()
 {
-    PeriodLenth = NBLOCK_SMR_FIFO;
+    Cycle_Length = NBLOCK_SMR_FIFO;
     StampGlobal = PeriodProgress = 0;
     IsNewPeriod = 0;
-    GlobalDespArray = (StrategyDesp_pore*)malloc(sizeof(StrategyDesp_pore) * NBLOCK_SSD_CACHE);
+    GlobalDespArray = (Dscptr*)malloc(sizeof(Dscptr) * NBLOCK_SSD_CACHE);
     ZoneCtrlArray = (ZoneCtrl*)malloc(sizeof(ZoneCtrl) * NZONES);
 
     ZoneSortArray = (unsigned long*)malloc(sizeof(unsigned long) * NZONES);
@@ -49,7 +48,7 @@ InitPORE()
     int i = 0;
     while(i < NBLOCK_SSD_CACHE)
     {
-        StrategyDesp_pore* desp = GlobalDespArray + i;
+        Dscptr* desp = GlobalDespArray + i;
         desp->serial_id = i;
         desp->ssd_buf_tag.offset = -1;
         desp->next = desp->pre = -1;
@@ -76,7 +75,7 @@ int
 LogInPoreBuffer(long despId, SSDBufTag tag, unsigned flag)
 {
     /* activate the decriptor */
-    StrategyDesp_pore* myDesp = GlobalDespArray + despId;
+    Dscptr* myDesp = GlobalDespArray + despId;
     ZoneCtrl* myZone = ZoneCtrlArray + getZoneNum(tag.offset);
     myDesp->ssd_buf_tag = tag;
     myDesp->flag |= flag;
@@ -103,7 +102,7 @@ static int periodCnt = 0;
 long
 LogOutDesp_pore()
 {
-    if(PeriodProgress % PeriodLenth == 0)
+    if(PeriodProgress % Cycle_Length == 0)
     {
         redefineOpenZones();
         PeriodProgress = 1;
@@ -120,7 +119,7 @@ LogOutDesp_pore()
     }
 
 
-    StrategyDesp_pore*  evitedDesp = GlobalDespArray + chosenOpZone->tail;
+    Dscptr*  evitedDesp = GlobalDespArray + chosenOpZone->tail;
 
     unloadfromZone(evitedDesp,chosenOpZone);
     chosenOpZone->heat -= evitedDesp->heat;   /**< Decision indicators */
@@ -141,7 +140,7 @@ LogOutDesp_pore()
 int
 HitPoreBuffer(long despId, unsigned flag)
 {
-    StrategyDesp_pore* myDesp = GlobalDespArray + despId;
+    Dscptr* myDesp = GlobalDespArray + despId;
     ZoneCtrl* myZone = ZoneCtrlArray + getZoneNum(myDesp->ssd_buf_tag.offset);
 
     move2ArrayHead(myDesp,myZone);
@@ -161,14 +160,14 @@ HitPoreBuffer(long despId, unsigned flag)
 *****************/
 
 static void
-hit(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
+hit(Dscptr* desp, ZoneCtrl* zoneCtrl)
 {
     desp->heat++;
     zoneCtrl->heat++;
 }
 
 static void
-add2ArrayHead(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
+add2ArrayHead(Dscptr* desp, ZoneCtrl* zoneCtrl)
 {
     if(zoneCtrl->head < 0)
     {
@@ -178,7 +177,7 @@ add2ArrayHead(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
     else
     {
         //unempty
-        StrategyDesp_pore* headDesp = GlobalDespArray + zoneCtrl->head;
+        Dscptr* headDesp = GlobalDespArray + zoneCtrl->head;
         desp->pre = -1;
         desp->next = zoneCtrl->head;
         headDesp->pre = desp->serial_id;
@@ -187,7 +186,7 @@ add2ArrayHead(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
 }
 
 static void
-unloadfromZone(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
+unloadfromZone(Dscptr* desp, ZoneCtrl* zoneCtrl)
 {
     if(desp->pre < 0)
     {
@@ -210,14 +209,14 @@ unloadfromZone(StrategyDesp_pore* desp, ZoneCtrl* zoneCtrl)
 }
 
 static void
-move2ArrayHead(StrategyDesp_pore* desp,ZoneCtrl* zoneCtrl)
+move2ArrayHead(Dscptr* desp,ZoneCtrl* zoneCtrl)
 {
     unloadfromZone(desp, zoneCtrl);
     add2ArrayHead(desp, zoneCtrl);
 }
 
 static void
-clearDesp(StrategyDesp_pore* desp)
+clearDesp(Dscptr* desp)
 {
     desp->ssd_buf_tag.offset = -1;
     desp->next = desp->pre = -1;
@@ -314,7 +313,7 @@ redefineOpenZones()
 //    }
 
     long n_chooseblk = 0, n = 0;
-    while(n < nonEmptyZoneCnt && n_chooseblk < PeriodLenth)
+    while(n < nonEmptyZoneCnt && n_chooseblk < Cycle_Length)
     {
         n_chooseblk += ZoneCtrlArray[ZoneSortArray[n]].pagecnt_dirty;
         n++;
@@ -338,7 +337,7 @@ getEvictZone()
     {
         // Go into the new period, re-creating the loser tree.
         LoserTree_Destory(passport); // to free old tree space.
-        StrategyDesp_pore* openZoneTailBlks[OpenZoneCnt];
+        Dscptr* openZoneTailBlks[OpenZoneCnt];
         int i = 0;
         while(i < OpenZoneCnt)
         {
@@ -347,7 +346,7 @@ getEvictZone()
             i++;
         }
         if(LoserTree_Create(OpenZoneCnt, openZoneTailBlks, &passport, &winnerZoneSortId, &winnerDespId) < 0)
-            error("Create LoserTree Failure.");
+            usr_warning("Create LoserTree Failure.");
         winnerOz = ZoneCtrlArray + ZoneSortArray[winnerZoneSortId];
         IsNewPeriod = 0;
     }
@@ -355,7 +354,7 @@ getEvictZone()
     {
         do{
             winnerOz = ZoneCtrlArray + ZoneSortArray[winnerZoneSortId];
-            StrategyDesp_pore* candidateDesp;
+            Dscptr* candidateDesp;
             if(winnerOz->tail < 0)
                 candidateDesp = NULL;
             else
@@ -371,7 +370,7 @@ getEvictZone()
 }
 
 static long
-stamp(StrategyDesp_pore* desp)
+stamp(Dscptr* desp)
 {
     desp->stamp = ++StampGlobal;
     return StampGlobal;

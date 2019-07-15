@@ -6,6 +6,7 @@
 *.req
 *.out
 *.txt
+*.log
 */smr
 */ssd
 */inner_ssd

@@ -59,7 +59,7 @@ getZoneNum(size_t offset)
 
 /* Process Function */
 int
-Init_PUAL()
+Init_oldpore()
 {
     ZONEBLKSZ = ZONESZ / BLKSZ;
 
@@ -100,7 +100,7 @@ Init_PUAL()
 }
 
 int
-LogIn_PAUL(long despId, SSDBufTag tag, unsigned flag)
+LogIn_oldpore(long despId, SSDBufTag tag, unsigned flag)
 {
     /* activate the decriptor */
     Dscptr_paul* myDesp = GlobalDespArray + despId;
@@ -131,7 +131,7 @@ LogIn_PAUL(long despId, SSDBufTag tag, unsigned flag)
 }
 
 int
-Hit_PAUL(long despId, unsigned flag)
+Hit_oldpore(long despId, unsigned flag)
 {
     Dscptr_paul* myDesp = GlobalDespArray + despId;
     ZoneCtrl_pual* myZone = ZoneCtrl_pualArray + getZoneNum(myDesp->ssd_buf_tag.offset);
@@ -179,7 +179,7 @@ start_new_cycle()
 /** \brief
  */
 int
-LogOut_PAUL(long * out_despid_array, int max_n_batch, enum_t_vict suggest_type)
+LogOut_oldpore(long * out_despid_array, int max_n_batch, enum_t_vict suggest_type)
 {
     static int CurEvictZoneSeq;
     static long n_evict_clean_cycle = 0, n_evict_dirty_cycle = 0;
@@ -233,7 +233,7 @@ FLAG_EVICT_CLEAN:
 
 FLAG_EVICT_DIRTYZONE:
     CurEvictZoneSeq = get_FrozenOpZone_Seq();
-    if(CurEvictZoneSeq < 0 || Cycle_Progress >= Cycle_Length || Cycle_Progress == 0){
+    if(CurEvictZoneSeq < 0 || Cycle_Progress == 0){
         start_new_cycle();
 
         printf("Ouput of last Cycle: clean:%ld, dirty:%ld\n",n_evict_clean_cycle,n_evict_dirty_cycle);
@@ -441,9 +441,6 @@ extractNonEmptyZoneId()
             cnt++;
         }
         zoneId++;
-
-        if(zone->activate_after_n_cycles > 0)
-            zone->activate_after_n_cycles --;
     }
     return cnt;
 }
@@ -462,21 +459,7 @@ pause_and_score()
     {
         myCtrl = ZoneCtrl_pualArray + ZoneSortArray[n];
         myCtrl->score = 0;
-
-        /* score each block of the non-empty zone */
-        Dscptr_paul * desp;
-        blkcnt_t despId = myCtrl->head;
-        while(despId >= 0)
-        {
-            desp = GlobalDespArray + despId;
-            long idx2 = CycleID - desp->stamp;
-            if(idx2 > 15)
-                idx2 = 15;
-
-            myCtrl->score += (0x00000001 << idx2);
-
-            despId = desp->next;
-        }
+        myCtrl->score = myCtrl->pagecnt_dirty / (myCtrl->heat+1);
         n++ ;
     }
 }
@@ -491,40 +474,20 @@ redefineOpenZones()
     pause_and_score(); /** ARS (Actually Release Space) */
     qsort_zone(0,NonEmptyZoneCnt-1);
 
-    long max_n_zones = Cycle_Length / (ZONESZ / BLKSZ);
-    if(max_n_zones == 0)
-        max_n_zones = 1;  // This is for Emulation on small traces, some of their fifo size are lower than a zone size.
-
     OpenZoneCnt = 0;
-    long i = 0;
-    while(OpenZoneCnt < max_n_zones && i < NonEmptyZoneCnt)
+    long i = 0, n_chooseblk = 0;
+    while(i < NonEmptyZoneCnt)
     {
         ZoneCtrl_pual* zone = ZoneCtrl_pualArray + ZoneSortArray[i];
 
-        /* According to the RULE 2, zones which have already be in PB cannot be choosed into this cycle. */
-        if(zone->activate_after_n_cycles == 0)
-        {
-            zone->activate_after_n_cycles = 2;  // Deactivate the zone for the next 2 cycles.
-            OpenZoneSet[OpenZoneCnt] = zone->zoneId;
-            OpenZoneCnt++;
-        }
-        else if(zone->activate_after_n_cycles > 0)
-            usr_warning("PAUL FILTERS A REPEAT ZONE.");
+        if(n_chooseblk + zone->pagecnt_dirty > Cycle_Length)
+            break;
+
+        n_chooseblk += zone->pagecnt_dirty;
+        OpenZoneSet[OpenZoneCnt] = zone->zoneId;
+        OpenZoneCnt++;
         i++;
     }
-
-    /** lookup sort result **/
-//    int i;
-//    for(i = 0; i<NonEmptyZoneCnt; i++)
-//    {
-//        printf("%d: score=%f\t\theat=%ld\t\tndirty=%ld\t\tnclean=%ld\n",
-//               i,
-//               ZoneCtrl_pualArray[ZoneSortArray[i]].score,
-//               ZoneCtrl_pualArray[ZoneSortArray[i]].heat,
-//               ZoneCtrl_pualArray[ZoneSortArray[i]].pagecnt_dirty,
-//               ZoneCtrl_pualArray[ZoneSortArray[i]].pagecnt_clean);
-//    }
-
     return OpenZoneCnt;
 }
 

@@ -81,7 +81,8 @@ typedef enum
     PORE,
     PORE_PLUS,
     PORE_PLUS_V2,
-    PV3
+    PAUL,
+    OLDPORE
 }SSDEvictionStrategy;
 
 /** This user basic info */
@@ -94,7 +95,7 @@ extern SSDEvictionStrategy EvictStrategy;
 extern unsigned long Param1;
 extern unsigned long Param2;
 extern int BatchSize;
-extern long PeriodLenth;
+extern long Cycle_Length;
 /** All users basic setup **/
 extern blksize_t NBLOCK_MAX_CACHE_SIZE;
 extern blkcnt_t NBLOCK_SSD_CACHE;

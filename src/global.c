@@ -9,7 +9,7 @@ off_t StartLBA;
 int WriteOnly;
 int BatchSize;
 SSDEvictionStrategy EvictStrategy;
-long PeriodLenth;
+long Cycle_Length;
 unsigned long Param1;
 unsigned long Param2;
 
@@ -28,10 +28,10 @@ blksize_t BLKSZ = 4096;
 blkcnt_t  NZONES = 466034;/* size = 8TB */ //194180;    // NZONES * ZONESZ =
 blksize_t ZONESZ = 18 * 1024 * 1024;//18MB    // Unit: Byte.
 
-char simu_smr_fifo_device[] = "/dev/sdc1";
-char simu_smr_smr_device[] = "/dev/sdc2";
-char smr_device[] = "/dev/sdc"; // /dev/sdc";
-char ssd_device[] = "/dev/memdiska";//"/mnt/ramdisk/ramdisk";//"/dev/memdiska";// "/mnt/ssd/ssd";
+char simu_smr_fifo_device[] = "/mnt/smr/pb";
+char simu_smr_smr_device[] = "/mnt/smr/smr";
+char smr_device[] = "/mnt/smr/smr-rawdisk"; // /dev/sdc";
+char ssd_device[] = "/mnt/ssd/ssd";//"/mnt/ramdisk/ramdisk";//"/dev/memdiska";// "/mnt/ssd/ssd";
 char ram_device[1024];
 
 int BandOrBlock;
