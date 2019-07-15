@@ -414,16 +414,16 @@ qsort_zone(long start, long end)
 
     long S = ZoneSortArray[start];
     ZoneCtrl_pual* curCtrl = ZoneCtrl_pualArray + S;
-    unsigned long score = curCtrl->pagecnt_dirty; //<PAUL-alpha> curCtrl->OOD_num;
+    unsigned long score = curCtrl->OOD_num;
     while (i < j)
     {
-        while (!(ZoneCtrl_pualArray[ZoneSortArray[j]].pagecnt_dirty > score) && i<j)//<PAUL-alpha>
+        while (!(ZoneCtrl_pualArray[ZoneSortArray[j]].OOD_num > score) && i<j)
         {
             j--;
         }
         ZoneSortArray[i] = ZoneSortArray[j];
 
-        while (!(ZoneCtrl_pualArray[ZoneSortArray[i]].pagecnt_dirty < score) && i<j)//<PAUL-alpha>
+        while (!(ZoneCtrl_pualArray[ZoneSortArray[i]].OOD_num < score) && i<j)
         {
             i++;
         }
@@ -472,24 +472,24 @@ pause_and_score()
     Dscptr_paul* desp;
     blkcnt_t n = 0;
 
-    // OODstamp = StampGlobal - (long)(NBLOCK_SSD_CACHE * 0.8);  //<PAUL-alpha> Uncomment
-    // while(n < NonEmptyZoneCnt)
-    // {
-    //     izone = ZoneCtrl_pualArray + ZoneSortArray[n];
-    //     izone->OOD_num = 0;
+    OODstamp = StampGlobal - (long)(NBLOCK_SSD_CACHE * 0.8);
+    while(n < NonEmptyZoneCnt)
+    {
+        izone = ZoneCtrl_pualArray + ZoneSortArray[n];
+        izone->OOD_num = 0;
 
-    //     /* score each block of the non-empty zone */
+        /* score each block of the non-empty zone */
         
-    //     blkcnt_t despId = izone->tail;
-    //     while(despId >= 0)
-    //     {
-    //         desp = GlobalDespArray + despId;
-    //         if(desp->stamp < OODstamp)
-    //             izone->OOD_num ++;
-    //         despId = desp->pre;
-    //     }
-    //     n++ ;
-    // }
+        blkcnt_t despId = izone->tail;
+        while(despId >= 0)
+        {
+            desp = GlobalDespArray + despId;
+            if(desp->stamp < OODstamp)
+                izone->OOD_num ++;
+            despId = desp->pre;
+        }
+        n++ ;
+    }
 }
 
 
@@ -515,7 +515,7 @@ redefineOpenZones()
         /* According to the RULE 2, zones which have already be in PB cannot be choosed into this cycle. */
         if(zone->activate_after_n_cycles == 0)
         {
-            // zone->activate_after_n_cycles = 2;  // Deactivate the zone for the next 2 cycles.  //<PAUL-alpha> Uncomment
+            zone->activate_after_n_cycles = 2;  // Deactivate the zone for the next 2 cycles.
             OpenZoneSet[OpenZoneCnt] = zone->zoneId;
             OpenZoneCnt++;
         }
