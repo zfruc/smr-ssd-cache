@@ -544,7 +544,7 @@ get_FrozenOpZone_Seq()
 {
     int seq = 0;
     blkcnt_t frozenSeq = -1;
-    long frozenStamp = CycleID;
+    long frozenStamp = StampGlobal;
     while(seq < OpenZoneCnt)
     {
         ZoneCtrl_pual* ctrl = ZoneCtrl_pualArray + OpenZoneSet[seq];
