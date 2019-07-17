@@ -1,27 +1,29 @@
 #!/bin/bash
 
-fifo_nums=(9513 9900 3754 21207 13054 3988 7646 10273 6731 4941 7451)
-strategys=(1 2 3 5 6 7 8 9)
-zone_sizes=(20971520 2097152 10485760 52428800)     # 20MB, 2MB, 10MB, 5MB
+# checkout branch *MOST
+git checkout branch-MOST-test
 
-for i in "${!fifo_nums[@]}";
-do
-    for strategy in ${strategys[@]};
-    do
-        ssd_cache_num=$[${fifo_nums[$i]}*5]
-        period_long=${fifo_nums[$i]}
-        if [ $strategy -ge 6 ]
-        then
-            j=0
-            while [ $j -lt ${#zone_sizes[@]} ]
-            do
-                echo ./smr-ssd-cache $ssd_cache_num ${fifo_nums[$i]} 0 4096 ${zone_sizes[$j]} $period_long $strategy $i
-                ./smr-ssd-cache $ssd_cache_num ${fifo_nums[$i]} 0 4096 ${zone_sizes[$j]} $period_long $strategy $i
-                let j++
-            done
-        else
-            echo ./smr-ssd-cache $ssd_cache_num ${fifo_nums[$i]} 0 4096 ${zone_sizes[0]} $period_long $strategy $i
-            ./smr-ssd-cache $ssd_cache_num ${fifo_nums[$i]} 0 4096 ${zone_sizes[0]} $period_long $strategy $i
-        fi
-    done
-done
+LOG_PATH=/home/fei/devel/logs
+LOG_FN=most_real_wo_x10_long.log
+PATH_MAIN=/home/fei/devel/smr-ssd-cache_multi-user/src
+PATH_CLEAN=${PATH_MAIN}/exps/fio_benchmarks/paperexps
+
+make clean ; make
+
+bash ${PATH_MAIN}/smr-ssd-cache 0 11 1 0 8000000 8000000 1 PAUL -1 > ${LOG_PATH}/${LOG_FN}
+bach ${PATH_CLEAN}/smr-pb-forceclean.sh /mnt/smr/smr-rawdisk big 
+
+
+# checkout branch *master
+LOG_FN2=paul_real_wo_x10_long.log
+
+git checkout master 
+git pull
+
+make clean ; make
+
+bash ${PATH_MAIN}/smr-ssd-cache 0 11 1 0 8000000 8000000 30 PAUL -1 > ${LOG_PATH}/${LOG_FN2}
+bach ${PATH_CLEAN}/smr-pb-forceclean.sh /mnt/smr/smr-rawdisk big
+
+
+
