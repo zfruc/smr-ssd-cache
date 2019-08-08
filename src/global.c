@@ -1,71 +1,65 @@
-#include "ssd-cache.h"
-#include "smr-simulator/smr-simulator.h"
-#include "main.h"
+#include "global.h"
 
-
-unsigned long NSSDBuffers;
-unsigned long NSSDBufTables;
-unsigned long SSD_BUFFER_SIZE;
-unsigned long NSMRBands = 19418000;		// 194180*(18MB+36MB)/2~5TB
-unsigned long NSMRBlocks = 2621952;		// 2621952*8KB~20GB
-unsigned long NSSDs;
-unsigned long NSSDTables;
-unsigned long NBANDTables = 2621952;
-size_t SSD_SIZE = 4096;
-size_t BLCKSZ = 4096;
-size_t BNDSZ = 36*1024*1024;
-size_t ZONESZ;
-unsigned long INTERVALTIMELIMIT = 100000000;
-unsigned long NSSDLIMIT;
-unsigned long NSSDCLEAN = 1;
-unsigned long WRITEAMPLIFICATION = 100;
-unsigned long NCOLDBAND = 1;
-unsigned long PERIODTIMES;
-char smr_device[] = "/Users/wangchunling/Software/code/smr-test/smr-ssd-cache/src/smr";
-char ssd_device[] = "/Users/wangchunling/Software/code/smr-test/smr-ssd-cache/src/ssd";
-char inner_ssd_device[] = "/Users/wangchunling/Software/code/smr-test/smr-ssd-cache/src/inner_ssd";
+/** This user basic info */
+pid_t Fork_Pid = 0; /* Default 0. If is a HRC process, this must be large than 0 */
+int BatchId;
+int UserId;
+int TraceId;
+off_t StartLBA;
+int WriteOnly;
+int BatchSize;
 SSDEvictionStrategy EvictStrategy;
+long Cycle_Length;
+unsigned long Param1;
+unsigned long Param2;
+
+/** All users basic setup **/           /** NEED TO BE '#DEFINE' **/
+blksize_t NBLOCK_MAX_CACHE_SIZE;
+blksize_t NBLOCK_SSD_CACHE;
+blksize_t NTABLE_SSD_CACHE;
+blksize_t SSD_BUFFER_SIZE = 4096;
+blksize_t NBLOCK_SMR_FIFO;
+//blksize_t NSMRBlocks = 2621952;		// 2621952*8KB~20GB
+//blksize_t NSSDs;
+//blksize_t NSSDTables;
+blksize_t NBANDTables = 2621952;
+blksize_t SSD_SIZE = 4096;
+blksize_t BLKSZ = 4096;
+blkcnt_t  NZONES = 400000;/* size = 8TB */ //194180;    // NZONES * ZONESZ =
+blksize_t ZONESZ = 5000 * 4096;//20MB    // Unit: Byte.
+
+char simu_smr_fifo_device[] = "/mnt/smr/pb";
+char simu_smr_smr_device[] = "/mnt/smr/smr";
+char smr_device[] = "/mnt/smr/smr-rawdisk"; // /dev/sdc";
+char ssd_device[] = "/mnt/ssd/ssd";//"/mnt/ramdisk/ramdisk";//"/dev/memdiska";// "/mnt/ssd/ssd";
+char ram_device[1024];
+
 int BandOrBlock;
+
 /*Block = 0, Band=1*/
-int 		    smr_fd;
-int 		    ssd_fd;
-int 		    inner_ssd_fd;
-unsigned long	interval_time;
-unsigned long hit_num;
-unsigned long flush_bands;
-unsigned long flush_band_size;
-unsigned long flush_fifo_blocks;
-unsigned long flush_ssd_blocks;
-//unsigned long write-fifo-num;
-//unsigned long write-ssd-num;
-unsigned long flush_fifo_times;
-unsigned long run_times;
-unsigned long read_ssd_blocks;
-unsigned long read_fifo_blocks;
-unsigned long read_smr_blocks;
-unsigned long read_hit_num;
-unsigned long read_smr_bands;
-double time_read_cmr;
-double time_write_cmr;
-double time_read_ssd;
-double time_write_ssd;
-double time_read_fifo;
-double time_read_smr;
-double time_write_fifo;
-double time_write_smr;
-double time_begin_temp;
-double time_now_temp;
+int hdd_fd;
+int ssd_fd;
+int ram_fd;
+struct RuntimeSTAT* STT;
 
-pthread_mutex_t free_ssd_mutex;
-pthread_mutex_t inner_ssd_hdr_mutex;
-pthread_mutex_t inner_ssd_hash_mutex;
+/** Shared memory variable names **/
+char* SHM_SSDBUF_STRATEGY_CTRL = "SHM_SSDBUF_STRATEGY_CTRL";
+char* SHM_SSDBUF_STRATEGY_DESP = "SHM_SSDBUF_STRATEGY_DESP";
 
-SSDBufferDesc	*ssd_buffer_descriptors;
-SSDBufferStrategyControl	*ssd_buffer_strategy_control;
-SSDBufferHashBucket	        *ssd_buffer_hashtable;
+char* SHM_SSDBUF_DESP_CTRL = "SHM_SSDBUF_DESP_CTRL";
+char* SHM_SSDBUF_DESPS = "SHM_SSDBUF_DESPS";
 
-SSDStrategyControl	*ssd_strategy_control;
+char* SHM_SSDBUF_HASHTABLE_CTRL = "SHM_SSDBUF_HASHTABLE_CTRL";
+char* SHM_SSDBUF_HASHTABLE = "SHM_SSDBUF_HASHTABLE";
+char* SHM_SSDBUF_HASHDESPS =  "SHM_SSDBUF_HASHDESPS";
+char* SHM_PROCESS_REQ_LOCK = "SHM_PROCESS_REQ_LOCK";
 
-SSDDesc		*ssd_descriptors;
-//char		*ssd_blocks;
-SSDHashBucket	*ssd_hashtable;
+char* PATH_LOG = "/home/outputs/logs";
+
+/** Var for T-Switcher **/
+
+/** Pipes for HRC processes **/
+#ifdef HRC_PROCS_N
+int PipeEnds_of_MAIN[HRC_PROCS_N];
+int PipeEnd_of_HRC;
+#endif

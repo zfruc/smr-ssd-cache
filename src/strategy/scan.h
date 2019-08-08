@@ -10,21 +10,21 @@ typedef struct
 	long 		ssd_buf_id;				// ssd buffer location in shared buffer
     long        next_scan;               // to link used ssd as SCAN
     long        last_scan;               // to link used ssd as SCAN
-} SSDBufferDescForSCAN;
+} SSDBufDespForSCAN;
 
 typedef struct
 {
 	long start;
-    long        scan_ptr;        
+    long        scan_ptr;
 } SSDBufferStrategyControlForSCAN;
 
-SSDBufferDescForSCAN	*ssd_buffer_descriptors_for_scan;
-SSDBufferStrategyControlForSCAN *ssd_buffer_strategy_control_for_scan;
+SSDBufDespForSCAN	*ssd_buf_desps_for_scan;
+SSDBufferStrategyControlForSCAN *ssd_buf_strategy_ctrl_for_scan;
 BandHashBucket *band_hashtable;
 
-extern unsigned long flush_fifo_times;
+extern unsigned long flush_times;
 extern void initSSDBufferForSCAN();
-extern SSDBufferDesc *getSCANBuffer();
-extern void *hitInSCANBuffer(SSDBufferDesc *);
+extern SSDBufDesp *getSCANBuffer();
+extern void *hitInSCANBuffer(SSDBufDesp *);
 extern void insertByTag();
 #endif

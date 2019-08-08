@@ -1,9 +1,18 @@
 #ifndef SSDBUFTABLE_H
 #define SSDBUFTABLE_H
 
-extern void initSSDTable(int size);
-extern unsigned ssdtableHashcode(SSDTag *ssd_tag);
-extern int ssdtableLookup(SSDTag *ssd_tag, unsigned hash_code);
-extern int ssdtableInsert(SSDTag *ssd_tag, unsigned hash_code, int ssd_id);
-extern int ssdtableDelete(SSDTag *ssd_tag, unsigned hash_code);
+#include "simulator_v2.h"
+typedef struct SSDHashBucket
+{
+        DespTag	hash_key;
+        long    despId;
+        struct SSDHashBucket *next_item;
+} SSDHashBucket;
+
+extern void initSSDTable(size_t size);
+extern unsigned long ssdtableHashcode(DespTag tag);
+extern long ssdtableLookup(DespTag tag, unsigned long hash_code);
+extern long ssdtableInsert(DespTag tag, unsigned long hash_code, long despId);
+extern long ssdtableDelete(DespTag tag, unsigned long hash_code);
+extern long ssdtableUpdate(DespTag tag, unsigned long hash_code, long despId);
 #endif   /* SSDBUFTABLE_H */

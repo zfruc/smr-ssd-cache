@@ -9,14 +9,14 @@ typedef struct
     long        last_lru;               // to link used ssd as LRU
     long        next_freessd;           // to link free ssd
     unsigned long   hit_times;
-} SSDBufferDescForMaxColdHistory;
+} SSDBufDespForMaxColdHistory;
 
 typedef struct
 {
 	long 		ssd_buf_id;				// ssd buffer location in shared buffer
     long        next_lru;               // to link used ssd as LRU
     long        last_lru;               // to link used ssd as LRU
-} SSDBufferDescForMaxColdNow;
+} SSDBufDespForMaxColdNow;
 
 typedef struct
 {
@@ -54,17 +54,17 @@ extern unsigned long NSMRBands;
 extern unsigned long PERIODTIMES;
 extern unsigned long NCOLDBAND;
 extern unsigned long run_times;
-extern unsigned long flush_fifo_times;
+extern unsigned long flush_times;
 
-SSDBufferHashBucket	*ssd_buffer_hashtable_history;
+SSDBufHashBucket	*ssd_buf_hashtable_history;
 
-SSDBufferDescForMaxColdHistory *ssd_buffer_descriptors_for_maxcold_history;
-SSDBufferDescForMaxColdNow *ssd_buffer_descriptors_for_maxcold_now;
-SSDBufferStrategyControlForMaxColdHistory *ssd_buffer_strategy_control_for_maxcold_history;
-SSDBufferStrategyControlForMaxColdNow *ssd_buffer_strategy_control_for_maxcold_now;
+SSDBufDespForMaxColdHistory *ssd_buf_desps_for_maxcold_history;
+SSDBufDespForMaxColdNow *ssd_buf_desps_for_maxcold_now;
+SSDBufferStrategyControlForMaxColdHistory *ssd_buf_strategy_ctrl_for_maxcold_history;
+SSDBufferStrategyControlForMaxColdNow *ssd_buf_strategy_ctrl_for_maxcold_now;
 BandDescForMaxColdHistory *band_descriptors_for_maxcold_history;
 BandDescForMaxColdNow *band_descriptors_for_maxcold_now;
 
 extern void initSSDBufferForMaxCold();
-extern SSDBufferDesc *getMaxColdBuffer(SSDBufferTag, SSDEvictionStrategy);
-extern void *hitInMaxColdBuffer(SSDBufferDesc *);
+extern SSDBufDesp *getMaxColdBuffer(SSDBufferTag*, SSDEvictionStrategy);
+extern void *hitInMaxColdBuffer(SSDBufDesp *);

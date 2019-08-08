@@ -1,174 +1,329 @@
-#include <stdio.h>
 #include <stdlib.h>
-#include "ssd-cache.h"
-#include "smr-simulator/smr-simulator.h"
 #include "most.h"
-#include "band_table.h"
+#include "../statusDef.h"
+#include "losertree4pore.h"
+#include "../report.h"
 
-static volatile void addToBand(SSDBufferTag ssd_buf_tag, long freessd);
-static volatile void deleteBand();
+static Dscptr*   GlobalDespArray;
+static ZoneCtrl*            ZoneCtrlArray;
 
-void 
-initSSDBufferForMost()
+static unsigned long*       ZoneSortArray;      /* The zone ID array sorted by weight(calculated customized). it is used to determine the open zones */
+static int                  OpenZoneCnt;        /* It represent the number of open zones and the first number elements in 'ZoneSortArray' is the open zones ID */
+
+extern long                 Cycle_Length;        /* The period lenth which defines the times of eviction triggered */
+static long                 PeriodProgress;     /* Current times of eviction in a period lenth */
+static long                 StampGlobal;      /* Current io sequenced number in a period lenth, used to distinct the degree of heat among zones */
+static int                  IsNewPeriod;
+
+
+static void add2ArrayHead(Dscptr* desp, ZoneCtrl* zoneCtrl);
+static void move2ArrayHead(Dscptr* desp,ZoneCtrl* zoneCtrl);
+static long stamp(Dscptr* desp);
+static void unloadfromZone(Dscptr* desp, ZoneCtrl* zoneCtrl);
+static void clearDesp(Dscptr* desp);
+static void hit(Dscptr* desp, ZoneCtrl* zoneCtrl);
+/** PORE **/
+static int redefineOpenZones();
+static ZoneCtrl* getEvictZone();
+static long stamp(Dscptr* desp);
+
+
+static volatile unsigned long
+getZoneNum(size_t offset)
 {
-	initBandTable(NBANDTables, &band_hashtable_for_most);
-
-	SSDBufferDescForMost *ssd_buf_hdr_for_most;
-	BandDescForMost *band_hdr_for_most;
-	ssd_buffer_descriptors_for_most = (SSDBufferDescForMost *) malloc(sizeof(SSDBufferDescForMost) * NSSDBuffers);
-	long		i;
-	ssd_buf_hdr_for_most = ssd_buffer_descriptors_for_most;
-	for (i = 0; i < NSSDBuffers; ssd_buf_hdr_for_most++, i++) {
-		ssd_buf_hdr_for_most->ssd_buf_id = i;
-		ssd_buf_hdr_for_most->next_ssd_buf = -1;
-	}
-
-	band_descriptors_for_most = (BandDescForMost *) malloc(sizeof(BandDescForMost) * NSMRBands);
-	band_hdr_for_most = band_descriptors_for_most;
-	for (i = 0; i < NSMRBands; band_hdr_for_most++, i++) {
-		band_hdr_for_most->band_num = 0;
-		band_hdr_for_most->current_pages = 0;
-		band_hdr_for_most->first_page = -1;
-	}
-
-	ssd_buffer_strategy_control_for_most = (SSDBufferStrategyControlForMost *) malloc(sizeof(SSDBufferStrategyControlForMost));
-	ssd_buffer_strategy_control_for_most->nbands = 0;
+    return offset / ZONESZ;
 }
 
-void 
-hitInMostBuffer()
+/* Process Function */
+int
+Init_most()
 {
-	return;
+    Cycle_Length = NBLOCK_SMR_FIFO;
+    StampGlobal = PeriodProgress = 0;
+    IsNewPeriod = 0;
+    GlobalDespArray = (Dscptr*)malloc(sizeof(Dscptr) * NBLOCK_SSD_CACHE);
+    ZoneCtrlArray = (ZoneCtrl*)malloc(sizeof(ZoneCtrl) * NZONES);
+
+    ZoneSortArray = (unsigned long*)malloc(sizeof(unsigned long) * NZONES);
+
+    int i = 0;
+    while(i < NBLOCK_SSD_CACHE)
+    {
+        Dscptr* desp = GlobalDespArray + i;
+        desp->serial_id = i;
+        desp->ssd_buf_tag.offset = -1;
+        desp->next = desp->pre = -1;
+        desp->heat = 0;
+        desp->stamp = 0;
+        desp->flag = 0;
+        i++;
+    }
+    i = 0;
+    while(i < NZONES)
+    {
+        ZoneCtrl* ctrl = ZoneCtrlArray + i;
+        ctrl->zoneId = i;
+        ctrl->heat = ctrl->pagecnt_clean = ctrl->pagecnt_dirty = 0;
+        ctrl->head = ctrl->tail = -1;
+        ctrl->score = -1;
+        ZoneSortArray[i] = 0;
+        i++;
+    }
+    return 0;
+}
+
+int
+LogIn_most(long despId, SSDBufTag tag, unsigned flag)
+{
+    /* activate the decriptor */
+    Dscptr* myDesp = GlobalDespArray + despId;
+    ZoneCtrl* myZone = ZoneCtrlArray + getZoneNum(tag.offset);
+    myDesp->ssd_buf_tag = tag;
+    myDesp->flag |= flag;
+
+    /* add into chain */
+    add2ArrayHead(myDesp, myZone);
+
+    if((flag & SSD_BUF_DIRTY) != 0)
+        myZone->pagecnt_dirty++;
+    else{
+        myZone->pagecnt_clean++;
+    }
+    return 1;
+}
+
+int
+LogOut_most(long * out_despid_array, int max_n_batch)
+{
+    static int periodCnt = 0;
+    static ZoneCtrl* chosenOpZone;
+    if(PeriodProgress % Cycle_Length == 0 || chosenOpZone->tail < 0)
+    {
+        redefineOpenZones();
+        PeriodProgress = 0;
+        periodCnt++;
+        chosenOpZone = getEvictZone();
+        printf("Period [%d], OpenZones_cnt=%d\n",periodCnt,OpenZoneCnt);
+    }
+
+    Dscptr*  evitedDesp;
+    int evict_grain = 64;
+    int cnt = 0;
+    while(cnt < evict_grain)
+    {
+	if(chosenOpZone->tail < 0)
+            break;
+        evitedDesp = GlobalDespArray + chosenOpZone->tail;
+        out_despid_array[cnt] = evitedDesp->serial_id;
+
+        unloadfromZone(evitedDesp,chosenOpZone);
+        chosenOpZone->heat -= evitedDesp->heat;   /**< Decision indicators */
+        if((evitedDesp->flag & SSD_BUF_DIRTY) != 0)
+        {
+            chosenOpZone->pagecnt_dirty--;                  /**< Decision indicators */
+        }
+        else
+        {
+            chosenOpZone->pagecnt_clean--;                  /**< Decision indicators */
+        }
+	clearDesp(evitedDesp);
+	PeriodProgress++;
+	cnt ++ ;
+    }
+    return cnt;
+}
+
+int
+Hit_most(long despId, unsigned flag)
+{
+    Dscptr* myDesp = GlobalDespArray + despId;
+    ZoneCtrl* myZone = ZoneCtrlArray + getZoneNum(myDesp->ssd_buf_tag.offset);
+
+    move2ArrayHead(myDesp,myZone);
+    hit(myDesp,myZone);
+    stamp(myDesp);
+    if((myDesp->flag & SSD_BUF_DIRTY) == 0 && (flag & SSD_BUF_DIRTY) != 0){
+        myZone->pagecnt_dirty++;
+        myZone->pagecnt_clean--;
+    }
+    myDesp->flag |= flag;
+
+    return 1;
+}
+
+/****************
+** Utilities ****
+*****************/
+
+static void
+hit(Dscptr* desp, ZoneCtrl* zoneCtrl)
+{
+    desp->heat++;
+    zoneCtrl->heat++;
+}
+
+static void
+add2ArrayHead(Dscptr* desp, ZoneCtrl* zoneCtrl)
+{
+    if(zoneCtrl->head < 0)
+    {
+        //empty
+        zoneCtrl->head = zoneCtrl->tail = desp->serial_id;
+    }
+    else
+    {
+        //unempty
+        Dscptr* headDesp = GlobalDespArray + zoneCtrl->head;
+        desp->pre = -1;
+        desp->next = zoneCtrl->head;
+        headDesp->pre = desp->serial_id;
+        zoneCtrl->head = desp->serial_id;
+    }
+}
+
+static void
+unloadfromZone(Dscptr* desp, ZoneCtrl* zoneCtrl)
+{
+    if(desp->pre < 0)
+    {
+        zoneCtrl->head = desp->next;
+    }
+    else
+    {
+        GlobalDespArray[desp->pre].next = desp->next;
+    }
+
+    if(desp->next < 0)
+    {
+        zoneCtrl->tail = desp->pre;
+    }
+    else
+    {
+        GlobalDespArray[desp->next].pre = desp->pre;
+    }
+    desp->pre = desp->next = -1;
+}
+
+static void
+move2ArrayHead(Dscptr* desp,ZoneCtrl* zoneCtrl)
+{
+    unloadfromZone(desp, zoneCtrl);
+    add2ArrayHead(desp, zoneCtrl);
+}
+
+static void
+clearDesp(Dscptr* desp)
+{
+    desp->ssd_buf_tag.offset = -1;
+    desp->next = desp->pre = -1;
+    desp->heat = 0;
+    desp->stamp = 0;
+    desp->flag &= ~(SSD_BUF_DIRTY | SSD_BUF_VALID);
+}
+
+/* Decision Method */
+/** \brief
+ *  Quick-Sort method to sort the zones by score.
+    NOTICE!
+        If the gap between variable 'start' and 'end', it will PROBABLY cause call stack OVERFLOW!
+        So this function need to modify for better.
+ */
+static void
+qsort_zone(long start, long end)
+{
+    long		i = start;
+    long		j = end;
+
+    long S = ZoneSortArray[start];
+    ZoneCtrl* curCtrl = ZoneCtrlArray + S;
+    long sWeight = curCtrl->score;
+    while (i < j)
+    {
+        while (!(ZoneCtrlArray[ZoneSortArray[j]].score > sWeight) && i<j)
+        {
+            j--;
+        }
+        ZoneSortArray[i] = ZoneSortArray[j];
+
+        while (!(ZoneCtrlArray[ZoneSortArray[i]].score < sWeight) && i<j)
+        {
+            i++;
+        }
+        ZoneSortArray[j] = ZoneSortArray[i];
+    }
+
+    ZoneSortArray[i] = S;
+    if (i - 1 > start)
+        qsort_zone(start, i - 1);
+    if (j + 1 < end)
+        qsort_zone(j + 1, end);
+}
+
+static long
+extractNonEmptyZoneId()
+{
+    int zoneId = 0, cnt = 0;
+    while(zoneId < NZONES)
+    {
+        ZoneCtrl* zone = ZoneCtrlArray + zoneId;
+        if(zone->pagecnt_dirty+zone->pagecnt_clean > 0)
+        {
+            ZoneSortArray[cnt] = zoneId;
+            cnt++;
+        }
+        zoneId++;
+    }
+    return cnt;
 }
 
 static volatile void
-deleteBand()
+pause_and_caculate_weight_sizedivhot()
 {
-	BandDescForMost	band_hdr_for_most;
-	BandDescForMost	temp;
-
-	band_hdr_for_most = band_descriptors_for_most[0];
-	temp = band_descriptors_for_most[ssd_buffer_strategy_control_for_most->nbands - 1];
-	long		parent = 0;
-	long		child = parent * 2 + 1;
-	while (child < ssd_buffer_strategy_control_for_most->nbands) {
-		if (child < ssd_buffer_strategy_control_for_most->nbands && band_descriptors_for_most[child].current_pages < band_descriptors_for_most[child + 1].current_pages)
-			child++;
-		if (temp.current_pages >= band_descriptors_for_most[child].current_pages)
-			break;
-		else {
-			band_descriptors_for_most[parent] = band_descriptors_for_most[child];
-			long		band_hash = bandtableHashcode(band_descriptors_for_most[child].band_num);
-			bandtableDelete(band_descriptors_for_most[child].band_num, band_hash, &band_hashtable_for_most);
-			bandtableInsert(band_descriptors_for_most[child].band_num, band_hash, parent, &band_hashtable_for_most);
-			parent = child;
-			child = child * 2 + 1;
-		}
-	}
-	band_descriptors_for_most[parent] = temp;
-	band_descriptors_for_most[ssd_buffer_strategy_control_for_most->nbands - 1].band_num = -1;
-	band_descriptors_for_most[ssd_buffer_strategy_control_for_most->nbands - 1].current_pages = 0;
-	band_descriptors_for_most[ssd_buffer_strategy_control_for_most->nbands - 1].first_page = -1;
-	ssd_buffer_strategy_control_for_most->nbands--;
-	long		band_hash = bandtableHashcode(temp.band_num);
-	bandtableDelete(temp.band_num, band_hash, &band_hashtable_for_most);
-	bandtableInsert(temp.band_num, band_hash, parent, &band_hashtable_for_most);
-
-	long		band_num = band_hdr_for_most.band_num;
-	band_hash = bandtableHashcode(band_num);
-	long		band_id = bandtableLookup(band_num, band_hash, band_hashtable_for_most);
-	long		first_page = band_hdr_for_most.first_page;
-
-	SSDBufferTag	old_tag;
-	unsigned char	old_flag;
-	unsigned long	old_hash;
-	SSDBufferDesc  *ssd_buf_hdr;
-
-	while (first_page >= 0) {
-		ssd_buf_hdr = &ssd_buffer_descriptors[first_page];
-
-		ssd_buf_hdr->next_freessd = ssd_buffer_strategy_control->first_freessd;
-		ssd_buffer_strategy_control->first_freessd = first_page;
-		first_page = ssd_buffer_descriptors_for_most[first_page].next_ssd_buf;
-		ssd_buffer_descriptors_for_most[ssd_buffer_strategy_control->first_freessd].next_ssd_buf = -1;
-
-		old_flag = ssd_buf_hdr->ssd_buf_flag;
-		old_tag = ssd_buf_hdr->ssd_buf_tag;
-		if ((old_flag & SSD_BUF_DIRTY) != 0) {
-			flushSSDBuffer(ssd_buf_hdr);
-		}
-		if ((old_flag & SSD_BUF_VALID) != 0) {
-			old_hash = ssdbuftableHashcode(&old_tag);
-			ssdbuftableDelete(&old_tag, old_hash);
-		}
-		ssd_buffer_strategy_control->n_usedssd--;
-	}
-	bandtableDelete(band_num, band_hash, &band_hashtable_for_most);
+    int n = 0;
+    while( n < NZONES )
+    {
+        ZoneCtrl* ctrl = ZoneCtrlArray + n;
+        ctrl->score = ctrl->pagecnt_dirty + ctrl->pagecnt_clean;
+        n++;
+    }
 }
 
-static volatile void
-addToBand(SSDBufferTag ssd_buf_tag, long first_freessd)
+
+static int
+redefineOpenZones()
 {
-	long		band_num = GetSMRBandNumFromSSD(ssd_buf_tag.offset);
-	unsigned long	band_hash = bandtableHashcode(band_num);
-	long		band_id = bandtableLookup(band_num, band_hash, band_hashtable_for_most);
+    pause_and_caculate_weight_sizedivhot(); /**< Method 1 */
+    long nonEmptyZoneCnt = extractNonEmptyZoneId();
+    qsort_zone(0,nonEmptyZoneCnt-1);
 
-	SSDBufferDescForMost *ssd_buf_for_most;
-	BandDescForMost *band_hdr_for_most;
+    /** lookup sort result **/
+//    int i;
+//    for(i = 0; i<100; i++)
+//    {
+//        printf("%d: weight=%ld\t\theat=%ld\t\tndirty=%ld\t\tnclean=%ld\n",
+//               i,
+//               ZoneCtrlArray[ZoneSortArray[i]].weight,
+//               ZoneCtrlArray[ZoneSortArray[i]].heat,
+//               ZoneCtrlArray[ZoneSortArray[i]].pagecnt_dirty,
+//               ZoneCtrlArray[ZoneSortArray[i]].pagecnt_clean);
+//    }
 
-	if (band_id >= 0) {
-		//printf("hit band %ld\n", band_num);
-		long		first_page = band_descriptors_for_most[band_id].first_page;
-		ssd_buf_for_most = &ssd_buffer_descriptors_for_most[first_page];
-		SSDBufferDescForMost *new_ssd_buf_for_most;
-		new_ssd_buf_for_most = &ssd_buffer_descriptors_for_most[first_freessd];
-		new_ssd_buf_for_most->next_ssd_buf = ssd_buf_for_most->next_ssd_buf;
-		ssd_buf_for_most->next_ssd_buf = first_freessd;
-
-		band_descriptors_for_most[band_id].current_pages++;
-		BandDescForMost	temp;
-		long		parent = (band_id - 1) / 2;
-		long		child = band_id;
-		while (parent >= 0 && band_descriptors_for_most[child].current_pages > band_descriptors_for_most[parent].current_pages) {
-			temp = band_descriptors_for_most[child];
-			band_descriptors_for_most[child] = band_descriptors_for_most[parent];
-			band_hash = bandtableHashcode(band_descriptors_for_most[parent].band_num);
-			bandtableDelete(band_descriptors_for_most[parent].band_num, band_hash, &band_hashtable_for_most);
-			bandtableInsert(band_descriptors_for_most[parent].band_num, band_hash, child, &band_hashtable_for_most);
-			band_descriptors_for_most[parent] = temp;
-			band_hash = bandtableHashcode(temp.band_num);
-			bandtableDelete(temp.band_num, band_hash, &band_hashtable_for_most);
-			bandtableInsert(temp.band_num, band_hash, parent, &band_hashtable_for_most);
-			child = parent;
-			parent = (child - 1) / 2;
-		}
-	} else {
-		ssd_buffer_strategy_control_for_most->nbands++;
-		band_descriptors_for_most[ssd_buffer_strategy_control_for_most->nbands - 1].band_num = band_num;
-		band_descriptors_for_most[ssd_buffer_strategy_control_for_most->nbands - 1].current_pages = 1;
-		band_descriptors_for_most[ssd_buffer_strategy_control_for_most->nbands - 1].first_page = first_freessd;
-		bandtableInsert(band_num, band_hash, ssd_buffer_strategy_control_for_most->nbands - 1, &band_hashtable_for_most);
-		SSDBufferDescForMost *new_ssd_buf_for_most;
-		new_ssd_buf_for_most = &ssd_buffer_descriptors_for_most[first_freessd];
-		new_ssd_buf_for_most->next_ssd_buf = -1;
-	}
+    OpenZoneCnt = 1;
+    IsNewPeriod = 1;
+    printf("NonEmptyZoneCnt = %ld.\n",nonEmptyZoneCnt);
+    return 0;
 }
 
-SSDBufferDesc  *
-getMostBuffer(SSDBufferTag ssd_buf_tag)
+static ZoneCtrl*
+getEvictZone()
 {
-	long		i;
-	SSDBufferDesc  *ssd_buffer_hdr;
-	long		first_freessd = ssd_buffer_strategy_control->first_freessd;
-
-	if (first_freessd < 0) {
-		deleteBand();
-		first_freessd = ssd_buffer_strategy_control->first_freessd;
-	}
-	addToBand(ssd_buf_tag, first_freessd);
-	ssd_buffer_hdr = &ssd_buffer_descriptors[first_freessd];
-	ssd_buffer_strategy_control->first_freessd = ssd_buffer_hdr->next_freessd;
-	ssd_buffer_hdr->next_freessd = -1;
-	ssd_buffer_strategy_control->n_usedssd++;
-	return ssd_buffer_hdr;
+    return  ZoneCtrlArray + ZoneSortArray[0];
 }
+
+static long
+stamp(Dscptr* desp)
+{
+    desp->stamp = ++StampGlobal;
+    return StampGlobal;
+}
+

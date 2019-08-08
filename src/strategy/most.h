@@ -1,33 +1,11 @@
-#define DEBUG 0
-/*----------------------------------Most---------------------------------*/
-#include <band_table.h>
+#ifndef _MOST_H_
+#define _MOST_H_
+#include "pore.h"
+#include "../cache.h"
+#include "../global.h"
 
-typedef struct
-{
-	long ssd_buf_id;//ssd buffer location in shared buffer
-	long next_ssd_buf;
-} SSDBufferDescForMost;
-
-typedef struct
-{
-	unsigned long band_num;
-	unsigned long current_pages;
-	unsigned long first_page;
-} BandDescForMost;
-
-typedef struct
-{
-    long        nbands;          // # of cached bands
-} SSDBufferStrategyControlForMost;
-
-extern unsigned long NBANDTables;
-extern unsigned long NSMRBands;
-
-SSDBufferDescForMost *ssd_buffer_descriptors_for_most;
-BandDescForMost *band_descriptors_for_most;
-SSDBufferStrategyControlForMost *ssd_buffer_strategy_control_for_most;
-BandHashBucket *band_hashtable_for_most;
-
-void initSSDBufferForMost();
-SSDBufferDesc *getMostBuffer(SSDBufferTag);
-void hitInMostBuffer();
+extern int Init_most();
+extern int LogIn_most(long despId, SSDBufTag tag, unsigned flag);
+extern int Hit_most(long despId, unsigned flag);
+extern int LogOut_most(long * out_despid_array, int max_n_batch);
+#endif // _PORE_H

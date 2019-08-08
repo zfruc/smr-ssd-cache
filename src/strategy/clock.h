@@ -5,18 +5,18 @@ typedef struct
 {
 	long 		ssd_buf_id;				// ssd buffer location in shared buffer
 	unsigned long	usage_count;
-} SSDBufferDescForClock;
+} SSDBufDespForClock;
 
 typedef struct
 {
 	long		next_victimssd;		// For CLOCK
 } SSDBufferStrategyControlForClock;
 
-SSDBufferDescForClock	*ssd_buffer_descriptors_for_clock;
-SSDBufferStrategyControlForClock *ssd_buffer_strategy_control_for_clock;
+SSDBufDespForClock	*ssd_buf_desps_for_clock;
+SSDBufferStrategyControlForClock *ssd_buf_strategy_ctrl_for_clock;
 
-extern unsigned long flush_fifo_times;
+extern unsigned long flush_times;
 
 extern void initSSDBufferForClock();
-extern SSDBufferDesc *getCLOCKBuffer();
-extern void *hitInCLOCKBuffer(SSDBufferDesc *);
+extern SSDBufDesp *getCLOCKBuffer();
+extern void *hitInCLOCKBuffer(SSDBufDesp *);

@@ -1,24 +1,26 @@
+#ifndef _LRU_GLOBAL_H_
+#define _LRU_GLOBAL_H_
 #define DEBUG 0
+
 /* ---------------------------lru---------------------------- */
 
 typedef struct
 {
-	long 		ssd_buf_id;				// ssd buffer location in shared buffer
-    long        next_lru;               // to link used ssd as LRU
-    long        last_lru;               // to link used ssd as LRU
-} SSDBufferDescForLRU;
+	long 		serial_id;			// the corresponding descriptor serial number.
+    long        next_lru;               // to link used SSD as LRU
+    long        last_lru;               // to link used SSD as LRU
+    pthread_mutex_t lock;
+} StrategyDesp_LRU_global;
 
 typedef struct
 {
     long        first_lru;          // Head of list of LRU
     long        last_lru;           // Tail of list of LRU
-} SSDBufferStrategyControlForLRU;
+    pthread_mutex_t lock;
+} StrategyCtrl_LRU_global;
 
-SSDBufferDescForLRU	*ssd_buffer_descriptors_for_lru;
-SSDBufferStrategyControlForLRU *ssd_buffer_strategy_control_for_lru;
-
-extern unsigned long flush_fifo_times;
-
-extern void initSSDBufferForLRU();
-extern SSDBufferDesc *getLRUBuffer();
-extern void *hitInLRUBuffer(SSDBufferDesc *);
+extern int initSSDBufferForLRU();
+extern long Unload_LRUBuf();
+extern int hitInLRUBuffer(long serial_id);
+extern void *insertLRUBuffer(long serial_id);
+#endif // _LRU_GLOBAL_H_

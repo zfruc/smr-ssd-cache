@@ -11,7 +11,7 @@ typedef struct {
 	long		last_lru;
 	              //to link used ssd as LRU
 	long		next_ssd_buf;
-}		SSDBufferDescForLRUofBand;
+}		SSDBufDespForLRUofBand;
 
 typedef struct {
 	long		first_lru;
@@ -34,14 +34,14 @@ typedef struct {
 }		BandControl;
 
 extern unsigned long NBANDTables;
-extern unsigned long flush_fifo_times;
+extern unsigned long flush_times;
 
-SSDBufferDescForLRUofBand *ssd_buffer_descriptors_for_lruofband;
+SSDBufDespForLRUofBand *ssd_buf_desp_for_lruofband;
 BandDesc       *band_descriptors;
-SSDBufferStrategyControlForLRUofBand *ssd_buffer_strategy_control_for_lruofband;
+SSDBufferStrategyControlForLRUofBand *ssd_buf_strategy_ctrl_lruofband;
 BandControl    *band_control;
 BandHashBucket *band_hashtable_for_lruofband;
 
 void		initSSDBufferForLRUofBand();
-SSDBufferDesc  *getLRUofBandBuffer(SSDBufferTag);
-void           *hinInLRUofBandBuffer(SSDBufferDesc *);
+SSDBufDesp  *getLRUofBandBuffer(SSDBufTag*);
+void           *hinInLRUofBandBuffer(SSDBufDesp *);

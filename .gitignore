@@ -6,6 +6,7 @@
 *.req
 *.out
 *.txt
+*.log
 */smr
 */ssd
 */inner_ssd
@@ -14,3 +15,7 @@
 *.BAK
 *.swp
 *.tmp
+*.bak
+
+# sh file 
+*.sh
