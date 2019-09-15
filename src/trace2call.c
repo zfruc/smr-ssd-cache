@@ -13,6 +13,7 @@
 #include "trace2call.h"
 #include "report.h"
 #include "strategy/strategies.h"
+#include "pipe_method.h"
 
 //#include "/home/fei/git/Func-Utils/pipelib.h"
 #include "hrc.h"
@@ -48,7 +49,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
 
     if(I_AM_HRC_PROC)
     {
-        do_HRC(startLBA);
+	do_HRC(startLBA);
         exit(EXIT_SUCCESS);
     }
 
@@ -94,9 +95,9 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         exit(EXIT_FAILURE);
     }
 
+
     while (!feof(trace) && STT->reqcnt_s < total_n_req) // 84340000
     {
-
         returnCode = fscanf(trace, "%c %d %lu\n", &action, &i, &offset);
         if (returnCode < 0)
         {
@@ -155,8 +156,8 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
             int i;
             for(i = 0; i < HRC_PROCS_N; i++)
             {
-                pipe_write(PipeEnds_of_MAIN[i],pipebuf,64);
-            }
+		pipe_write(PipeEnds_of_MAIN[i],pipebuf,64);
+	    }
             #endif // HRC_PROCS_N
             _TimerLap(&tv_stop_io);
             io_latency = TimerInterval_SECOND(&tv_start_io, &tv_stop_io);
@@ -224,7 +225,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     for(i = 0; i < HRC_PROCS_N; i++)
     {
         sprintf(pipebuf,"EOF\n");
-        pipe_write(PipeEnds_of_MAIN[i],pipebuf,64);
+        pipe_write(PipeEnds_of_MAIN[i],pipebuf,strlen(pipebuf));
     }
     #endif // HRC_PROCS_N
     free(ssd_buffer);
@@ -269,7 +270,6 @@ do_HRC()
             hrc_report();
         }
     }
-
     exit(EXIT_SUCCESS);
 #endif
 }

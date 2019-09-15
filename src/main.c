@@ -116,6 +116,7 @@ main(int argc, char** argv)
         Proportion_Dirty = atof(argv[10]);
 #endif // Proportion_Dirty
 
+	InitSignalHandler();
         //EvictStrategy = PORE_PLUS;
     }
     else
@@ -133,9 +134,9 @@ main(int argc, char** argv)
         if(fpid > 0)
         {   /* MAIN Process*/
             printf("pipefd = %d,%d\n",pipefd[0],pipefd[1]);
-            Fork_Pid = 0;
-            close(pipefd[0]);
-            PipeEnds_of_MAIN[forkcnt] = pipefd[1];
+	    Fork_Pid = 0;
+	    close(pipefd[0]);
+	    PipeEnds_of_MAIN[forkcnt] = pipefd[1];
             forkcnt ++ ;
             continue;
         }
@@ -233,4 +234,5 @@ int initRuntimeInfo()
     STT->n_RMW = 0;
     return 0;
 }
+
 

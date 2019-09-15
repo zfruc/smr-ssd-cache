@@ -4,12 +4,14 @@ ifndef SMR_SSD_CACHE_DIR
 SMR_SSD_CACHE_DIR = .
 endif
 
+HRC_DIR = /tmp
+
 CFLAGS += -Wall -pthread
 CPPFLAGS += -I$(SMR_SSD_CACHE_DIR) -I$(SMR_SSD_CACHE_DIR)/smr-simulator -I$(SMR_SSD_CACHE_DIR)/strategy
 
 RM = rm -rf
 #RMSHM = rm -f /dev/shm/*
-OBJS = global.o report.o timerUtils.o shmlib.o hashtable_utils.o cache.o trace2call.o daemon.o main.o costmodel.o pore_plus.o losertree4pore.o paul.o most.o most_rw.o lru_rw.o lru_private.o band_table.o smr-simulator.o inner_ssd_buf_table.o simulator_logfifo.o  simulator_v2.o
+OBJS = global.o report.o timerUtils.o shmlib.o hashtable_utils.o cache.o trace2call.o pipe_method.o daemon.o main.o costmodel.o pore_plus.o hrc.o losertree4pore.o paul.o most.o most_rw.o lru_rw.o lru_private.o band_table.o smr-simulator.o inner_ssd_buf_table.o simulator_logfifo.o  simulator_v2.o
 
 
 all: $(OBJS) smr-ssd-cache
@@ -105,4 +107,5 @@ simulator_v2.o: smr-simulator/simulator_v2.c
 clean:
 	$(RM) *.o
 	$(RM) $(SMR_SSD_CACHE_DIR)/smr-ssd-cache
+        $(RM) $(HRC_DIR)/hrc_*
 #	$(RMSHM)

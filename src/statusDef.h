@@ -34,6 +34,6 @@
 #undef R3BALANCER_ON
 
 /* Future Features */
-#undef HRC_PROCS_N 10
+#define HRC_PROCS_N 5
 #undef CG_THROTTLE     // CGroup throttle.
 #undef MULTIUSER
