@@ -107,5 +107,5 @@ simulator_v2.o: smr-simulator/simulator_v2.c
 clean:
 	$(RM) *.o
 	$(RM) $(SMR_SSD_CACHE_DIR)/smr-ssd-cache
-        $(RM) $(HRC_DIR)/hrc_*
+	$(RM) $(HRC_DIR)/hrc_*
 #	$(RMSHM)
