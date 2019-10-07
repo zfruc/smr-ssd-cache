@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <memory.h>
 #include <unistd.h>
+#include <sys/time.h>
+#include <signal.h>
 
 #include "trace2call.h"
 #include "timerUtils.h"
@@ -35,6 +37,8 @@ static int          initStrategySSDBuffer();
 static long         Strategy_Desp_LogOut();
 static int          Strategy_Desp_HitIn(SSDBufDesp* desp);
 static int         Strategy_Desp_LogIn(SSDBufDesp* desp);
+static int         set_ResizeCacheSize_timer();
+static int 	   AdjustCacheUsage();
 //#define isSamebuf(SSDBufTag tag1, SSDBufTag tag2) (tag1 == tag2)
 #define CopySSDBufTag(objectTag,sourceTag) (objectTag = sourceTag)
 #define IsDirty(flag) ( (flag & SSD_BUF_DIRTY) != 0 )
@@ -74,12 +78,16 @@ CacheLayer_Init()
     int r_initbuftb         =   HashTab_Init();
     int r_initstt           =   init_StatisticObj();
     int r_initTSwitcher     =   CM_Init();
+    if(!I_AM_HRC_PROC){
+        int r_initSetTimer      =   set_ResizeCacheSize_timer();
+    printf("---------------------timer was registered-----------------\n");
+    }
 
     printf("init_Strategy: %d, init_table: %d, init_desp: %d, inti_Stt: %d, init_TSwitcher: %d\n",
            r_initstrategybuf, r_initbuftb, r_initdesp, r_initstt, r_initTSwitcher);
 
-    if(r_initdesp==-1 || r_initstrategybuf==-1 || r_initbuftb==-1 || r_initstt==-1 || r_initTSwitcher == -1)
-        exit(EXIT_FAILURE);
+//    if(r_initdesp==-1 || r_initstrategybuf==-1 || r_initbuftb==-1 || r_initstt==-1 || r_initTSwitcher == -1)
+//        exit(EXIT_FAILURE);
 
     int returnCode = posix_memalign(&ssd_buffer, 512, sizeof(char) * BLKSZ);
     if (returnCode < 0)
@@ -102,7 +110,8 @@ init_SSDDescriptorBuffer()
     {
         ssd_buf_desp_ctrl = (SSDBufDespCtrl*)multi_SHM_alloc(SHM_SSDBUF_DESP_CTRL,sizeof(SSDBufDespCtrl));
         ssd_buf_desps = (SSDBufDesp *)multi_SHM_alloc(SHM_SSDBUF_DESPS,sizeof(SSDBufDesp) * NBLOCK_SSD_CACHE);
-
+        //printf("%ld,%ld\n",ssd_buf_desps,sizeof(SSDBufDesp));
+       // getchar();
         ssd_buf_desp_ctrl->n_usedssd = 0;
         ssd_buf_desp_ctrl->first_freessd = 0;
         multi_SHM_mutex_init(&ssd_buf_desp_ctrl->lock);
@@ -188,6 +197,127 @@ flushSSDBuffer(SSDBufDesp * ssd_buf_hdr)
     _Log(log, log_lat_pb);
 }
 
+int AdjustCacheUsage()
+{
+    printf("--------------------------------------------------------now adjust was triggered-------------.\n");
+    char user_cachefile[20];
+    sprintf(user_cachefile,"/tmp/cachesize_user_%d",UserId);
+    FILE  *fp = fopen(user_cachefile,"r");
+    if(!fp)
+    {
+        printf("[user_cachefile] %s not exist.\n",user_cachefile);
+        exit(-1);
+    }
+    int u_id;
+    long user_max_cachesize;
+
+    fscanf(fp,"%d %ld",&u_id,&user_max_cachesize);
+    fclose(fp);
+
+    if(u_id != UserId)
+    {
+        printf("user_cachefile read error.u_id != UserId.\n");
+        exit(-1);
+    }
+    STT->cacheLimit = user_max_cachesize;
+    if(STT->cacheLimit > STT->cacheUsage)
+        return 0;
+
+    blksize_t needEvictCnt = STT->cacheUsage - STT->cacheLimit;
+    printf("STT->cacheUsage = %lu, STT->cacheLimit = %lu, needEvictCnt = %lu.\n",STT->cacheUsage, STT->cacheLimit, needEvictCnt);
+
+    blksize_t hasEvicted = 0;
+    while(hasEvicted < needEvictCnt)
+    {
+        SSDBufDesp      *ssd_buf_hdr;
+        enum_t_vict suggest_type = ENUM_B_Any;
+        if(STT->incache_n_clean == 0)
+            suggest_type = ENUM_B_Dirty;
+        else if(STT->incache_n_dirty == 0)
+            suggest_type = ENUM_B_Clean;
+
+        static int max_n_batch = 1024;
+        long buf_despid_array[max_n_batch];
+        int n_evict;
+
+        switch (EvictStrategy)
+        {
+            case PAUL :
+                n_evict = LogOut_PAUL(buf_despid_array, max_n_batch, suggest_type);
+                break;
+            case MOST :
+                n_evict = LogOut_most(buf_despid_array, max_n_batch);
+                break;
+            case MOST_RW :
+                n_evict = LogOut_most_rw(buf_despid_array,max_n_batch,suggest_type);
+                break;
+            case LRU_private:
+                n_evict = Unload_Buf_LRU_private(buf_despid_array, max_n_batch);
+                printf("%d should be evicted.\n",n_evict); 
+                break;
+            case LRU_rw:
+                n_evict = Unload_Buf_LRU_rw(buf_despid_array, max_n_batch,suggest_type);
+                break;
+            default:
+                usr_warning("Current cache algorithm dose not support batched process.");
+                exit(EXIT_FAILURE);
+        }
+
+        int k = 0;
+        while(k < n_evict)
+        {
+
+            long out_despId = buf_despid_array[k];
+            ssd_buf_hdr = &ssd_buf_desps[out_despId];
+
+            _LOCK(&ssd_buf_hdr->lock);
+            // Clear Hashtable item.
+            SSDBufTag oldtag = ssd_buf_hdr->ssd_buf_tag;
+            unsigned long hash = HashTab_GetHashCode(oldtag);
+            HashTab_Delete(oldtag,hash);
+           
+            // TODO Flush
+            flushSSDBuffer(ssd_buf_hdr);
+
+            IsDirty(ssd_buf_hdr->ssd_buf_flag) ? STT->incache_n_dirty -- : STT->incache_n_clean -- ;
+            ssd_buf_hdr->ssd_buf_flag &= ~(SSD_BUF_VALID | SSD_BUF_DIRTY);
+            // Push back to free list
+            push_freebuf(ssd_buf_hdr);
+     //       printf("push a new ssd_buf to pool. Now STT->cacheUsage = %lu.\n",STT->cacheUsage);
+       //     _UNLOCK(&ssd_buf_hdr->lock);
+            k++;
+        }
+        hasEvicted+=k;
+     }
+     printf("----------------------------------------------------------");
+
+}
+
+int set_ResizeCacheSize_timer()
+{
+    struct sigaction sa;
+    struct itimerval timer;
+
+    /* Install timer_handler as the signal handler for SIGVTALRM. */
+    memset(&sa, 0, sizeof (sa));
+    sa.sa_handler = &AdjustCacheUsage;
+    sigaction (SIGVTALRM, &sa, NULL);
+
+    /* Configure the timer to expire after 100 msec... */
+    timer.it_value.tv_sec = 0;
+    timer.it_value.tv_usec = 1; // first triggered after 20 seconds
+    /* ... and every 100 msec after that. */
+    timer.it_interval.tv_sec = 0;
+    timer.it_interval.tv_usec = 10000; //trigger interval is 20 seconds
+    /* Start a virtual timer. It counts down whenever this process is
+    executing. */
+
+    setitimer (ITIMER_VIRTUAL, &timer, NULL);
+    printf("settimer done.\n----------------");
+}
+
+
+
 int ResizeCacheUsage()
 {
     blksize_t needEvictCnt = STT->cacheUsage - STT->cacheLimit;
@@ -217,6 +347,7 @@ int ResizeCacheUsage()
 
 static void flagOp(SSDBufDesp * ssd_buf_hdr, int opType)
 {
+//    printf("ssd_buf_hdr addr = %ld.Am I a HRCPROC? %d\n",ssd_buf_hdr,I_AM_HRC_PROC);
     ssd_buf_hdr->ssd_buf_flag |= SSD_BUF_VALID;
     if(opType)
     {
@@ -373,9 +504,17 @@ FLAG_CACHEOUT:
             ssd_buf_hdr->ssd_buf_flag &= ~(SSD_BUF_VALID | SSD_BUF_DIRTY);
             // Push back to free list
             push_freebuf(ssd_buf_hdr);
+        //    _UNLOCK(&ssd_buf_hdr->lock);
             k++;
         }
         ssd_buf_hdr = pop_freebuf();
+        if(ssd_buf_hdr!=NULL)
+            _LOCK(&ssd_buf_hdr->lock);
+        else
+        {
+            printf("alloc ssd occurs an error.\n");
+            exit(-1);
+        }
 //
 //#else
 ///* NO Longer support to evict only one blocks per time. */
@@ -495,7 +634,7 @@ Strategy_Desp_HitIn(SSDBufDesp* desp)
 static int
 Strategy_Desp_LogIn(SSDBufDesp* desp)
 {
-    STT->cacheUsage++;
+//    STT->cacheUsage++;
     switch(EvictStrategy)
     {
 //        case LRU_global:        return insertLRUBuffer(serial_id);
@@ -720,12 +859,14 @@ static int dev_simu_read(void* buf,size_t nbytes,off_t offset)
 static SSDBufDesp*
 pop_freebuf()
 {
-    if(ssd_buf_desp_ctrl->first_freessd < 0)
+//    if(ssd_buf_desp_ctrl->first_freessd < 0)
+    if(ssd_buf_desp_ctrl->first_freessd < 0 || STT->cacheUsage >= STT->cacheLimit)
         return NULL;
     SSDBufDesp* ssd_buf_hdr = &ssd_buf_desps[ssd_buf_desp_ctrl->first_freessd];
     ssd_buf_desp_ctrl->first_freessd = ssd_buf_hdr->next_freessd;
     ssd_buf_hdr->next_freessd = -1;
     ssd_buf_desp_ctrl->n_usedssd++;
+    STT->cacheUsage++;
     return ssd_buf_hdr;
 }
 static int
@@ -733,6 +874,7 @@ push_freebuf(SSDBufDesp* freeDesp)
 {
     freeDesp->next_freessd = ssd_buf_desp_ctrl->first_freessd;
     ssd_buf_desp_ctrl->first_freessd = freeDesp->serial_id;
+    STT->cacheUsage--;
     return ssd_buf_desp_ctrl->first_freessd;
 }
 

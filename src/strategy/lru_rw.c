@@ -37,6 +37,7 @@ initSSDBufferFor_LRU_rw()
     {
         strategy_desp = (StrategyDesp_LRU_private *)multi_SHM_alloc(SHM_SSDBUF_STRATEGY_DESP, sizeof(StrategyDesp_LRU_private) * NBLOCK_SSD_CACHE);
 
+        printf("now I get the init of LOCK_SSDBUF_STRATEGY_LRU.\n");
         StrategyDesp_LRU_private *ssd_buf_hdr_for_lru = strategy_desp;
         long i;
         for (i = 0; i < NBLOCK_SSD_CACHE; ssd_buf_hdr_for_lru++, i++)
@@ -52,6 +53,7 @@ initSSDBufferFor_LRU_rw()
         strategy_desp = (StrategyDesp_LRU_private *)multi_SHM_get(SHM_SSDBUF_STRATEGY_DESP, sizeof(StrategyDesp_LRU_private) * NBLOCK_SSD_CACHE);
     }
     multi_SHM_unlock("LOCK_SSDBUF_STRATEGY_LRU");
+    printf("now I release shm lock LOCK_SSDBUF_STRATEGY_LRU.\n");
 
     lru_dirty_ctrl.first_self_lru = lru_clean_ctrl.first_self_lru = -1;
     lru_dirty_ctrl.last_self_lru = lru_clean_ctrl.last_self_lru = -1;

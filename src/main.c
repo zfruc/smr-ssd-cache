@@ -21,6 +21,7 @@
 #include "trace2call.h"
 #include "daemon.h"
 #include "timerUtils.h"
+#include "pipe_method.h"
 //#include "/home/fei/git/Func-Utils/pipelib.h"
 
 //static char str_program_config[];
@@ -197,7 +198,7 @@ main(int argc, char** argv)
 //    }
 //#endif // DAEMON
 
-
+    printf("now we start trace_to_iocall.\n");
     trace_to_iocall(tracefile[TraceId],WriteOnly,StartLBA);
 
 #ifdef SIMULATION

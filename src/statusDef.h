@@ -3,7 +3,7 @@
  * All the switch is turn-off by default.
  */
 /** configure of system structure **/
-#undef NO_REAL_DISK_IO
+#define NO_REAL_DISK_IO
 
 #undef NO_CACHE
 
@@ -34,6 +34,6 @@
 #undef R3BALANCER_ON
 
 /* Future Features */
-#undef HRC_PROCS_N 10
+#define HRC_PROCS_N 10
 #undef CG_THROTTLE     // CGroup throttle.
-#undef MULTIUSER
+#undef  MULTIUSER

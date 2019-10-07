@@ -149,8 +149,8 @@ int SHM_lock(char* lockname)
 
 int SHM_lock_n_check(char* lockname)
 {
-    int n = 0;
-    while(shm_open(lockname,O_CREAT|O_EXCL,0644)<0)
+    int n = 0,ret=0;
+    while(ret=shm_open(lockname,O_CREAT|O_EXCL,0644)<0)
     {
         char msg[50];
         sprintf(msg,"trying lock '%s': %d times",lockname,++n);
@@ -158,11 +158,17 @@ int SHM_lock_n_check(char* lockname)
         sleep(1);
     }
 
+    printf("the ret of shm_open is %d, lockname = %s.\n",ret,lockname);
     char lock[50];
+
     char chk[50];
+
     sprintf(lock,"/dev/shm/%s",lockname);
+
     sprintf(chk,"/dev/shm/%s_chk",lockname);
+
     int l = link(lock,chk);
+
     return l;
 }
 

@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include "hrc.h"
 extern int Fork_Pid;
+extern int UserId;
 char hrc_report_dir[] = "/tmp";
 
 void hrc_usr_warning(const char* str)
@@ -28,7 +29,7 @@ void hrc_report()
     posix_memalign(&str,512,512);
 
     char path[64];
-    sprintf(path,"%s/hrc_%d",hrc_report_dir,Fork_Pid);
+    sprintf(path,"%s/hrc_user%d_%d",hrc_report_dir,UserId,Fork_Pid);
     int file = open(path, O_CREAT | O_RDWR | O_DIRECT);
     int hitratio = (int)((float)STT->hitnum_s / STT->reqcnt_s * 100);
 

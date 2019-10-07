@@ -40,6 +40,9 @@ char log_lat_pb_path[] = "/home/fei/devel/logs/lat_flushsmr.log";
 void
 trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
 {
+//    if(!I_AM_HRC_PROC)
+  //      printf("--------------------------------------------------------\n");
+
     log_lat = fopen(log_lat_path, "w+");
     log_lat_pb = fopen(log_lat_pb_path, "w+");
 
@@ -94,10 +97,13 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         exit(EXIT_FAILURE);
     }
 
+    //printf("tracefile open successfully.\n");
+    int loooping=0;
     while (!feof(trace) && STT->reqcnt_s < total_n_req) // 84340000
     {
-
+      //  printf("-----------------now loooping = %d.---------\n",++loooping);
         returnCode = fscanf(trace, "%c %d %lu\n", &action, &i, &offset);
+        //printf("read from file success.\n");
         if (returnCode < 0)
         {
             usr_warning("error while reading trace file.");
@@ -137,9 +143,10 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         _TimerLap(&tv_req_start);
 #endif // TIMER_SINGLE_REQ
         _TimerLap(&tv_start_io);
-        sprintf(pipebuf,"%c,%lu\n",action,offset);
+        sprintf(pipebuf,"%c,%lu\n",action,offset); 
         if (action == ACT_WRITE) // Write = 1
         {
+           // printf("branch 1.\n");
             STT->reqcnt_w ++;
             STT->reqcnt_s ++;
         //For simulate ten processes running
@@ -151,12 +158,15 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
 //                offset += (i * 20000000 * BLKSZ);
             write_block(offset, ssd_buffer);
 //            }
+            //printf("next pipe_write with HRCPROC.\n");
             #ifdef HRC_PROCS_N
             int i;
             for(i = 0; i < HRC_PROCS_N; i++)
             {
-                pipe_write(PipeEnds_of_MAIN[i],pipebuf,64);
+                int tmp = pipe_write(PipeEnds_of_MAIN[i],pipebuf,64);
+                //printf("%d.\n",tmp);
             }
+            //printf("pipe_write end.\n");
             #endif // HRC_PROCS_N
             _TimerLap(&tv_stop_io);
             io_latency = TimerInterval_SECOND(&tv_start_io, &tv_stop_io);
@@ -167,6 +177,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         }
         else if (!isWriteOnly && action == ACT_READ)    // read = 9
         {
+           // printf("branch 2.\n");
             STT->reqcnt_r ++;
             STT->reqcnt_s ++;
 //            int i = 0;
@@ -191,6 +202,7 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
         }
         else if (action != ACT_READ)
         {
+   //         printf("branch 3.\n");
             printf("Trace file gets a wrong result: action = %c.\n",action);
             exit(-1);
         }
@@ -303,8 +315,8 @@ static void report_ontime()
 
 //     printf("totalreq:%lu, readreq:%lu, hit:%lu, readhit:%lu, flush_ssd_blk:%lu flush_hdd_blk:%lu, hashmiss:%lu, readhassmiss:%lu writehassmiss:%lu\n",
 //           STT->reqcnt_s,STT->reqcnt_r, STT->hitnum_s, STT->hitnum_r, STT->flush_ssd_blocks, STT->flush_hdd_blocks, STT->hashmiss_sum, STT->hashmiss_read, STT->hashmiss_write);
-        printf("totalreq:%lu, readreq:%lu, wrtreq:%lu, hit:%lu, readhit:%lu, flush_ssd_blk:%lu flush_dirty_blk:%lu\n",
-           STT->reqcnt_s, STT->reqcnt_r, STT->reqcnt_w, STT->hitnum_s, STT->hitnum_r, STT->flush_ssd_blocks, STT->flush_hdd_blocks);
+        printf("totalreq:%lu, readreq:%lu, wrtreq:%lu, hit:%lu, readhit:%lu, flush_ssd_blk:%lu flush_dirty_blk:%lu, cacheUsage = %lu, cacheLimit = %lu\n",
+           STT->reqcnt_s, STT->reqcnt_r, STT->reqcnt_w, STT->hitnum_s, STT->hitnum_r, STT->flush_ssd_blocks, STT->flush_hdd_blocks, STT->cacheUsage, STT->cacheLimit);
         _TimerLap(&tv_trace_end);
         int timecost = Mirco2Sec(TimerInterval_MICRO(&tv_trace_start,&tv_trace_end));
         printf("current run time: %d\n",timecost);
