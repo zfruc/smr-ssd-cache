@@ -118,13 +118,30 @@ extern char smr_device[];
 extern char ssd_device[];
 extern char ram_device[1024];
 
+extern char smr_device2[];
+extern char smr_device3[];
+extern unsigned int DISKNUMS;
+
+extern off_t MaxLBA[];
+
 extern int BandOrBlock;
 
 /*Block = 0, Band=1*/
 extern int hdd_fd;
 extern int ssd_fd;
 extern int ram_fd;
+
+
+extern int hdd_fd2;
+extern int hdd_fd3;
+
+
 extern struct RuntimeSTAT* STT;
+
+extern unsigned int data_split;
+extern int hrc_sample_range;
+
+extern char device_monitored[20];
 
 /** Shared memory variable names **/
 extern char* SHM_SSDBUF_STRATEGY_CTRL;
@@ -142,6 +159,9 @@ extern char* PATH_LOG;
 
 /** Pipes for HRC processes **/
 extern int PipeEnds_of_MAIN[];
+extern int PipeEnds_of_disk1[];
+extern int PipeEnds_of_disk2[];
+extern int PipeEnds_of_disk3[];
 extern int PipeEnd_of_HRC;
 extern pid_t Fork_Pid; /* Default 0. If is a HRC process, this must be large than 0 */
 #define I_AM_HRC_PROC Fork_Pid

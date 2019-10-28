@@ -5,6 +5,7 @@
 
 #define ACT_READ '0'
 #define ACT_WRITE '1'
+#define ACT_ADJUST 'A'
 
 //#define _CG_LIMIT 1
 

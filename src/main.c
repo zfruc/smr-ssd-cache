@@ -49,18 +49,18 @@ void ramdisk_iotest()
     }
 }
 //
-char* tracefile[] = {"/home/fei/traces/src1_2.csv.req",
-                     "/home/fei/traces/wdev_0.csv.req",
-                     "/home/fei/traces/hm_0.csv.req",
-                     "/home/fei/traces/mds_0.csv.req",
-                     "/home/fei/traces/prn_0.csv.req",       //1 1 4 0 0 106230 5242880 0
-                     "/home/fei/traces/rsrch_0.csv.req",
-                     "/home/fei/traces/stg_0.csv.req",
-                     "/home/fei/traces/ts_0.csv.req",
-                     "/home/fei/traces/usr_0.csv.req",
-                     "/home/fei/traces/web_0.csv.req",
-                     "/home/fei/traces/production-LiveMap-Backend-4K.req", // --> not in used.
-                     "/home/fei/traces/long.req"  // default set: cache size = 8M*blksize; persistent buffer size = 1.6M*blksize.
+char* tracefile[] = {"/home/gyd/traces/src1_2.csv.req",
+                     "/home/gyd/traces/wdev_0.csv.req",
+                     "/home/gyd/traces/hm_0.csv.req",
+                     "/home/gyd/traces/mds_0.csv.req",
+                     "/home/gyd/traces/prn_0.csv.req",       //1 1 4 0 0 106230 5242880 0
+                     "/home/gyd/traces/rsrch_0.csv.req",
+                     "/home/gyd/traces/stg_0.csv.req",
+                     "/home/gyd/traces/ts_0.csv.req",
+                     "/home/gyd/traces/usr_0.csv.req",
+                     "/home/gyd/traces/web_0.csv.req",
+                     "/home/gyd/traces/production-LiveMap-Backend-4K.req", // --> not in used.
+                     "/home/gyd/traces/long.req"  // default set: cache size = 8M*blksize; persistent buffer size = 1.6M*blksize.
                      //"/home/fei/traces/merged_trace_x1.req.csv"
                     };
 
@@ -117,6 +117,8 @@ main(int argc, char** argv)
 #endif // Proportion_Dirty
 
         //EvictStrategy = PORE_PLUS;
+
+        data_split = MaxLBA[TraceId]/DISKNUMS;
     }
     else
     {
@@ -126,7 +128,7 @@ main(int argc, char** argv)
 
 #ifdef HRC_PROCS_N
     int forkcnt = 0;
-    while(forkcnt < HRC_PROCS_N)
+    while(forkcnt < HRC_PROCS_N * (DISKNUMS+1))
     {
         int pipefd[2];
         int fpid = fork_pipe_create(pipefd);
@@ -135,7 +137,14 @@ main(int argc, char** argv)
             printf("pipefd = %d,%d\n",pipefd[0],pipefd[1]);
             Fork_Pid = 0;
             close(pipefd[0]);
-            PipeEnds_of_MAIN[forkcnt] = pipefd[1];
+            if (forkcnt < HRC_PROCS_N)
+                PipeEnds_of_MAIN[forkcnt] = pipefd[1];
+            else if (forkcnt >= HRC_PROCS_N && forkcnt < 2*HRC_PROCS_N)
+                PipeEnds_of_disk1[forkcnt-HRC_PROCS_N] = pipefd[1];
+            else if (forkcnt >= 2*HRC_PROCS_N && forkcnt < 3*HRC_PROCS_N)
+                PipeEnds_of_disk2[forkcnt-2*HRC_PROCS_N] = pipefd[1];
+            else if (forkcnt >= 3*HRC_PROCS_N)
+                PipeEnds_of_disk3[forkcnt-3*HRC_PROCS_N] = pipefd[1];
             forkcnt ++ ;
             continue;
         }
@@ -144,6 +153,14 @@ main(int argc, char** argv)
             Fork_Pid = forkcnt + 1;
             close(pipefd[1]);
             PipeEnd_of_HRC = pipefd[0];
+            if(Fork_Pid <= HRC_PROCS_N)
+                strcpy(device_monitored,"all");
+            else if(Fork_Pid > HRC_PROCS_N && Fork_Pid <= HRC_PROCS_N * 2)
+                strcpy(device_monitored,"device1");
+            else if(Fork_Pid > HRC_PROCS_N*2 && Fork_Pid <= HRC_PROCS_N * 3)
+                strcpy(device_monitored,"device2");
+            else if(Fork_Pid > HRC_PROCS_N*3)
+                strcpy(device_monitored,"device3");
             break;
         }
         else
@@ -165,6 +182,12 @@ main(int argc, char** argv)
         hdd_fd = open(smr_device, O_RDWR | O_DIRECT);
         printf("Device ID: hdd=%d, ssd=%d\n",hdd_fd,ssd_fd);
         #else
+
+        if(DISKNUMS>1)
+        {
+            hdd_fd2 = open(ssd_device2, O_RDWR | O_DIRECT);
+            hdd_fd3 = open(ssd_device3, O_RDWR | O_DIRECT);
+        }
         /* Emulator */
         fd_fifo_part = open(simu_smr_fifo_device, O_RDWR | O_DIRECT);
         fd_smr_part = open(simu_smr_smr_device, O_RDWR | O_DIRECT | O_FSYNC);
@@ -177,7 +200,8 @@ main(int argc, char** argv)
     else
     {   /* If this is a HRC process */
         #ifdef HRC_PROCS_N
-        NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = NBLOCK_MAX_CACHE_SIZE / HRC_PROCS_N * Fork_Pid;
+        /* Range from (NBLOCK_SSD_CACHE - hrc_sample_range) to (NBLOCK_SSD_CACHE + hrc_sample_range) */
+        NBLOCK_SSD_CACHE = NTABLE_SSD_CACHE = (NBLOCK_SSD_CACHE - hrc_sample_range) + ( hrc_sample_range / HRC_PROCS_N * Fork_Pid);
         #endif // HRC_PROCS_N
     }
 
@@ -206,6 +230,8 @@ main(int argc, char** argv)
     CloseSMREmu();
 #endif
     close(hdd_fd);
+    close(hdd_fd2);
+    close(hdd_fd3);
     close(ssd_fd);
     ReportCM();
     wait(NULL);

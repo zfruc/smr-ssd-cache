@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <signal.h>
+#include <errno.h>
 
 #include "trace2call.h"
 #include "timerUtils.h"
@@ -182,7 +183,13 @@ flushSSDBuffer(SSDBufDesp * ssd_buf_hdr)
 #ifdef SIMULATION
     dev_simu_write(ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_tag.offset);
 #else
-    dev_pwrite(hdd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_tag.offset);
+    off_t offset = ssd_buf_hdr->ssd_buf_tag.offset;
+    if((offset/data_split)%DISKNUMS == 0)
+        dev_pwrite(hdd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_tag.offset);
+    else if((offset/data_split)%DISKNUMS == 1)
+        dev_pwrite(hdd_fd2, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_tag.offset);
+    else if((offset/data_split)%DISKNUMS == 1)
+        dev_pwrite(hdd_fd3, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_tag.offset);
 #endif
     msec_w_hdd = TimerInterval_MICRO(&tv_start,&tv_stop);
     STT->time_write_hdd += Mirco2Sec(msec_w_hdd);
@@ -203,6 +210,8 @@ int AdjustCacheUsage()
     char user_cachefile[20];
     sprintf(user_cachefile,"/tmp/cachesize_user_%d",UserId);
     FILE  *fp = fopen(user_cachefile,"r");
+    char        pipebuf[128];
+
     if(!fp)
     {
         printf("[user_cachefile] %s not exist.\n",user_cachefile);
@@ -214,6 +223,47 @@ int AdjustCacheUsage()
     fscanf(fp,"%d %ld",&u_id,&user_max_cachesize);
     fclose(fp);
 
+
+    AdjustCacheUsage_Manual(u_id, user_max_cachesize);
+
+
+    #ifdef HRC_PROCS_N
+    int i,j;
+    unsigned long new_cachesize;
+    for(i = 0; i < HRC_PROCS_N; i++)
+    {
+        new_cachesize = (user_max_cachesize - hrc_sample_range) + (2* hrc_sample_range / HRC_PROCS_N * PipeEnds_of_MAIN[i]);
+        sprintf(pipebuf,"%c,%lu\n",'A',new_cachesize);
+        int tmp = pipe_write(PipeEnds_of_MAIN[i],pipebuf,64);
+        //printf("%d.\n",tmp);
+    }
+    for(i = 0; i < HRC_PROCS_N; i++)
+    {
+        new_cachesize = (user_max_cachesize - hrc_sample_range) + (2* hrc_sample_range / HRC_PROCS_N * PipeEnds_of_MAIN[i]);
+        sprintf(pipebuf,"%c,%lu\n",'A',new_cachesize);
+        int tmp = pipe_write(PipeEnds_of_MAIN[i],pipebuf,64);
+        //printf("%d.\n",tmp);
+    }
+    // for(j = 1; j <= DISKNUMS ; j++)
+        for(i = 0; i < HRC_PROCS_N; i++)
+        {
+            new_cachesize = (user_max_cachesize/DISKNUMS - hrc_sample_range) + (2* hrc_sample_range / HRC_PROCS_N * PipeEnds_of_MAIN[i]);
+            sprintf(pipebuf,"%c,%lu\n",ACT_ADJUST,new_cachesize);
+            // if(j == 1)
+                pipe_write(PipeEnds_of_disk1[i],pipebuf,64);
+            // else if(j == 2)
+                pipe_write(PipeEnds_of_disk2[i],pipebuf,64);
+            // else if(j == 3)
+                pipe_write(PipeEnds_of_disk3[i],pipebuf,64);
+            //printf("%d.\n",tmp);
+        }
+    //printf("pipe_write end.\n");
+    #endif // HRC_PROCS_N 
+
+}
+
+
+int AdjustCacheUsage_Manual(int u_id, long user_max_cachesize){
     if(u_id != UserId)
     {
         printf("user_cachefile read error.u_id != UserId.\n");
@@ -825,7 +875,7 @@ static int dev_pwrite(int fd, void* buf,size_t nbytes,off_t offset)
     _TimerLap(&tv_stop);
     if (w < 0)
     {
-        printf("[ERROR] read():-------write to device: fd=%d, errorcode=%d, offset=%lu\n", fd, w, offset);
+        printf("[ERROR] read():-------write to device: fd=%d, errorcode=%d, %s,offset=%lu\n", fd, w, strerror(errno),offset);
         exit(-1);
     }
     return w;

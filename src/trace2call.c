@@ -34,8 +34,8 @@ extern microsecond_t    msec_r_hdd,msec_w_hdd,msec_r_ssd,msec_w_ssd;
 extern int IsHit;
 char logbuf[512];
 FILE *log_lat, *log_lat_pb;
-char log_lat_path[] = "/home/fei/devel/logs/iolat.log";
-char log_lat_pb_path[] = "/home/fei/devel/logs/lat_flushsmr.log";
+char log_lat_path[] = "/home/gyd/logs/iolat.log";
+char log_lat_pb_path[] = "/home/gyd/logs/lat_flushsmr.log";
 
 void
 trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
@@ -187,10 +187,20 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
                 read_block(offset,ssd_buffer);
 //            }
             #ifdef HRC_PROCS_N
-            int i;
+            int i,j;
             for(i = 0; i < HRC_PROCS_N; i++)
             {
                 pipe_write(PipeEnds_of_MAIN[i],pipebuf,64);
+                int disk_num = (offset/data_split)%DISKNUMS;
+                if(disk_num == 0){
+                    pipe_write(PipeEnds_of_disk1[i],pipebuf,64);
+                }
+                else if (disk_num == 1){
+                    pipe_write(PipeEnds_of_disk2[i],pipebuf,64);
+                }
+                else if (disk_num == 2){
+                    pipe_write(PipeEnds_of_disk3[i],pipebuf,64);
+                }
             }
             #endif // HRC_PROCS_N
             _TimerLap(&tv_stop_io);
@@ -274,6 +284,10 @@ do_HRC()
             STT->reqcnt_r ++;
             STT->reqcnt_s ++;
             read_block(offset,NULL);
+        }
+        else if (action == ACT_ADJUST)
+        {
+            AdjustCacheUsage_Manual(UserId, offset);
         }
 
         if(STT->reqcnt_s % 10000== 0)

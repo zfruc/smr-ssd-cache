@@ -75,6 +75,7 @@ extern void read_band(off_t offset, char* ssd_buffer);
 extern void write_band(off_t offset, char* ssd_buffer);
 //extern bool isSamebuf(SSDBufTag *, SSDBufTag *);
 extern int ResizeCacheUsage();
+extern int AdjustCacheUsage_Manual(int u_id, long user_max_cachesize);
 extern void CopySSDBufTag(SSDBufTag* objectTag, SSDBufTag* sourceTag);
 
 extern void _LOCK(pthread_mutex_t* lock);

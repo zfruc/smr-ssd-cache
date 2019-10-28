@@ -3,7 +3,7 @@
  * All the switch is turn-off by default.
  */
 /** configure of system structure **/
-#define NO_REAL_DISK_IO
+#undef NO_REAL_DISK_IO
 
 #undef NO_CACHE
 

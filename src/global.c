@@ -30,9 +30,15 @@ blksize_t ZONESZ = 5000 * 4096;//20MB    // Unit: Byte.
 
 char simu_smr_fifo_device[] = "/mnt/smr/pb";
 char simu_smr_smr_device[] = "/mnt/smr/smr";
-char smr_device[] = "/mnt/smr/smr-rawdisk"; // /dev/sdc";
-char ssd_device[] = "/mnt/ssd/ssd";//"/mnt/ramdisk/ramdisk";//"/dev/memdiska";// "/mnt/ssd/ssd";
+
+char smr_device[] = "/home/gyd/hdd"; // /dev/sdc";"/mnt/smr/smr-rawdisk";
+char ssd_device[] = "/home/gyd/mnt/ssd";//"/mnt/ramdisk/ramdisk";//"/dev/memdiska";// "/mnt/ssd/ssd";
+char smr_device2[] = "/home/gyd/hdd2";
+char smr_device3[] = "/home/gyd/hdd3";
 char ram_device[1024];
+
+unsigned int DISKNUMS = 3;
+off_t MaxLBA[] = {2096934,4444757,3654084,8890908,17386419,4427953,2835133,5760047,4169381,8889556,9999999,9999999};
 
 int BandOrBlock;
 
@@ -40,7 +46,17 @@ int BandOrBlock;
 int hdd_fd;
 int ssd_fd;
 int ram_fd;
+
+
+int hdd_fd2;
+int hdd_fd3;
+
 struct RuntimeSTAT* STT;
+
+unsigned int data_split;
+int hrc_sample_range = 7500; // SSD_SIZE is 4K, so the hrc sample range is [current-50M ~ current+50M]
+
+char device_monitored[20];
 
 /** Shared memory variable names **/
 char* SHM_SSDBUF_STRATEGY_CTRL = "SHM_SSDBUF_STRATEGY_CTRL";
@@ -61,5 +77,8 @@ char* PATH_LOG = "/home/outputs/logs";
 /** Pipes for HRC processes **/
 #ifdef HRC_PROCS_N
 int PipeEnds_of_MAIN[HRC_PROCS_N];
+int PipeEnds_of_disk1[HRC_PROCS_N];
+int PipeEnds_of_disk2[HRC_PROCS_N];
+int PipeEnds_of_disk3[HRC_PROCS_N];
 int PipeEnd_of_HRC;
 #endif

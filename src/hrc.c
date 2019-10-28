@@ -29,11 +29,11 @@ void hrc_report()
     posix_memalign(&str,512,512);
 
     char path[64];
-    sprintf(path,"%s/hrc_user%d_%d",hrc_report_dir,UserId,Fork_Pid);
+    sprintf(path,"%s/hrc_user%d_%s_%d",hrc_report_dir,UserId,device_monitored,Fork_Pid);
     int file = open(path, O_CREAT | O_RDWR | O_DIRECT);
-    int hitratio = (int)((float)STT->hitnum_s / STT->reqcnt_s * 100);
+    float hitratio = ((float)STT->hitnum_s *1.0 / STT->reqcnt_s * 100);
 
-    sprintf(str, "%d,%ld,%ld,%d\n", Fork_Pid, STT->reqcnt_s, STT->hitnum_s, hitratio);
+    sprintf(str, "%d,%d,%d,%ld,%ld,%.2lf\n", UserId, STT->cacheLimit, Fork_Pid, STT->reqcnt_s, STT->hitnum_s, hitratio);
 //    printf("%s", (char*)str);
     ssize_t ret = pwrite(file,str,512,0);
     if(ret < 512)
