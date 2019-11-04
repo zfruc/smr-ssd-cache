@@ -32,9 +32,9 @@ char simu_smr_fifo_device[] = "/mnt/smr/pb";
 char simu_smr_smr_device[] = "/mnt/smr/smr";
 
 char smr_device[] = "/home/gyd/hdd"; // /dev/sdc";"/mnt/smr/smr-rawdisk";
-char ssd_device[] = "/home/gyd/mnt/ssd";//"/mnt/ramdisk/ramdisk";//"/dev/memdiska";// "/mnt/ssd/ssd";
-char smr_device2[] = "/home/gyd/hdd2";
-char smr_device3[] = "/home/gyd/hdd3";
+char ssd_device[] = "/mnt/nvm/ssd";//"/mnt/ramdisk/ramdisk";//"/dev/memdiska";// "/mnt/ssd/ssd";
+char smr_device2[] = "/mnt/sdb/hdd";
+char smr_device3[] = "/mnt/sdd/hdd";
 char ram_device[1024];
 
 unsigned int DISKNUMS = 3;
@@ -54,7 +54,7 @@ int hdd_fd3;
 struct RuntimeSTAT* STT;
 
 unsigned int data_split;
-int hrc_sample_range = 7500; // SSD_SIZE is 4K, so the hrc sample range is [current-50M ~ current+50M]
+int hrc_sample_range = 75000; // SSD_SIZE is 4K, so the hrc sample range is [current-50M ~ current+50M]
 
 char device_monitored[20];
 

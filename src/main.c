@@ -177,17 +177,50 @@ main(int argc, char** argv)
 
         ssd_fd = open(ssd_device, O_RDWR | O_DIRECT);
 
+        // #ifndef SIMULATION
+        // /* Real Device */
+        // hdd_fd = open(smr_device, O_RDWR | O_DIRECT);
+        // printf("Device ID: hdd=%d, ssd=%d\n",hdd_fd,ssd_fd);
+        // #else
+
+        // if(DISKNUMS>1)
+        // {
+        //     hdd_fd = open(smr_device, O_RDWR | O_DIRECT);
+        //     hdd_fd2 = open(smr_device2, O_RDWR | O_DIRECT);
+        //     hdd_fd3 = open(smr_device3, O_RDWR | O_DIRECT);
+        //     if(hdd_fd2 < 0 || hdd_fd3 < 0)
+        //     {
+        //         printf("file open error. hdd_fd2 = %d, hdd_fd3 = %d\n", hdd_fd2, hdd_fd3);
+        //         exit(-1);
+        //     }
+        //     printf("hdd_fd = %d, hdd_fd2 = %d, hdd_fd3 = %d\n",hdd_fd ,hdd_fd2, hdd_fd3);
+        //     getchar();
+        // }
+        // /* Emulator */
+        // fd_fifo_part = open(simu_smr_fifo_device, O_RDWR | O_DIRECT);
+        // fd_smr_part = open(simu_smr_smr_device, O_RDWR | O_DIRECT | O_FSYNC);
+        // printf("Simulator Device: fifo part=%d, smr part=%d\n",fd_fifo_part,fd_smr_part);
+        // if(fd_fifo_part<0 || fd_smr_part<0)
+        //     exit(EXIT_FAILURE);
+        // InitSimulator();
+        // #endif
+
+
         #ifndef SIMULATION
         /* Real Device */
         hdd_fd = open(smr_device, O_RDWR | O_DIRECT);
-        printf("Device ID: hdd=%d, ssd=%d\n",hdd_fd,ssd_fd);
-        #else
-
         if(DISKNUMS>1)
         {
-            hdd_fd2 = open(ssd_device2, O_RDWR | O_DIRECT);
-            hdd_fd3 = open(ssd_device3, O_RDWR | O_DIRECT);
+            hdd_fd2 = open(smr_device2, O_RDWR | O_DIRECT);
+            hdd_fd3 = open(smr_device3, O_RDWR | O_DIRECT);
+            if(hdd_fd2 < 0 || hdd_fd3 < 0)
+            {
+                printf("file open error. hdd_fd2 = %d, hdd_fd3 = %d\n", hdd_fd2, hdd_fd3);
+                exit(-1);
+            }
         }
+        printf("Device ID: ssd_fd = %d, hdd_fd = %d, hdd_fd2 = %d, hdd_fd3 = %d\n",ssd_fd, hdd_fd ,hdd_fd2, hdd_fd3);
+        #else
         /* Emulator */
         fd_fifo_part = open(simu_smr_fifo_device, O_RDWR | O_DIRECT);
         fd_smr_part = open(simu_smr_smr_device, O_RDWR | O_DIRECT | O_FSYNC);

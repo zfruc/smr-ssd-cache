@@ -102,6 +102,11 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
     while (!feof(trace) && STT->reqcnt_s < total_n_req) // 84340000
     {
       //  printf("-----------------now loooping = %d.---------\n",++loooping);
+//        if(loooping!=STT->cacheUsage)
+//        {
+//            printf("%ld\n",loooping);
+//        }
+//        loooping++;
         returnCode = fscanf(trace, "%c %d %lu\n", &action, &i, &offset);
         //printf("read from file success.\n");
         if (returnCode < 0)
@@ -160,13 +165,21 @@ trace_to_iocall(char *trace_file_path, int isWriteOnly,off_t startLBA)
 //            }
             //printf("next pipe_write with HRCPROC.\n");
             #ifdef HRC_PROCS_N
-            int i;
+            int i,j;
             for(i = 0; i < HRC_PROCS_N; i++)
             {
-                int tmp = pipe_write(PipeEnds_of_MAIN[i],pipebuf,64);
-                //printf("%d.\n",tmp);
+                pipe_write(PipeEnds_of_MAIN[i],pipebuf,64);
+                int disk_num = (offset/data_split)%DISKNUMS;
+                if(disk_num == 0){
+                    pipe_write(PipeEnds_of_disk1[i],pipebuf,64);
+                }
+                else if (disk_num == 1){
+                    pipe_write(PipeEnds_of_disk2[i],pipebuf,64);
+                }
+                else if (disk_num == 2){
+                    pipe_write(PipeEnds_of_disk3[i],pipebuf,64);
+                }
             }
-            //printf("pipe_write end.\n");
             #endif // HRC_PROCS_N
             _TimerLap(&tv_stop_io);
             io_latency = TimerInterval_SECOND(&tv_start_io, &tv_stop_io);

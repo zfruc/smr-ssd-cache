@@ -169,6 +169,7 @@ init_StatisticObj()
 static void
 flushSSDBuffer(SSDBufDesp * ssd_buf_hdr)
 {
+    // printf("flushSSDBuffer， offset = %lu\n", ssd_buf_hdr->ssd_buf_tag.offset);
     if (IsClean(ssd_buf_hdr->ssd_buf_flag))
     {
         STT->flush_clean_blocks++;
@@ -184,12 +185,18 @@ flushSSDBuffer(SSDBufDesp * ssd_buf_hdr)
     dev_simu_write(ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_tag.offset);
 #else
     off_t offset = ssd_buf_hdr->ssd_buf_tag.offset;
-    if((offset/data_split)%DISKNUMS == 0)
+    if((offset/data_split)%DISKNUMS == 0){
+        // printf("write disk1. hdd_fd = %d, offset = %lu\n", hdd_fd, ssd_buf_hdr->ssd_buf_tag.offset);
         dev_pwrite(hdd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_tag.offset);
-    else if((offset/data_split)%DISKNUMS == 1)
+    }
+    else if((offset/data_split)%DISKNUMS == 1){
+        // printf("write disk2. hdd_fd2 = %d, offset = %lu\n", hdd_fd2, ssd_buf_hdr->ssd_buf_tag.offset);
         dev_pwrite(hdd_fd2, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_tag.offset);
-    else if((offset/data_split)%DISKNUMS == 1)
+    }
+    else if((offset/data_split)%DISKNUMS == 2){
+        // printf("write disk3. hdd_fd3 = %d, offset = %lu\n", hdd_fd3, ssd_buf_hdr->ssd_buf_tag.offset);
         dev_pwrite(hdd_fd3, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_tag.offset);
+    }
 #endif
     msec_w_hdd = TimerInterval_MICRO(&tv_start,&tv_stop);
     STT->time_write_hdd += Mirco2Sec(msec_w_hdd);
@@ -237,13 +244,6 @@ int AdjustCacheUsage()
         int tmp = pipe_write(PipeEnds_of_MAIN[i],pipebuf,64);
         //printf("%d.\n",tmp);
     }
-    for(i = 0; i < HRC_PROCS_N; i++)
-    {
-        new_cachesize = (user_max_cachesize - hrc_sample_range) + (2* hrc_sample_range / HRC_PROCS_N * PipeEnds_of_MAIN[i]);
-        sprintf(pipebuf,"%c,%lu\n",'A',new_cachesize);
-        int tmp = pipe_write(PipeEnds_of_MAIN[i],pipebuf,64);
-        //printf("%d.\n",tmp);
-    }
     // for(j = 1; j <= DISKNUMS ; j++)
         for(i = 0; i < HRC_PROCS_N; i++)
         {
@@ -274,7 +274,8 @@ int AdjustCacheUsage_Manual(int u_id, long user_max_cachesize){
         return 0;
 
     blksize_t needEvictCnt = STT->cacheUsage - STT->cacheLimit;
-    printf("STT->cacheUsage = %lu, STT->cacheLimit = %lu, needEvictCnt = %lu.\n",STT->cacheUsage, STT->cacheLimit, needEvictCnt);
+    if(!I_AM_HRC_PROC)
+        printf("STT->cacheUsage = %lu, STT->cacheLimit = %lu, needEvictCnt = %lu.\n",STT->cacheUsage, STT->cacheLimit, needEvictCnt);
 
     blksize_t hasEvicted = 0;
     while(hasEvicted < needEvictCnt)
@@ -773,6 +774,7 @@ read_block(off_t offset, char *ssd_buffer)
         CM_T_hitmiss_Reg(miss_usetime);
         /* ------------------ */
 
+        // printf("write ssd. ssd_fd = %d, offset = %lu\n", ssd_fd, ssd_buf_hdr->ssd_buf_id * SSD_BUFFER_SIZE);
         dev_pwrite(ssd_fd, ssd_buffer, SSD_BUFFER_SIZE, ssd_buf_hdr->ssd_buf_id * SSD_BUFFER_SIZE);
         msec_w_ssd = TimerInterval_MICRO(&tv_start,&tv_stop);
         STT->time_write_ssd += Mirco2Sec(msec_w_ssd);
